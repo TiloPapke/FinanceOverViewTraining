@@ -8,15 +8,15 @@ open mile stones:
 hint: new miles stones might be added
 
 goal points for version 0.0.1:
-[ ] given out simple text via http request
-[ ] secure simple server configuration in an ini file
+- [x] given out simple text via http request
+- [ ] secure simple server configuration in an ini file
 
 goal points for version 0.0.2:
-[ ] integrate simple log mechanismn
-[ ] using database to count amount of incoming request (might be removed in later versions)
-[ ] providing secure https connection with self signed certificates
+- [ ] integrate simple log mechanismn
+- [ ] using database to count amount of incoming request (might be removed in later versions)
+- [ ] providing secure https connection with self signed certificates
 
 goal points for version 0.0.3:
-[ ] provide registration via email, choosing own user name
-[ ] provide password reset via email
+- [ ] provide registration via email, choosing own user name
+- [ ] provide password reset via email
 hint for later development: a user should only see his own data.
