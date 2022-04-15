@@ -9,7 +9,7 @@ hint: new miles stones might be added
 
 goal points for version 0.0.1:
 - [x] given out simple text via http request
-- [ ] secure simple server configuration in an ini file
+- [x] secure simple server configuration in an ini file
 
 goal points for version 0.0.2:
 - [ ] integrate simple log mechanismn
