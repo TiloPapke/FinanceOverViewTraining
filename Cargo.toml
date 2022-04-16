@@ -1,5 +1,5 @@
 [package]
-name = "FinanceOverViewTraining"
+name = "finance_overview_training"
 version = "0.0.1"
 edition = "2021"
 
@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.5.1"}
+once_cell = { version = "1.10.0"}
 rust-ini = {version = "0.18.0"}
 tokio = { version = "1.0", features = ["full"] }

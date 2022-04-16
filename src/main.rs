@@ -1,5 +1,7 @@
+mod setting_struct;
+
 use axum::{response::Html, routing::get, Router};
-use ini::Ini;
+use setting_struct::SettingStruct;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -10,12 +12,6 @@ use std::path::PathBuf;
 async fn main() {
     //get configuration from ini file
     //define default content
-    let web_server_ip_part1:u8 = 127;
-    let web_server_ip_part2:u8 = 0;
-    let web_server_ip_part3:u8 = 0;
-    let web_server_ip_part4:u8 = 1;
-    let web_server_port:u16=3000;
-    let mut conf:Ini = Ini::new();
 
     let working_dir = env::current_dir().unwrap();
     let config_dir:PathBuf = Path::new(&working_dir).join("config");
@@ -26,37 +22,28 @@ async fn main() {
     let server_settings_file = Path::new(&config_dir).join("ServerSettings.ini");
     if !server_settings_file.exists()
     {
-        conf.with_section(Some("[WARNING]"))
-            .set("GITWARNING", "This is a default config file, when entering own value be sure to add this file to ignore")
-            .set("GITWARNING2", "Only push to repository if this file does not contain any private information");
-        conf.with_section(Some("WebServer"))
-            .set("ip_part1", web_server_ip_part1.to_string())
-            .set("ip_part2", web_server_ip_part2.to_string())
-            .set("ip_part3", web_server_ip_part3.to_string())
-            .set("ip_part4", web_server_ip_part4.to_string())
-            .set("port", web_server_port.to_string());
-            conf.write_to_file(&server_settings_file).unwrap();
+        SettingStruct::create_dummy_setting(&server_settings_file);
     }
-    let conf:Ini = Ini::load_from_file(&server_settings_file).unwrap();
-    let web_server_ip_part1:u8 = conf.get_from_or(Some("WebServer"),"ip_part1","127").parse().unwrap();
-    let web_server_ip_part2:u8 = conf.get_from_or(Some("WebServer"),"ip_part2","0").parse().unwrap();
-    let web_server_ip_part3:u8 = conf.get_from_or(Some("WebServer"),"ip_part3","0").parse().unwrap();
-    let web_server_ip_part4:u8 = conf.get_from_or(Some("WebServer"),"ip_part4","1").parse().unwrap();
-    let web_server_port:u16 = conf.get_from_or(Some("WebServer"),"port","3000").parse().unwrap();
 
+        let local_setting = SettingStruct::load_from_file(&server_settings_file);
+
+        setting_struct::GLOBAL_SETTING.set(local_setting).ok();
 
     // build our application with a route
     let app = Router::new().route("/", get(handler));
 
     // run it
-    let addr = SocketAddr::from(([web_server_ip_part1, web_server_ip_part2, web_server_ip_part3, web_server_ip_part4], web_server_port));
+    let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
-}
+}   
 
-async fn handler() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
+async fn handler() -> Html<String> {
+    
+    let local_settings = SettingStruct::global();
+
+    Html(format!("<h1>Hello, World!</h1><br>running on port {}",local_settings.web_server_port))
 }

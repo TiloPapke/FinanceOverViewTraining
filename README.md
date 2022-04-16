@@ -13,6 +13,13 @@ goal points for version 0.0.2:
 - [ ] integrate simple log mechanismn
 - [ ] using database to count amount of incoming request (might be removed in later versions)
 - [ ] providing secure https connection with self signed certificates
+Versions hints:
+* needs couchbase server (https://www.couchbase.com/downloads)
+* configure couchbase server at http://localhost:8091/ui/index.html after installation
+* add to config file: clustername, database user and database password, bucket name
+* needs cmake
+* might have to allow some scripts from cmake to be run, like "get_repo_version.ps1" (see https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.2) 
+
 
 goal points for version 0.0.3:
 - [ ] provide registration via email, choosing own user name
