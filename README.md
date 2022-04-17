@@ -19,6 +19,7 @@ Versions hints:
 * add to config file: clustername, database user and database password, bucket name
 * needs cmake
 * might have to allow some scripts from cmake to be run, like "get_repo_version.ps1" (see https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.2) 
+* couchbase version 1.0.0-alpha.4 uses an old version of cmake (0.1.45) and therefore does not support current visual studio. Either install an old Visual Studio or create a fork of couchbase with updated dependency
 
 
 goal points for version 0.0.3:

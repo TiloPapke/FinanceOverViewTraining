@@ -27,7 +27,7 @@ async fn main() {
 
         let local_setting = SettingStruct::load_from_file(&server_settings_file);
 
-        setting_struct::GLOBAL_SETTING.set(local_setting).ok();
+        setting_struct::GLOBAL_SETTING.set(local_setting.clone()).ok();
 
     // build our application with a route
     let app = Router::new().route("/", get(handler));
