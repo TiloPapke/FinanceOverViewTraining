@@ -12,7 +12,8 @@ pub struct SettingStruct {
     pub web_server_port:u16,
     pub backend_database_url:String,
     pub backend_database_user:String,
-    pub backend_database_password:String
+    pub backend_database_password:String,
+    pub backend_database_instance:String
 }
 
 pub static GLOBAL_SETTING: OnceCell<SettingStruct> = OnceCell::new();
@@ -27,7 +28,8 @@ impl SettingStruct{
         let mut conf:Ini = Ini::new();
         conf.with_section(Some("[WARNING]"))
             .set("GITWARNING", "This is a default config file, when entering own value be sure to add this file to ignore")
-            .set("GITWARNING2", "Only push to repository if this file does not contain any private information");
+            .set("GITWARNING2", "Only push to repository if this file does not contain any private information")
+            .set("Renaming", "Use this file as tempalte to create your own ServerSettings.ini file");
         conf.with_section(Some("WebServer"))
             .set("ip_part1", "127")
             .set("ip_part2", "0")
@@ -35,9 +37,10 @@ impl SettingStruct{
             .set("ip_part4", "1")
             .set("port", "3000");
         conf.with_section(Some("BackendDatabase"))
-            .set("DB_URL", "couchbase://127.0.0.1")
+            .set("DB_URL", "mongodb://localhost:27017")
             .set("DB_User", "Administrator")
-            .set("DB_Password", "password");
+            .set("DB_Password", "password")
+            .set("DB_Instance", "StructureName");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -52,6 +55,7 @@ impl SettingStruct{
         let _db_url:String = conf.get_from_or(Some("BackendDatabase"),"DB_URL","").to_string();
         let _db_user:String = conf.get_from_or(Some("BackendDatabase"),"DB_User","").to_string();
         let _db_password:String = conf.get_from_or(Some("BackendDatabase"),"DB_Password","").to_string();
+        let _db_instance:String = conf.get_from_or(Some("BackendDatabase"),"DB_Instance","").to_string();
 
         return SettingStruct { 
             web_server_ip_part1: _web_server_ip_part1,
@@ -61,7 +65,8 @@ impl SettingStruct{
             web_server_port: _web_server_port,
             backend_database_url: _db_url,
             backend_database_user:_db_user,
-            backend_database_password:_db_password 
+            backend_database_password:_db_password,
+            backend_database_instance:_db_instance
         };
     }
 }

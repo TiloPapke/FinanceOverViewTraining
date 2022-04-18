@@ -1,6 +1,9 @@
+mod database_handler_couchbase;
 mod setting_struct;
 
 use axum::{response::Html, routing::get, Router};
+use database_handler_couchbase::DbConnectionSetting;
+use database_handler_couchbase::DbHandlerCouchbase;
 use setting_struct::SettingStruct;
 use std::env;
 use std::fs;
@@ -20,14 +23,32 @@ async fn main() {
         fs::create_dir_all(&config_dir).ok();
     }
     let server_settings_file = Path::new(&config_dir).join("ServerSettings.ini");
+    let dummy_server_settings_file = Path::new(&config_dir).join("DUMMY_ServerSettings.ini");
+    if !dummy_server_settings_file.exists()
+    {
+        SettingStruct::create_dummy_setting(&dummy_server_settings_file);
+    }
     if !server_settings_file.exists()
     {
-        SettingStruct::create_dummy_setting(&server_settings_file);
+        println!("No ServerSettings.ini file found, exiting");
+        return
     }
 
-        let local_setting = SettingStruct::load_from_file(&server_settings_file);
+    let local_setting = SettingStruct::load_from_file(&server_settings_file);
 
-        setting_struct::GLOBAL_SETTING.set(local_setting.clone()).ok();
+    setting_struct::GLOBAL_SETTING.set(local_setting.clone()).ok();
+
+    let db_connection=DbConnectionSetting{
+        url: String::from(local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password) ,
+        instance: String::from(local_setting.backend_database_instance)
+    };
+
+    if !DbHandlerCouchbase::validate_db_structure(db_connection){
+        println!("Could not validate backend structure, quitting");
+        return;
+    }
 
     // build our application with a route
     let app = Router::new().route("/", get(handler));

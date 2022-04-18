@@ -14,13 +14,8 @@ goal points for version 0.0.2:
 - [ ] using database to count amount of incoming request (might be removed in later versions)
 - [ ] providing secure https connection with self signed certificates
 Versions hints:
-* needs couchbase server (https://www.couchbase.com/downloads)
-* configure couchbase server at http://localhost:8091/ui/index.html after installation
-* add to config file: clustername, database user and database password, bucket name
-* needs cmake
-* might have to allow some scripts from cmake to be run, like "get_repo_version.ps1" (see https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.2) 
-* couchbase version 1.0.0-alpha.4 uses an old version of cmake (0.1.45) and therefore does not support current visual studio. Either install an old Visual Studio or create a fork of couchbase with updated dependency
-
+* needs mongoDB Server (see https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-windows/)
+* might have to allow some scripts to be run (see https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.2) 
 
 goal points for version 0.0.3:
 - [ ] provide registration via email, choosing own user name
