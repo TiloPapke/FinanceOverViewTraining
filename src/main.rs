@@ -2,8 +2,12 @@ mod database_handler_couchbase;
 mod setting_struct;
 mod mdb_convert_tools;
 
+use axum::response::Redirect;
 use axum::routing::get;
 use axum::{response::Html, Router};
+use axum::http::uri::Uri;
+use axum_server;
+use axum_server::tls_rustls::RustlsConfig;
 use database_handler_couchbase::DbConnectionSetting;
 use database_handler_couchbase::DbHandlerCouchbase;
 use futures::StreamExt;
@@ -61,19 +65,65 @@ async fn main() {
         return;
     }
 
-    // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let http = tokio::spawn(http_server());
+    let https = tokio::spawn(https_server());
 
-    // run it
+    // Ignore errors.
+    let _ = tokio::join!(http, https);
+}   
+
+async fn http_server() {
+
+    let local_setting:SettingStruct = SettingStruct::global().clone();
+    let app = Router::new().route("/", get(http_handler));
+
     let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port));
-    println!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    println!("http listening on {}", addr);
+    axum_server::bind(addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
-}   
+}
 
-async fn handler() -> Html<String> {
+async fn https_server() {
+
+    let local_setting:SettingStruct = SettingStruct::global().clone();
+    let app = Router::new().route("/", get(https_handler));
+
+    let config = RustlsConfig::from_pem_file(
+        "config/self-signed-certs/cert.pem",
+        "config/self-signed-certs/key.pem",
+    )
+    .await
+    .unwrap();
+
+    let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port+1));
+    println!("https listening on {}", addr);
+    axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+}
+
+async fn http_handler(uri: Uri) -> Redirect {
+    let local_setting:SettingStruct = SettingStruct::global().clone();
+    let host_check = uri.host();
+    let mut host_info=String::new();
+    if host_check.is_some(){
+        //host_info=String::from(host_check.unwrap().to_string());
+        host_info=format!("{}:{}",host_check.unwrap(),local_setting.web_server_port+1);
+    }
+    else {
+        let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port+1));
+        host_info=addr.to_string();
+    }
+    let new_uri = format!("https://{}{}",host_info,uri.path());
+    println!("Redirecting to {}",new_uri);
+    Redirect::temporary(&new_uri)
+
+}
+
+async fn https_handler() -> Html<String> {
     
     let local_settings:SettingStruct = SettingStruct::global().clone();
     let db_connection=DbConnectionSetting{
