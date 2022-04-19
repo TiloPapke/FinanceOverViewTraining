@@ -11,7 +11,7 @@ hint: new miles stones might be added
 
 goal points for version 0.0.2:
 - [ ] integrate simple log mechanismn
-- [ ] using database to count amount of incoming request (might be removed in later versions)
+- [x] using database to count amount of incoming request (might be removed in later versions)
 - [ ] providing secure https connection with self signed certificates
 Versions hints:
 * needs mongoDB Server (see https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-windows/)
