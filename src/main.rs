@@ -10,15 +10,10 @@ use axum_server;
 use axum_server::tls_rustls::RustlsConfig;
 use database_handler_couchbase::DbConnectionSetting;
 use database_handler_couchbase::DbHandlerCouchbase;
-use futures::StreamExt;
-use futures::executor;
 use mdb_convert_tools::MdbConvertTools;
-use mongodb::Collection;
 use mongodb::bson::Bson;
 use mongodb::bson::Document;
 use mongodb::bson::doc;
-use mongodb::options::FindOptions;
-use mongodb::results::CollectionType;
 use setting_struct::SettingStruct;
 use std::env;
 use std::fs;
@@ -116,7 +111,7 @@ async fn https_server() {
 async fn http_handler(uri: Uri) -> Redirect {
     let local_setting:SettingStruct = SettingStruct::global().clone();
     let host_check = uri.host();
-    let mut host_info=String::new();
+    let host_info;//see https://github.com/rust-lang/rust/issues/49171
     if host_check.is_some(){
         //host_info=String::from(host_check.unwrap().to_string());
         host_info=format!("{}:{}",host_check.unwrap(),local_setting.web_server_port_https);
@@ -146,7 +141,7 @@ async fn https_handler() -> Html<String> {
     let mut documents_found =0;
     
 
-    let mut addtional_info=String::new();
+    let mut addtional_info; //see https://github.com/rust-lang/rust/issues/49171
 
     let query_filter = doc!{"RouteName":current_route};
  

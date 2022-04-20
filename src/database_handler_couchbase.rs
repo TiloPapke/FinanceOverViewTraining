@@ -1,4 +1,4 @@
-use mongodb::{options::{ClientOptions, Credential}, Client, Collection, Cursor, results::{CollectionType, InsertOneResult, UpdateResult}, bson::Document};
+use mongodb::{options::{ClientOptions, Credential}, Client, Collection, Cursor, results::{InsertOneResult, UpdateResult}, bson::Document};
 use futures::executor;
 
 pub struct DbConnectionSetting{
@@ -82,6 +82,7 @@ impl DbHandlerCouchbase{
     return true;
     }
     
+    /* currently not used
     pub fn query_table(conncetion_settings: &DbConnectionSetting, table_to_query: &String)->Result<Collection<CollectionType>,String>
     {
         let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
@@ -91,13 +92,14 @@ impl DbHandlerCouchbase{
 
         return Result::Ok(some_collections);
     }
+    */
 
-    pub fn query_table_with_filter(conncetion_settings: &DbConnectionSetting, table_to_query: &String, filterInfo : Document)->Result<Cursor<Document>,String>
+    pub fn query_table_with_filter(conncetion_settings: &DbConnectionSetting, table_to_query: &String, filter_info : Document)->Result<Cursor<Document>,String>
     {
         let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
         if client_create_result.is_err() {return Result::Err(client_create_result.unwrap_err().to_string()); }
         let client = client_create_result.unwrap();
-        let some_cursor_result = executor::block_on( client.database(&conncetion_settings.instance).collection(table_to_query).find(filterInfo, None));
+        let some_cursor_result = executor::block_on( client.database(&conncetion_settings.instance).collection(table_to_query).find(filter_info, None));
         if some_cursor_result.is_err()
         {
             return Result::Err(some_cursor_result.unwrap_err().to_string());
@@ -106,14 +108,14 @@ impl DbHandlerCouchbase{
         return Result::Ok(some_cursor_result.unwrap());
     }
 
-    pub fn insert_document_in_table (conncetion_settings: &DbConnectionSetting, table_to_insert: &String, newDocument : &Document)->Result<InsertOneResult,String>
+    pub fn insert_document_in_table (conncetion_settings: &DbConnectionSetting, table_to_insert: &String, new_document : &Document)->Result<InsertOneResult,String>
     {
         let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
         if client_create_result.is_err() {return Result::Err(client_create_result.unwrap_err().to_string()); }
         let client = client_create_result.unwrap();
         let some_collections:Collection<Document> = client.database(&conncetion_settings.instance).collection(table_to_insert);
 
-        let insert_result_execute_result = executor::block_on( some_collections.insert_one(newDocument, None));
+        let insert_result_execute_result = executor::block_on( some_collections.insert_one(new_document, None));
         if insert_result_execute_result.is_err()
         {
             return Result::Err(insert_result_execute_result.unwrap_err().to_string());
