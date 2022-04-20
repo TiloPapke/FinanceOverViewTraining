@@ -11,6 +11,8 @@ pub struct SettingStruct {
     pub web_server_ip_part4:u8,
     pub web_server_port_http:u16,
     pub web_server_port_https:u16,
+    pub web_server_cert_cert_path:String,
+    pub web_server_cert_key_path:String,
     pub backend_database_url:String,
     pub backend_database_user:String,
     pub backend_database_password:String,
@@ -37,7 +39,9 @@ impl SettingStruct{
             .set("ip_part3", "0")
             .set("ip_part4", "1")
             .set("port_http", "3000")
-            .set("port_https", "3300");
+            .set("port_https", "3300")
+            .set("cert_cert_path", "config/self-signed-certs/cert.pem")
+            .set("cert_key_path", "config/self-signed-certs/key.pem");
         conf.with_section(Some("BackendDatabase"))
             .set("DB_URL", "mongodb://localhost:27017")
             .set("DB_User", "Administrator")
@@ -55,6 +59,8 @@ impl SettingStruct{
         let _web_server_ip_part4:u8 = conf.get_from_or(Some("WebServer"),"ip_part4","1").parse().unwrap();
         let _web_server_port_http:u16 = conf.get_from_or(Some("WebServer"),"port_http","3000").parse().unwrap();
         let _web_server_port_https:u16 = conf.get_from_or(Some("WebServer"),"port_https","3300").parse().unwrap();
+        let _web_server_cert_cert_path:String = conf.get_from_or(Some("WebServer"),"cert_cert_path","").to_string();
+        let _web_server_cert_key_path:String = conf.get_from_or(Some("WebServer"),"cert_key_path","").to_string();
         let _db_url:String = conf.get_from_or(Some("BackendDatabase"),"DB_URL","").to_string();
         let _db_user:String = conf.get_from_or(Some("BackendDatabase"),"DB_User","").to_string();
         let _db_password:String = conf.get_from_or(Some("BackendDatabase"),"DB_Password","").to_string();
@@ -67,6 +73,8 @@ impl SettingStruct{
             web_server_ip_part4: _web_server_ip_part4,
             web_server_port_http: _web_server_port_http,
             web_server_port_https: _web_server_port_https,
+            web_server_cert_cert_path:_web_server_cert_cert_path,
+            web_server_cert_key_path:_web_server_cert_key_path,
             backend_database_url: _db_url,
             backend_database_user:_db_user,
             backend_database_password:_db_password,

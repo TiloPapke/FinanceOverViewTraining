@@ -90,12 +90,20 @@ async fn https_server() {
     let local_setting:SettingStruct = SettingStruct::global().clone();
     let app = Router::new().route("/", get(https_handler));
 
-    let config = RustlsConfig::from_pem_file(
-        "config/self-signed-certs/cert.pem",
-        "config/self-signed-certs/key.pem",
+    let config_result = RustlsConfig::from_pem_file(
+        local_setting.web_server_cert_cert_path,
+        local_setting.web_server_cert_key_path,
     )
-    .await
-    .unwrap();
+    .await;
+    
+    if config_result.is_err()
+    {
+        println!("Error loading TLS configuration: {}",config_result.unwrap_err());
+        return;
+    }
+
+    let config = config_result.unwrap();
+
 
     let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port_https));
     println!("https listening on {}", addr);
