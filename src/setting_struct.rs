@@ -9,7 +9,8 @@ pub struct SettingStruct {
     pub web_server_ip_part2:u8,
     pub web_server_ip_part3:u8,
     pub web_server_ip_part4:u8,
-    pub web_server_port:u16,
+    pub web_server_port_http:u16,
+    pub web_server_port_https:u16,
     pub backend_database_url:String,
     pub backend_database_user:String,
     pub backend_database_password:String,
@@ -35,7 +36,8 @@ impl SettingStruct{
             .set("ip_part2", "0")
             .set("ip_part3", "0")
             .set("ip_part4", "1")
-            .set("port", "3000");
+            .set("port_http", "3000")
+            .set("port_https", "3300");
         conf.with_section(Some("BackendDatabase"))
             .set("DB_URL", "mongodb://localhost:27017")
             .set("DB_User", "Administrator")
@@ -51,7 +53,8 @@ impl SettingStruct{
         let _web_server_ip_part2:u8 = conf.get_from_or(Some("WebServer"),"ip_part2","0").parse().unwrap();
         let _web_server_ip_part3:u8 = conf.get_from_or(Some("WebServer"),"ip_part3","0").parse().unwrap();
         let _web_server_ip_part4:u8 = conf.get_from_or(Some("WebServer"),"ip_part4","1").parse().unwrap();
-        let _web_server_port:u16 = conf.get_from_or(Some("WebServer"),"port","3000").parse().unwrap();
+        let _web_server_port_http:u16 = conf.get_from_or(Some("WebServer"),"port_http","3000").parse().unwrap();
+        let _web_server_port_https:u16 = conf.get_from_or(Some("WebServer"),"port_https","3300").parse().unwrap();
         let _db_url:String = conf.get_from_or(Some("BackendDatabase"),"DB_URL","").to_string();
         let _db_user:String = conf.get_from_or(Some("BackendDatabase"),"DB_User","").to_string();
         let _db_password:String = conf.get_from_or(Some("BackendDatabase"),"DB_Password","").to_string();
@@ -62,7 +65,8 @@ impl SettingStruct{
             web_server_ip_part2: _web_server_ip_part2,
             web_server_ip_part3: _web_server_ip_part3,
             web_server_ip_part4: _web_server_ip_part4,
-            web_server_port: _web_server_port,
+            web_server_port_http: _web_server_port_http,
+            web_server_port_https: _web_server_port_https,
             backend_database_url: _db_url,
             backend_database_user:_db_user,
             backend_database_password:_db_password,

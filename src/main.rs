@@ -77,7 +77,7 @@ async fn http_server() {
     let local_setting:SettingStruct = SettingStruct::global().clone();
     let app = Router::new().route("/", get(http_handler));
 
-    let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port));
+    let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port_http));
     println!("http listening on {}", addr);
     axum_server::bind(addr)
         .serve(app.into_make_service())
@@ -97,7 +97,7 @@ async fn https_server() {
     .await
     .unwrap();
 
-    let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port+1));
+    let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port_https));
     println!("https listening on {}", addr);
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
@@ -111,10 +111,10 @@ async fn http_handler(uri: Uri) -> Redirect {
     let mut host_info=String::new();
     if host_check.is_some(){
         //host_info=String::from(host_check.unwrap().to_string());
-        host_info=format!("{}:{}",host_check.unwrap(),local_setting.web_server_port+1);
+        host_info=format!("{}:{}",host_check.unwrap(),local_setting.web_server_port_https);
     }
     else {
-        let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port+1));
+        let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port_https));
         host_info=addr.to_string();
     }
     let new_uri = format!("https://{}{}",host_info,uri.path());
@@ -201,5 +201,5 @@ async fn https_handler() -> Html<String> {
 
 
 
-    Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port, addtional_info))
+    Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port_https, addtional_info))
 }
