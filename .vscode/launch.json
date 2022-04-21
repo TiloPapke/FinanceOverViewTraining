@@ -26,6 +26,25 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Build Release executable 'FinanceOverViewTraining'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--release",
+                    "--bin=finance_overview_training",
+                    "--package=finance_overview_training"
+                ],
+                "filter": {
+                    "name": "finance_overview_training",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in executable 'FinanceOverViewTraining'",
             "cargo": {
                 "args": [

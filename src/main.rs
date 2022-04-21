@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate simple_log;
+
 mod database_handler_couchbase;
 mod setting_struct;
 mod mdb_convert_tools;
@@ -15,6 +18,7 @@ use mongodb::bson::Bson;
 use mongodb::bson::Document;
 use mongodb::bson::doc;
 use setting_struct::SettingStruct;
+use simple_log::LogConfigBuilder;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -25,21 +29,40 @@ use std::path::PathBuf;
 async fn main() {
     //get configuration from ini file
     //define default content
+    let config = LogConfigBuilder::builder()
+    .path("./log/builder_log.log")
+    .size(1 * 100)
+    .roll_count(10)
+    .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
+    .level("debug")
+    .output_file()
+    .output_console()
+    .build();
+
+    let simple_log_create_result =simple_log::new(config);
+    if simple_log_create_result.is_err(){
+        println!("Could not instatiate log mechanismn, {}",simple_log_create_result.unwrap_err());
+        return  
+    }
+    //let simple_log = simple_log_create_result.unwrap(); // not needed
 
     let working_dir = env::current_dir().unwrap();
     let config_dir:PathBuf = Path::new(&working_dir).join("config");
     if !config_dir.exists()
     {
+        warn!("setting folder not found, will be created at {}",config_dir.to_string_lossy());
         fs::create_dir_all(&config_dir).ok();
     }
     let server_settings_file = Path::new(&config_dir).join("ServerSettings.ini");
     let dummy_server_settings_file = Path::new(&config_dir).join("DUMMY_ServerSettings.ini");
     if !dummy_server_settings_file.exists()
     {
+        debug!("Dummy setting file not found, will be created at {}",dummy_server_settings_file.to_string_lossy());
         SettingStruct::create_dummy_setting(&dummy_server_settings_file);
     }
     if !server_settings_file.exists()
     {
+        error!("setting folder not found, will be created at {}",server_settings_file.to_string_lossy());
         println!("No ServerSettings.ini file found, exiting");
         return
     }
@@ -56,6 +79,7 @@ async fn main() {
     };
 
     if !DbHandlerCouchbase::validate_db_structure(&db_connection){
+        error!("Could not validate backend structure, quitting");
         println!("Could not validate backend structure, quitting");
         return;
     }
@@ -93,7 +117,8 @@ async fn https_server() {
     
     if config_result.is_err()
     {
-        println!("Error loading TLS configuration: {}",config_result.unwrap_err());
+        println!("Error loading TLS configuration: {}",config_result.as_ref().unwrap_err());
+        error!("Error loading TLS configuration: {}",config_result.unwrap_err());
         return;
     }
 
@@ -113,7 +138,6 @@ async fn http_handler(uri: Uri) -> Redirect {
     let host_check = uri.host();
     let host_info;//see https://github.com/rust-lang/rust/issues/49171
     if host_check.is_some(){
-        //host_info=String::from(host_check.unwrap().to_string());
         host_info=format!("{}:{}",host_check.unwrap(),local_setting.web_server_port_https);
     }
     else {
@@ -121,7 +145,10 @@ async fn http_handler(uri: Uri) -> Redirect {
         host_info=addr.to_string();
     }
     let new_uri = format!("https://{}{}",host_info,uri.path());
+    
+    //#[cfg(debug_assertions)]
     println!("Redirecting to {}",new_uri);
+    
     Redirect::temporary(&new_uri)
 
 }
@@ -199,6 +226,7 @@ async fn https_handler() -> Html<String> {
         };
     }
     else {
+        warn!("Error querying database: {}",query_site_result_cursor.unwrap_err());
         addtional_info = "<br> Could not get calling information".to_string();
     }
 
