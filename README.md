@@ -22,6 +22,17 @@ open mile stones:
 hint: new miles stones might be added
 
 goal points for version 0.0.3:
+- [ ] session controls
+- [ ] minimal user settings page
 - [ ] provide registration via email, choosing own user name
 - [ ] provide password reset via email
 hint for later development: a user should only see his own data.
+
+goal points for version 0.0.4
+- [ ] simple finance account management
+- [ ] journaling of income and expanses
+
+goal points for version 0.0.5
+- [ ] calculting saldo over all finance accounts
+- [ ] export to csv (simple)
+
