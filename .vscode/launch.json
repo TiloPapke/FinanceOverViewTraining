@@ -37,7 +37,7 @@
                 "filter": {
                     "name": "finance_overview_training",
                     "kind": "bin"
-                }
+                },
             },
             "args": [],
             "cwd": "${workspaceFolder}"

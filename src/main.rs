@@ -27,15 +27,11 @@ use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() {
-    //get configuration from ini file
-    //define default content
+ 
+    //default logger for startup
     let config = LogConfigBuilder::builder()
-    .path("./log/builder_log.log")
-    .size(1 * 100)
-    .roll_count(10)
     .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
     .level("debug")
-    .output_file()
     .output_console()
     .build();
 
@@ -46,6 +42,7 @@ async fn main() {
     }
     //let simple_log = simple_log_create_result.unwrap(); // not needed
 
+    //get configuration from ini file
     let working_dir = env::current_dir().unwrap();
     let config_dir:PathBuf = Path::new(&working_dir).join("config");
     if !config_dir.exists()
@@ -71,6 +68,25 @@ async fn main() {
 
     setting_struct::GLOBAL_SETTING.set(local_setting.clone()).ok();
 
+    //real logger from settings
+    let config = LogConfigBuilder::builder()
+    .path(local_setting.log_file_output_path)
+    .size(local_setting.log_file_size_mi_bytes)
+    .roll_count(local_setting.log_file_roll_max_file_count)
+    .time_format(local_setting.log_time_format) //E.g:%H:%M:%S.%f
+    .level(local_setting.log_level)
+    .output_file()
+    .output_console()
+    .build();
+
+    let simple_log_update_result =simple_log::update_log_conf(config);
+    if simple_log_update_result.is_err(){
+        println!("Could not instatiate log mechanismn, {}",simple_log_update_result.unwrap_err());
+        return  
+    }
+    //let simple_log = simple_log_update_result.unwrap(); // not needed
+
+    //check database
     let db_connection=DbConnectionSetting{
         url: String::from(local_setting.backend_database_url),
         user: String::from(local_setting.backend_database_user),
@@ -84,11 +100,23 @@ async fn main() {
         return;
     }
 
+    let key = "RUST_LOG";
+    match env::var(key) {
+        Ok(val) => println!("{}: {:?}", key, val),
+        Err(e) => println!("couldn't interpret {}: {}", key, e),
+    }
+
+    info!("TEST_INFO");
+    debug!("TEST_DEBUG");
+    error!("TEST_ERROR");
+    
     let http = tokio::spawn(http_server());
     let https = tokio::spawn(https_server());
 
     // Ignore errors.
     let _ = tokio::join!(http, https);
+
+
 }   
 
 async fn http_server() {
@@ -178,7 +206,9 @@ async fn https_handler() -> Html<String> {
         for document_entry in document_list {
             if let Some(&Bson::String(ref route_value)) = document_entry.get("RouteName") {
                 if let Some(&Bson::Int32(ref calling_amount_value)) = document_entry.get("CallingAmount") {
+                    //#[cfg(debug_assertions)]
                     println!("route: {}, called: {}",route_value,calling_amount_value);
+
                     if  route_value.eq(current_route)
                     {
                         current_document = document_entry.clone();
@@ -230,7 +260,9 @@ async fn https_handler() -> Html<String> {
         addtional_info = "<br> Could not get calling information".to_string();
     }
 
-
+    info!("TEST_INFO2");
+    debug!("TEST_DEBUG2");
+    error!("TEST_ERROR2");
 
     Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port_https, addtional_info))
 }
