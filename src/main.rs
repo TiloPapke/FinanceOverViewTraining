@@ -256,7 +256,8 @@ async fn https_handler() -> impl IntoResponse {
 
     let template = MainPageTemplate { 
         web_running_port : local_settings.web_server_port_https,
-        additional_info: addtional_info
+        additional_info: addtional_info,
+        called_times:current_count
      };
     HtmlTemplate(template)
 }

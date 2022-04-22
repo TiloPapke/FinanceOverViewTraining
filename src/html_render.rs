@@ -6,6 +6,7 @@ use axum::{response::{Html, Response, IntoResponse}, http::StatusCode};
 pub struct MainPageTemplate {
    pub web_running_port: u16,
    pub additional_info:String,
+   pub called_times:i32
 }
 pub struct HtmlTemplate<T>(pub T);
 
