@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate simple_log;
-
 mod database_handler_couchbase;
 mod setting_struct;
 mod mdb_convert_tools;
@@ -13,12 +10,17 @@ use axum_server;
 use axum_server::tls_rustls::RustlsConfig;
 use database_handler_couchbase::DbConnectionSetting;
 use database_handler_couchbase::DbHandlerCouchbase;
+use log::{error, info, warn, debug, LevelFilter};
+use log4rs::{
+    append::console::ConsoleAppender,
+    config::{Appender, Root},
+    encode::json::JsonEncoder,
+};
 use mdb_convert_tools::MdbConvertTools;
 use mongodb::bson::Bson;
 use mongodb::bson::Document;
 use mongodb::bson::doc;
 use setting_struct::SettingStruct;
-use simple_log::LogConfigBuilder;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -29,37 +31,39 @@ use std::path::PathBuf;
 async fn main() {
  
     //default logger for startup
-    let config = LogConfigBuilder::builder()
-    .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
-    .level("debug")
-    .output_console()
-    .build();
+    let stdout: ConsoleAppender = ConsoleAppender::builder()
+        .encoder(Box::new(JsonEncoder::new()))
+        .build();
+    let config = log4rs::config::Config::builder()
+    .appender(Appender::builder().build("stdout", Box::new(stdout)))
+    .build(Root::builder().appender("stdout").build(LevelFilter::Info))
+    .unwrap();
 
-    let simple_log_create_result =simple_log::new(config);
-    if simple_log_create_result.is_err(){
-        println!("Could not instatiate log mechanismn, {}",simple_log_create_result.unwrap_err());
+    let log4rs_create_result= log4rs::init_config(config);
+    if log4rs_create_result.is_err(){
+        println!("Could not instatiate log mechanismn, {}",log4rs_create_result.unwrap_err());
         return  
     }
-    //let simple_log = simple_log_create_result.unwrap(); // not needed
+    let log4rs_handle = log4rs_create_result.unwrap(); 
 
     //get configuration from ini file
     let working_dir = env::current_dir().unwrap();
     let config_dir:PathBuf = Path::new(&working_dir).join("config");
     if !config_dir.exists()
     {
-        warn!("setting folder not found, will be created at {}",config_dir.to_string_lossy());
+        warn!(target: "app::FinanceOverView","setting folder not found, will be created at {}",config_dir.to_string_lossy());
         fs::create_dir_all(&config_dir).ok();
     }
     let server_settings_file = Path::new(&config_dir).join("ServerSettings.ini");
     let dummy_server_settings_file = Path::new(&config_dir).join("DUMMY_ServerSettings.ini");
     if !dummy_server_settings_file.exists()
     {
-        debug!("Dummy setting file not found, will be created at {}",dummy_server_settings_file.to_string_lossy());
+        debug!(target: "app::FinanceOverView","Dummy setting file not found, will be created at {}",dummy_server_settings_file.to_string_lossy());
         SettingStruct::create_dummy_setting(&dummy_server_settings_file);
     }
     if !server_settings_file.exists()
     {
-        error!("setting folder not found, will be created at {}",server_settings_file.to_string_lossy());
+        error!(target: "app::FinanceOverView","setting folder not found, will be created at {}",server_settings_file.to_string_lossy());
         println!("No ServerSettings.ini file found, exiting");
         return
     }
@@ -68,23 +72,13 @@ async fn main() {
 
     setting_struct::GLOBAL_SETTING.set(local_setting.clone()).ok();
 
-    //real logger from settings
-    let config = LogConfigBuilder::builder()
-    .path(local_setting.log_file_output_path)
-    .size(local_setting.log_file_size_mi_bytes)
-    .roll_count(local_setting.log_file_roll_max_file_count)
-    .time_format(local_setting.log_time_format) //E.g:%H:%M:%S.%f
-    .level(local_setting.log_level)
-    .output_file()
-    .output_console()
-    .build();
-
-    let simple_log_update_result =simple_log::update_log_conf(config);
-    if simple_log_update_result.is_err(){
-        println!("Could not instatiate log mechanismn, {}",simple_log_update_result.unwrap_err());
+    //real logger configuration from settings
+    let log4rs_update_result= log4rs::config::load_config_file("config/default_log_settings.yaml", Default::default());
+    if log4rs_update_result.is_err(){
+        println!("Could not load log settings, {}",log4rs_update_result.unwrap_err());
         return  
     }
-    //let simple_log = simple_log_update_result.unwrap(); // not needed
+    log4rs_handle.set_config(log4rs_update_result.unwrap());
 
     //check database
     let db_connection=DbConnectionSetting{
@@ -95,20 +89,14 @@ async fn main() {
     };
 
     if !DbHandlerCouchbase::validate_db_structure(&db_connection){
-        error!("Could not validate backend structure, quitting");
+        error!(target: "app::FinanceOverView","Could not validate backend structure, quitting");
         println!("Could not validate backend structure, quitting");
         return;
     }
 
-    let key = "RUST_LOG";
-    match env::var(key) {
-        Ok(val) => println!("{}: {:?}", key, val),
-        Err(e) => println!("couldn't interpret {}: {}", key, e),
-    }
-
-    info!("TEST_INFO");
-    debug!("TEST_DEBUG");
-    error!("TEST_ERROR");
+    info!(target: "app::FinanceOverView","TEST_INFO");
+    debug!(target: "app::FinanceOverView","TEST_DEBUG");
+    error!(target: "app::FinanceOverView","TEST_ERROR");
     
     let http = tokio::spawn(http_server());
     let https = tokio::spawn(https_server());
@@ -146,7 +134,7 @@ async fn https_server() {
     if config_result.is_err()
     {
         println!("Error loading TLS configuration: {}",config_result.as_ref().unwrap_err());
-        error!("Error loading TLS configuration: {}",config_result.unwrap_err());
+        error!(target: "app::FinanceOverView","Error loading TLS configuration: {}",config_result.unwrap_err());
         return;
     }
 
@@ -260,9 +248,9 @@ async fn https_handler() -> Html<String> {
         addtional_info = "<br> Could not get calling information".to_string();
     }
 
-    info!("TEST_INFO2");
-    debug!("TEST_DEBUG2");
-    error!("TEST_ERROR2");
+    info!(target: "app::FinanceOverView","TEST_INFO2");
+    debug!(target: "app::FinanceOverView","TEST_DEBUG2");
+    error!(target: "app::FinanceOverView","TEST_ERROR2");
 
     Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port_https, addtional_info))
 }

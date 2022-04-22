@@ -1,5 +1,6 @@
 use mongodb::{options::{ClientOptions, Credential}, Client, Collection, Cursor, results::{InsertOneResult, UpdateResult}, bson::Document};
 use futures::executor;
+use log::warn;
 
 pub struct DbConnectionSetting{
     pub url: String,
@@ -36,7 +37,7 @@ impl DbHandlerCouchbase{
         //#[cfg(debug_assertions)]
         println!("error listing databases: {}",query_result.as_ref().unwrap_err());
 
-        warn!("error listing databases: {}",query_result.unwrap_err());
+        warn!(target: "app::FinanceOverView","error listing databases: {}",query_result.unwrap_err());
         return false;
     }
 
@@ -53,7 +54,7 @@ impl DbHandlerCouchbase{
        //#[cfg(debug_assertions)]
         println!("entry {} not found in list of database names, HINT: does it have at least one collection?", conncetion_settings.instance);
 
-        warn!("entry {} not found in list of database names, HINT: does it have at least one collection?", conncetion_settings.instance);
+        warn!(target: "app::FinanceOverView","entry {} not found in list of database names, HINT: does it have at least one collection?", conncetion_settings.instance);
         return false;
     }
 
@@ -64,7 +65,7 @@ impl DbHandlerCouchbase{
         //#[cfg(debug_assertions)]
         println!("error listing collections: {}",query_result_collections.as_ref().unwrap_err());
 
-        warn!("error listing collections: {}",query_result_collections.unwrap_err());
+        warn!(target: "app::FinanceOverView","error listing collections: {}",query_result_collections.unwrap_err());
         return false;
     }
     let collection_list = query_result_collections.unwrap();
@@ -82,7 +83,7 @@ impl DbHandlerCouchbase{
             //#[cfg(debug_assertions)]
             println!("could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.as_ref().unwrap_err());
 
-            warn!("could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.unwrap_err());
+            warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
     }
@@ -101,7 +102,7 @@ impl DbHandlerCouchbase{
             //#[cfg(debug_assertions)]
             println!("could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.as_ref().unwrap_err());
             
-            warn!("could not missing create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
+            warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
     }
