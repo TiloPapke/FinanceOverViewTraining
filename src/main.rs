@@ -1,4 +1,4 @@
-mod database_handler_couchbase;
+mod database_handler_mongodb;
 mod setting_struct;
 mod mdb_convert_tools;
 
@@ -8,8 +8,8 @@ use axum::{response::Html, Router};
 use axum::http::uri::Uri;
 use axum_server;
 use axum_server::tls_rustls::RustlsConfig;
-use database_handler_couchbase::DbConnectionSetting;
-use database_handler_couchbase::DbHandlerCouchbase;
+use database_handler_mongodb::DbConnectionSetting;
+use database_handler_mongodb::DbHandlerMongoDB;
 use log::{error, warn, debug, trace, info, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
@@ -95,7 +95,7 @@ async fn main() {
         instance: String::from(local_setting.backend_database_instance)
     };
 
-    if !DbHandlerCouchbase::validate_db_structure(&db_connection){
+    if !DbHandlerMongoDB::validate_db_structure(&db_connection){
         error!(target: "app::FinanceOverView","Could not validate backend structure, quitting");
         println!("Could not validate backend structure, quitting");
         return;
@@ -190,7 +190,7 @@ async fn https_handler() -> Html<String> {
 
     let query_filter = doc!{"RouteName":current_route};
  
-    let query_site_result_cursor = DbHandlerCouchbase::query_table_with_filter(&db_connection, &DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),query_filter);
+    let query_site_result_cursor = DbHandlerMongoDB::query_table_with_filter(&db_connection, &DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),query_filter);
     if query_site_result_cursor.is_ok(){
         let document_list = MdbConvertTools::get_vector_from_cursor(query_site_result_cursor.unwrap());
         for document_entry in document_list {
@@ -217,7 +217,7 @@ async fn https_handler() -> Html<String> {
                     "CallingAmount": Bson::Int32(current_count)
                 };
 
-                let insert_result = DbHandlerCouchbase::insert_document_in_table(&db_connection,&DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),&current_document);
+                let insert_result = DbHandlerMongoDB::insert_document_in_table(&db_connection,&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),&current_document);
                 if insert_result.is_err(){
                     addtional_info = format!("{}<br>could not insert into database",addtional_info);
                 }
@@ -235,7 +235,7 @@ async fn https_handler() -> Html<String> {
                 let update_info = doc!{
                     "$set": { "CallingAmount": current_count }
                 };
-                let update_result = DbHandlerCouchbase::update_document_in_table(&db_connection,&DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),query_info, update_info);
+                let update_result = DbHandlerMongoDB::update_document_in_table(&db_connection,&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),query_info, update_info);
                 if update_result.is_err(){
                     addtional_info = format!("{}<br>could not update database",addtional_info);
                 }

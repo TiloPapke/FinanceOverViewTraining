@@ -9,11 +9,11 @@ pub struct DbConnectionSetting{
     pub instance: String
 }
 
-pub struct DbHandlerCouchbase{
+pub struct DbHandlerMongoDB{
 
 }
 
-impl DbHandlerCouchbase{
+impl DbHandlerMongoDB{
     pub const COLLECTION_NAME_GENERAL_INFORMATION:&'static str ="GeneralInformation";
     pub const COLLECTION_NAME_WEBSITE_TRAFFIC:&'static str ="WebSiteTraffic";
 
@@ -22,7 +22,7 @@ impl DbHandlerCouchbase{
 
 
     // Get a handle to the deployment.
-    let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
+    let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
     if client_create_result.is_err()
     {
         warn!(target:"app::FinanceOverView","{}",client_create_result.unwrap_err());
@@ -60,30 +60,30 @@ impl DbHandlerCouchbase{
         return false;
     }
     let collection_list = query_result_collections.unwrap();
-    if collection_list.contains(&DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION.to_string())
+    if collection_list.contains(&DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION.to_string())
     {   
-        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION);
+        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION);
     }
     else
     {
-        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION);
-        let create_result=executor::block_on( db_instance.create_collection(DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION,None));
+        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION);
+        let create_result=executor::block_on( db_instance.create_collection(DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION,None));
         if create_result.is_err(){
-            warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.unwrap_err());
+            warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
     }
-    if collection_list.contains(&DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string())
+    if collection_list.contains(&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string())
     {
-        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC);
+        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC);
     }
     else
     {
-        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC);
+        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC);
 
-        let create_result=executor::block_on( db_instance.create_collection(&DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC,None));
+        let create_result=executor::block_on( db_instance.create_collection(&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC,None));
         if create_result.is_err(){
-            warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
+            warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
     }
@@ -105,7 +105,7 @@ impl DbHandlerCouchbase{
 
     pub fn query_table_with_filter(conncetion_settings: &DbConnectionSetting, table_to_query: &String, filter_info : Document)->Result<Cursor<Document>,String>
     {
-        let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
         if client_create_result.is_err() {return Result::Err(client_create_result.unwrap_err().to_string()); }
         let client = client_create_result.unwrap();
         let some_cursor_result = executor::block_on( client.database(&conncetion_settings.instance).collection(table_to_query).find(filter_info, None));
@@ -119,7 +119,7 @@ impl DbHandlerCouchbase{
 
     pub fn insert_document_in_table (conncetion_settings: &DbConnectionSetting, table_to_insert: &String, new_document : &Document)->Result<InsertOneResult,String>
     {
-        let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
         if client_create_result.is_err() {return Result::Err(client_create_result.unwrap_err().to_string()); }
         let client = client_create_result.unwrap();
         let some_collections:Collection<Document> = client.database(&conncetion_settings.instance).collection(table_to_insert);
@@ -135,7 +135,7 @@ impl DbHandlerCouchbase{
 
     pub fn update_document_in_table (conncetion_settings: &DbConnectionSetting, table_to_insert: &String, query_info : Document, update_info: Document)->Result<UpdateResult,String>
     {
-        let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
         if client_create_result.is_err() {return Result::Err(client_create_result.unwrap_err().to_string()); }
         let client = client_create_result.unwrap();
         let some_collections:Collection<Document> = client.database(&conncetion_settings.instance).collection(table_to_insert);
