@@ -1,15 +1,17 @@
 mod database_handler_mongodb;
 mod setting_struct;
 mod mdb_convert_tools;
+mod html_render;
 
-use axum::response::Redirect;
+use axum::response::{Redirect, IntoResponse};
 use axum::routing::get;
-use axum::{response::Html, Router};
+use axum::Router;
 use axum::http::uri::Uri;
 use axum_server;
 use axum_server::tls_rustls::RustlsConfig;
 use database_handler_mongodb::DbConnectionSetting;
 use database_handler_mongodb::DbHandlerMongoDB;
+use html_render::{MainPageTemplate, HtmlTemplate};
 use log::{error, warn, debug, trace, info, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
@@ -171,7 +173,7 @@ async fn http_handler(uri: Uri) -> Redirect {
 
 }
 
-async fn https_handler() -> Html<String> {
+async fn https_handler() -> impl IntoResponse {
     
     let local_settings:SettingStruct = SettingStruct::global().clone();
     let db_connection=DbConnectionSetting{
@@ -250,5 +252,11 @@ async fn https_handler() -> Html<String> {
         addtional_info = "<br> Could not get calling information".to_string();
     }
 
-    Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port_https, addtional_info))
+    //Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port_https, addtional_info))
+
+    let template = MainPageTemplate { 
+        web_running_port : local_settings.web_server_port_https,
+        additional_info: addtional_info
+     };
+    HtmlTemplate(template)
 }
