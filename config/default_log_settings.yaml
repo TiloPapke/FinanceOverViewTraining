@@ -21,15 +21,10 @@ appenders:
     path: "log/FinaneOverViewLog.log" #name of the file
     encoder:
       pattern: "{d} - {m}{n}" # format of output files
-  otherCreate:
-    kind: file # write to file
-    path: "log/Others.log" #name of the file
-    encoder:
-      pattern: "{d} - {m}{n}" # format of output files
 
 # general settings, used by all log call that have no logger set or that use a logger that is not defined
 root:
-  level: trace
+  level: warn
   appenders:
     - stdout
 
@@ -43,11 +38,4 @@ loggers:
     appenders:
       - fileoutput
       - stdout
-    additive: false
-  tracing::span:
-    # log level for this logger
-    level: trace
-    # list of output places
-    appenders:
-      - otherCreate
     additive: false

@@ -73,7 +73,7 @@ async fn main() {
     setting_struct::GLOBAL_SETTING.set(local_setting.clone()).ok();
 
     //real logger configuration from settings
-    let log4rs_update_result= log4rs::config::load_config_file("config/default_log_settings.yaml", Default::default());
+    let log4rs_update_result= log4rs::config::load_config_file(local_setting.log_config_path, Default::default());
     if log4rs_update_result.is_err(){
         println!("Could not load log settings, {}",log4rs_update_result.unwrap_err());
         return  

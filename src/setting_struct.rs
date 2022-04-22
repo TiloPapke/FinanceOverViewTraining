@@ -17,11 +17,7 @@ pub struct SettingStruct {
     pub backend_database_user:String,
     pub backend_database_password:String,
     pub backend_database_instance:String,
-    pub log_file_output_path:String,
-    pub log_file_size_mi_bytes:u64,
-    pub log_file_roll_max_file_count:u32,
-    pub log_time_format:String,
-    pub log_level:String
+    pub log_config_path:String
 }
 
 pub static GLOBAL_SETTING: OnceCell<SettingStruct> = OnceCell::new();
@@ -53,11 +49,7 @@ impl SettingStruct{
             .set("DB_Password", "password")
             .set("DB_Instance", "StructureName");
         conf.with_section(Some("Logging"))
-            .set("file_output_path", "./log/builder_log.log")
-            .set("file_max_size_MiBytes", "10")
-            .set("file_roll_max_file_count", "10")
-            .set("time_format", "%Y-%m-%d %H:%M:%S.%f")
-            .set("level", "debug");
+            .set("config_path", "config/default_log_settings.yaml");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -76,11 +68,7 @@ impl SettingStruct{
         let _db_user:String = conf.get_from_or(Some("BackendDatabase"),"DB_User","").to_string();
         let _db_password:String = conf.get_from_or(Some("BackendDatabase"),"DB_Password","").to_string();
         let _db_instance:String = conf.get_from_or(Some("BackendDatabase"),"DB_Instance","").to_string();
-        let _log_file_output_path:String= conf.get_from_or(Some("Logging"),"file_output_path","./log/builder_log.log").to_string();
-        let _log_file_size_mi_bytes = conf.get_from_or(Some("Logging"),"file_max_size_MiBytes","10").parse().unwrap();
-        let _log_file_roll_max_file_count = conf.get_from_or(Some("Logging"),"file_roll_max_file_count","10").parse().unwrap();
-        let _log_time_format=conf.get_from_or(Some("Logging"),"time_format","%Y-%m-%d %H:%M:%S.%f").to_string();
-        let _log_level=conf.get_from_or(Some("Logging"),"level","debug").to_string();
+        let _log_config_path:String= conf.get_from_or(Some("Logging"),"file_config_path","config/default_log_settings.yaml").to_string();
 
         return SettingStruct { 
             web_server_ip_part1: _web_server_ip_part1,
@@ -95,11 +83,7 @@ impl SettingStruct{
             backend_database_user:_db_user,
             backend_database_password:_db_password,
             backend_database_instance:_db_instance,
-            log_file_output_path:_log_file_output_path,
-            log_file_roll_max_file_count:_log_file_roll_max_file_count,
-            log_file_size_mi_bytes:_log_file_size_mi_bytes,
-            log_time_format:_log_time_format,
-            log_level:_log_level
+            log_config_path:_log_config_path
         };
     }
 }
