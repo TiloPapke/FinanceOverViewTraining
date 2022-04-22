@@ -18,7 +18,7 @@ appenders:
     kind: console # write to console
   fileoutput:
     kind: file # write to file
-    path: "log/FinaneOverViewLog.log" #name of the file
+    path: "log/FinanceOverViewLog.log" #name of the file
     encoder:
       pattern: "{d} - {m}{n}" # format of output files
 

@@ -10,7 +10,7 @@ use axum_server;
 use axum_server::tls_rustls::RustlsConfig;
 use database_handler_couchbase::DbConnectionSetting;
 use database_handler_couchbase::DbHandlerCouchbase;
-use log::{error, info, warn, debug, LevelFilter};
+use log::{error, warn, debug, trace, info, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
     config::{Appender, Root},
@@ -80,6 +80,13 @@ async fn main() {
     }
     log4rs_handle.set_config(log4rs_update_result.unwrap());
 
+
+    error!(target:"app::FinanceOverView","checking ERROR log");
+    warn!(target:"app::FinanceOverView","checking WARN log");
+    info!(target:"app::FinanceOverView","checking INFO log");
+    debug!(target:"app::FinanceOverView","checking DEBUG log");
+    trace!(target:"app::FinanceOverView","checking TRACE log");
+
     //check database
     let db_connection=DbConnectionSetting{
         url: String::from(local_setting.backend_database_url),
@@ -93,10 +100,6 @@ async fn main() {
         println!("Could not validate backend structure, quitting");
         return;
     }
-
-    info!(target: "app::FinanceOverView","TEST_INFO");
-    debug!(target: "app::FinanceOverView","TEST_DEBUG");
-    error!(target: "app::FinanceOverView","TEST_ERROR");
     
     let http = tokio::spawn(http_server());
     let https = tokio::spawn(https_server());
@@ -113,7 +116,7 @@ async fn http_server() {
     let app = Router::new().route("/", get(http_handler));
 
     let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port_http));
-    println!("http listening on {}", addr);
+    info!(target: "app::FinanceOverView","http listening on {}", addr);
     axum_server::bind(addr)
         .serve(app.into_make_service())
         .await
@@ -142,7 +145,7 @@ async fn https_server() {
 
 
     let addr = SocketAddr::from(([local_setting.web_server_ip_part1, local_setting.web_server_ip_part2, local_setting.web_server_ip_part3, local_setting.web_server_ip_part4], local_setting.web_server_port_https));
-    println!("https listening on {}", addr);
+    info!(target: "app::FinanceOverView","https listening on {}", addr);
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
         .await
@@ -162,9 +165,8 @@ async fn http_handler(uri: Uri) -> Redirect {
     }
     let new_uri = format!("https://{}{}",host_info,uri.path());
     
-    //#[cfg(debug_assertions)]
-    println!("Redirecting to {}",new_uri);
-    
+    trace!(target:"app::FinanceOverView","Redirecting to {}",new_uri);
+
     Redirect::temporary(&new_uri)
 
 }
@@ -194,8 +196,8 @@ async fn https_handler() -> Html<String> {
         for document_entry in document_list {
             if let Some(&Bson::String(ref route_value)) = document_entry.get("RouteName") {
                 if let Some(&Bson::Int32(ref calling_amount_value)) = document_entry.get("CallingAmount") {
-                    //#[cfg(debug_assertions)]
-                    println!("route: {}, called: {}",route_value,calling_amount_value);
+                    
+                    trace!(target:"app::FinanceOverView","route: {}, called: {}",route_value,calling_amount_value);
 
                     if  route_value.eq(current_route)
                     {
@@ -247,10 +249,6 @@ async fn https_handler() -> Html<String> {
         warn!("Error querying database: {}",query_site_result_cursor.unwrap_err());
         addtional_info = "<br> Could not get calling information".to_string();
     }
-
-    info!(target: "app::FinanceOverView","TEST_INFO2");
-    debug!(target: "app::FinanceOverView","TEST_DEBUG2");
-    error!(target: "app::FinanceOverView","TEST_ERROR2");
 
     Html(format!("<h1>Hello, World!</h1><br>running on port {}{}",local_settings.web_server_port_https, addtional_info))
 }

@@ -1,6 +1,6 @@
 use mongodb::{options::{ClientOptions, Credential}, Client, Collection, Cursor, results::{InsertOneResult, UpdateResult}, bson::Document};
 use futures::executor;
-use log::warn;
+use log::{warn, trace, info};
 
 pub struct DbConnectionSetting{
     pub url: String,
@@ -25,7 +25,7 @@ impl DbHandlerCouchbase{
     let client_create_result = DbHandlerCouchbase::create_client_connection(conncetion_settings);
     if client_create_result.is_err()
     {
-        println!("{}",client_create_result.unwrap_err());
+        warn!(target:"app::FinanceOverView","{}",client_create_result.unwrap_err());
         return false;
     }
     let client = client_create_result.unwrap();
@@ -34,9 +34,6 @@ impl DbHandlerCouchbase{
     // List the names of the databases in that deployment.
     let query_result = executor::block_on(client.list_database_names(None, None));
     if query_result.is_err(){
-        //#[cfg(debug_assertions)]
-        println!("error listing databases: {}",query_result.as_ref().unwrap_err());
-
         warn!(target: "app::FinanceOverView","error listing databases: {}",query_result.unwrap_err());
         return false;
     }
@@ -45,15 +42,12 @@ impl DbHandlerCouchbase{
     if cfg!(debug_assertions){
         // debug build
         for db_name in &instance_list {
-            println!("{}", db_name);
+            trace!(target:"app::FinanceOverView","{}", db_name);
         }
     }
 
     if !instance_list.contains(&conncetion_settings.instance)
     {
-       //#[cfg(debug_assertions)]
-        println!("entry {} not found in list of database names, HINT: does it have at least one collection?", conncetion_settings.instance);
-
         warn!(target: "app::FinanceOverView","entry {} not found in list of database names, HINT: does it have at least one collection?", conncetion_settings.instance);
         return false;
     }
@@ -62,46 +56,33 @@ impl DbHandlerCouchbase{
 
     let query_result_collections = executor::block_on(db_instance.list_collection_names(None));
     if query_result_collections.is_err(){
-        //#[cfg(debug_assertions)]
-        println!("error listing collections: {}",query_result_collections.as_ref().unwrap_err());
-
         warn!(target: "app::FinanceOverView","error listing collections: {}",query_result_collections.unwrap_err());
         return false;
     }
     let collection_list = query_result_collections.unwrap();
     if collection_list.contains(&DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION.to_string())
     {   
-        //#[cfg(debug_assertions)]
-        println!("found collection {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION);
+        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION);
     }
     else
     {
-        //#[cfg(debug_assertions)]
-        println!("collection {} not found, trying to create it",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION);
+        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION);
         let create_result=executor::block_on( db_instance.create_collection(DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION,None));
         if create_result.is_err(){
-            //#[cfg(debug_assertions)]
-            println!("could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.as_ref().unwrap_err());
-
             warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
     }
     if collection_list.contains(&DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string())
     {
-        //#[cfg(debug_assertions)]
-        println!("found collection {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC);
+        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC);
     }
     else
     {
-        //#[cfg(debug_assertions)]
-        println!("collection {} not found, trying to create it",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC);
+        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC);
 
         let create_result=executor::block_on( db_instance.create_collection(&DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC,None));
         if create_result.is_err(){
-            //#[cfg(debug_assertions)]
-            println!("could not create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.as_ref().unwrap_err());
-            
             warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerCouchbase::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
