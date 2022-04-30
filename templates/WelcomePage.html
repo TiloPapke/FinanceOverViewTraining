@@ -8,3 +8,23 @@
 {% include "OddCall.html" %}
 {% endif %}
 
+<h3> please do an login</h3>
+<form action="/do_login" method="post">
+    <label>Username
+        <input 
+            type="text" 
+            placeholder="Enter Username" 
+            name="username"
+        >
+    </label>
+
+    <label>Password
+        <input 
+            type="password" 
+            placeholder="Enter Password"
+            name="password"
+        >
+    </label>
+
+    <button type="submit">Login</button>
+</form>

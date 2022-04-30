@@ -4,7 +4,7 @@ mod mdb_convert_tools;
 mod html_render;
 
 use axum::response::{Redirect, IntoResponse};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use axum::http::uri::Uri;
 use axum_server;
@@ -28,6 +28,8 @@ use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
+
+use crate::html_render::accept_login_form;
 
 #[tokio::main]
 async fn main() {
@@ -128,8 +130,9 @@ async fn http_server() {
 async fn https_server() {
 
     let local_setting:SettingStruct = SettingStruct::global().clone();
-    let app = Router::new().route("/", get(https_handler));
-
+    let app = Router::new().route("/", get(https_handler))
+                                   .route("/do_login", post(html_render::accept_login_form))
+                                   .route("/user_home", get(html_render::user_home_handler));
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,
