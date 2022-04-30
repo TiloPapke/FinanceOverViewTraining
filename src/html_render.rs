@@ -1,5 +1,5 @@
 use askama::Template;
-use axum::{response::{Html, Response, IntoResponse}, http::{StatusCode, response}, extract::Form};
+use axum::{response::{Html, Response, IntoResponse, Redirect}, http::StatusCode, extract::Form};
 use secrecy::Secret;
 use serde::Deserialize;
 
@@ -45,12 +45,15 @@ where
     }
 }
 
-pub async fn accept_login_form(Form(input): Form<LoginFormInput>)  -> String   {
+pub async fn accept_login_form(Form(input): Form<LoginFormInput>)  -> Redirect   {
    // Redirect::to(&format!("/user_home&user={}", input.username));
-   format!(
+   /*format!(
     "Welcome to the protected area :)\nHere's your info:\n{:?}",
     "Fake2"
-)
+)*/
+
+    Redirect::to("/user_home")
+
 
 
 }
