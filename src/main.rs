@@ -3,6 +3,7 @@ mod setting_struct;
 mod mdb_convert_tools;
 mod html_render;
 
+use async_mongodb_session::MongodbSessionStore;
 use axum::response::{Redirect, IntoResponse};
 use axum::routing::{get, post};
 use axum::Router;
@@ -91,10 +92,10 @@ async fn main() {
 
     //check database
     let db_connection=DbConnectionSetting{
-        url: String::from(local_setting.backend_database_url),
+        url: String::from(&local_setting.backend_database_url),
         user: String::from(local_setting.backend_database_user),
         password: String::from(local_setting.backend_database_password) ,
-        instance: String::from(local_setting.backend_database_instance)
+        instance: String::from(&local_setting.backend_database_instance)
     };
 
     if !DbHandlerMongoDB::validate_db_structure(&db_connection){
@@ -102,7 +103,26 @@ async fn main() {
         println!("Could not validate backend structure, quitting");
         return;
     }
-    
+
+    // Get a handle to the deployment.
+    let mgdb_client_create_result = DbHandlerMongoDB::create_client_connection(&db_connection);
+    if mgdb_client_create_result.is_err()
+    {
+        warn!(target:"app::FinanceOverView","Could not create mongo DB Client {}",mgdb_client_create_result.unwrap_err());
+        return;
+    }
+    let mgdb_client = mgdb_client_create_result.unwrap();
+
+    let store =  MongodbSessionStore::from_client(mgdb_client,&db_connection.instance, DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
+
+    let initilize_result = store.initialize().await;
+    if initilize_result.is_err(){
+        let error_info =initilize_result.unwrap_err();
+        error!(target: "app::FinanceOverView","Could not initialize session store: {}", error_info);
+        println!("Could not initialize session store, quitting: {}", error_info);
+        return;
+    }
+
     let http = tokio::spawn(http_server());
     let https = tokio::spawn(https_server());
 

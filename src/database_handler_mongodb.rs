@@ -16,6 +16,7 @@ pub struct DbHandlerMongoDB{
 impl DbHandlerMongoDB{
     pub const COLLECTION_NAME_GENERAL_INFORMATION:&'static str ="GeneralInformation";
     pub const COLLECTION_NAME_WEBSITE_TRAFFIC:&'static str ="WebSiteTraffic";
+    pub const COLLECTION_NAME_SESSION_INFO:&'static str ="SessionInfo";
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool
     {
@@ -84,6 +85,20 @@ impl DbHandlerMongoDB{
         let create_result=executor::block_on( db_instance.create_collection(&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC,None));
         if create_result.is_err(){
             warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
+            return false
+        }
+    }
+    if collection_list.contains(&DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO.to_string())
+    {
+        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
+    }
+    else
+    {
+        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
+
+        let create_result=executor::block_on( db_instance.create_collection(&DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO,None));
+        if create_result.is_err(){
+            warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO, conncetion_settings.instance, create_result.unwrap_err());
             return false
         }
     }
