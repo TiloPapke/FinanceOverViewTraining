@@ -2,8 +2,11 @@ mod database_handler_mongodb;
 mod setting_struct;
 mod mdb_convert_tools;
 mod html_render;
+mod user_id_handle;
 
 use async_mongodb_session::MongodbSessionStore;
+use axum::extract::Extension;
+use axum::http::{HeaderMap, self};
 use axum::response::{Redirect, IntoResponse};
 use axum::routing::{get, post};
 use axum::Router;
@@ -29,6 +32,7 @@ use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
+use user_id_handle::UserIdFromSession;
 
 #[tokio::main]
 async fn main() {
@@ -104,25 +108,6 @@ async fn main() {
         return;
     }
 
-    // Get a handle to the deployment.
-    let mgdb_client_create_result = DbHandlerMongoDB::create_client_connection(&db_connection);
-    if mgdb_client_create_result.is_err()
-    {
-        warn!(target:"app::FinanceOverView","Could not create mongo DB Client {}",mgdb_client_create_result.unwrap_err());
-        return;
-    }
-    let mgdb_client = mgdb_client_create_result.unwrap();
-
-    let store =  MongodbSessionStore::from_client(mgdb_client,&db_connection.instance, DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
-
-    let initilize_result = store.initialize().await;
-    if initilize_result.is_err(){
-        let error_info =initilize_result.unwrap_err();
-        error!(target: "app::FinanceOverView","Could not initialize session store: {}", error_info);
-        println!("Could not initialize session store, quitting: {}", error_info);
-        return;
-    }
-
     let http = tokio::spawn(http_server());
     let https = tokio::spawn(https_server());
 
@@ -148,9 +133,36 @@ async fn http_server() {
 async fn https_server() {
 
     let local_setting:SettingStruct = SettingStruct::global().clone();
+    let db_connection=DbConnectionSetting{
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password) ,
+        instance: String::from(&local_setting.backend_database_instance)
+    };
+
+    // Get a handle to the deployment.
+    let mgdb_client_create_result = DbHandlerMongoDB::create_client_connection(&db_connection);
+    if mgdb_client_create_result.is_err()
+    {
+        warn!(target:"app::FinanceOverView","Could not create mongo DB Client {}",mgdb_client_create_result.unwrap_err());
+        return;
+    }
+    let mgdb_client = mgdb_client_create_result.unwrap();
+
+    let store =  MongodbSessionStore::from_client(mgdb_client,&db_connection.instance, DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
+
+    let initilize_result = store.initialize().await;
+    if initilize_result.is_err(){
+        let error_info =initilize_result.unwrap_err();
+        error!(target: "app::FinanceOverView","Could not initialize session store: {}", error_info);
+        println!("Could not initialize session store, quitting: {}", error_info);
+        return;
+    }
+
     let app = Router::new().route("/", get(https_handler))
                                    .route("/do_login", post(html_render::accept_login_form))
-                                   .route("/user_home", get(html_render::user_home_handler));
+                                   .route("/user_home", get(html_render::user_home_handler))
+                                   .layer(Extension(store));
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,
@@ -194,7 +206,15 @@ async fn http_handler(uri: Uri) -> Redirect {
 
 }
 
-async fn https_handler() -> impl IntoResponse {
+async fn https_handler(user_id: UserIdFromSession) -> impl IntoResponse {
+    let (headers, user_id, create_cookie) = match user_id {
+        UserIdFromSession::FoundUserId(user_id) => (HeaderMap::new(), user_id, false),
+        UserIdFromSession::CreatedFreshUserId(new_user) => {
+            let mut headers = HeaderMap::new();
+            headers.insert(http::header::SET_COOKIE, new_user.cookie);
+            (headers, new_user.user_id, true)
+        }
+    };
     
     let local_settings:SettingStruct = SettingStruct::global().clone();
     let db_connection=DbConnectionSetting{

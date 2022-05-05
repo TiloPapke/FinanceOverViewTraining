@@ -3,7 +3,6 @@ use axum::{response::{Html, Response, IntoResponse, Redirect}, http::StatusCode,
 use secrecy::Secret;
 use serde::Deserialize;
 
-
 #[derive(Template)]
 #[template(path = "WelcomePage.html")]
 pub struct MainPageTemplate {
@@ -23,7 +22,7 @@ pub struct LoginFormInput {
 #[derive(Template)]
 #[template(path = "UserHome.html")]
 pub struct UserHomeTemplate{
-    username: String,
+    username: String
 }
 
 
