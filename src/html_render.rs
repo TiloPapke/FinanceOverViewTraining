@@ -1,7 +1,9 @@
 use askama::Template;
-use axum::{response::{Html, Response, IntoResponse, Redirect}, http::StatusCode, extract::Form};
+use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode, Request, HeaderMap}, extract::Form};
 use secrecy::Secret;
 use serde::Deserialize;
+
+use crate::password_handle::{validate_credentials, Credentials};
 
 #[derive(Template)]
 #[template(path = "WelcomePage.html")]
@@ -57,7 +59,15 @@ pub async fn accept_login_form(Form(input): Form<LoginFormInput>)  -> Redirect  
 
 }
 
-pub async fn user_home_handler()  -> impl IntoResponse {
+pub async fn user_home_handler( form: Form<LoginFormInput>)  -> impl IntoResponse {
+
+    let credentials = Credentials {
+        username: form.0.username,
+        password: form.0.password,
+    };
+
+    let user_id = validate_credentials(credentials).await;
+
  /*  let template = UserHomeTemplate { 
         username: "Fake".to_string()
      };

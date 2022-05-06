@@ -172,7 +172,7 @@ impl DbHandlerMongoDB{
         if v.is_err() { return Result::Err(v.unwrap_err().to_string());}
     
         let mut client_options = v.unwrap();
-        //sett credentials
+        //set credentials
         let co_source = conncetion_settings.instance.to_string();
         client_options.credential = Some(Credential::builder().username(conncetion_settings.user.clone()).password(conncetion_settings.password.clone()).source(Some(co_source)).build());
         
