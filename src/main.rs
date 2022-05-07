@@ -216,6 +216,7 @@ async fn https_handler(user_id: UserIdFromSession) -> impl IntoResponse {
             (headers, new_user.user_id, true)
         }
     };
+    debug!("user_id is: {}\rcreate:cookie is {}",&user_id,&create_cookie);
     
     let local_settings:SettingStruct = SettingStruct::global().clone();
     let db_connection=DbConnectionSetting{
@@ -301,5 +302,10 @@ async fn https_handler(user_id: UserIdFromSession) -> impl IntoResponse {
         additional_info: addtional_info,
         called_times:current_count
      };
-    HtmlTemplate(template)
+
+     (
+         headers,
+         HtmlTemplate(template)
+     )
+    
 }

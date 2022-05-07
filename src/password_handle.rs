@@ -1,7 +1,5 @@
 use argon2::{PasswordHash, Argon2, PasswordVerifier};
 use anyhow::Error;
-use anyhow::Context;
-use futures::executor;
 use secrecy::{Secret, ExposeSecret};
 
 use crate::{setting_struct::SettingStruct, database_handler_mongodb::DbConnectionSetting};
@@ -15,7 +13,7 @@ pub struct Credentials {
 
 pub struct StoredCredentials {
     // These two fields were not marked as `pub` before!
-    pub userID: uuid::Uuid,
+    pub user_id: uuid::Uuid,
     pub password: Secret<String>,
 }
 
@@ -23,8 +21,8 @@ pub async fn validate_credentials(
     credentials: Credentials,
 
 ) -> Result<uuid::Uuid, Error> {
-    let mut user_id:Option<uuid::Uuid>=None;
-    let mut expected_password_hash = Secret::new(
+    let mut _user_id:Option<uuid::Uuid>=None;
+    let mut _expected_password_hash = Secret::new(
         "$argon2id$v=19$m=15000,t=2,p=1$\
         gZiV/M1gPc22ElAH/Jh1Hw$\
         CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno"
@@ -36,9 +34,9 @@ pub async fn validate_credentials(
        return Err(anyhow::anyhow!("Problem getting credentials"));
     }
     
-    let stored_Credentials = get_result.unwrap();
-    let user_id = Some(stored_Credentials.userID);
-    let expected_password_hash = stored_Credentials.password;
+    let stored_credentials = get_result.unwrap();
+    let user_id = Some(stored_credentials.user_id);
+    let expected_password_hash = stored_credentials.password;
     
 
     let verify_result =  verify_password_hash(expected_password_hash, credentials.password);  
@@ -53,18 +51,18 @@ pub async fn validate_credentials(
      Err(anyhow::anyhow!("Unknown username."))
 }
 
-async fn get_stored_credentials(user_id: &str) -> Result<StoredCredentials,Error>{
+async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials,Error>{
     let local_setting:SettingStruct = SettingStruct::global().clone();
-    let db_connection=DbConnectionSetting{
+    let _db_connection=DbConnectionSetting{
         url: String::from(&local_setting.backend_database_url),
         user: String::from(local_setting.backend_database_user),
         password: String::from(local_setting.backend_database_password) ,
         instance: String::from(&local_setting.backend_database_instance)
     };
 
-    let someCredential = StoredCredentials { userID: uuid::Uuid::new_v4(), password: Secret::new("NOPE".to_string()) };
+    let some_credential = StoredCredentials { user_id: uuid::Uuid::new_v4(), password: Secret::new("NOPE".to_string()) };
 
-    Ok(someCredential)
+    Ok(some_credential)
 }
 
 fn verify_password_hash(
