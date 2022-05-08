@@ -1,5 +1,6 @@
 use askama::Template;
-use axum::{response::{Html, Response, IntoResponse, Redirect}, http::StatusCode, extract::Form};
+
+use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode}, extract::Form};
 use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
@@ -46,14 +47,7 @@ where
     }
 }
 
-pub async fn accept_login_form(Form(input): Form<LoginFormInput>)  -> Redirect   {
-   // Redirect::to(&format!("/user_home&user={}", input.username));
-   /*format!(
-    "Welcome to the protected area :)\nHere's your info:\n{:?}",
-    "Fake2"
-)*/
-
-    //Redirect::to("/user_home")
+pub async fn accept_login_form(Form (input): Form<LoginFormInput>)  -> Redirect   {
     let credentials = Credentials {
         username: input.username,
         password: input.password,
@@ -100,5 +94,16 @@ pub struct InvalidTemplate{
 
 pub async fn invalid_handler()  -> impl IntoResponse {
     let st = InvalidTemplate{username:"invalid_check".to_string()};
+    HtmlTemplate(st)
+}
+
+#[derive(Template)]
+#[template(path = "CreateLogin.html")]
+pub struct CreateLoginTemplate{
+    username: String 
+}
+
+pub async fn create_login_handler()  -> impl IntoResponse {
+    let st = CreateLoginTemplate{username:"not_set".to_string()};
     HtmlTemplate(st)
 }

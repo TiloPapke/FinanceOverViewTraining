@@ -165,6 +165,7 @@ async fn https_server() {
     let app = Router::new().route("/", get(https_handler))
                                    .route("/invalid", get(invalid_handler))
                                    .route("/do_login", post(html_render::accept_login_form))
+                                   .route("/do_create", post(html_render::create_login_handler))
                                    .route("/user_home", get(html_render::user_home_handler))
                                    .layer(Extension(store));
     let config_result = RustlsConfig::from_pem_file(
