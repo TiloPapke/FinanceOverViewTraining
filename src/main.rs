@@ -35,6 +35,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use user_id_handle::UserIdFromSession;
 
+use crate::html_render::invalid_handler;
+
 #[tokio::main]
 async fn main() {
  
@@ -161,6 +163,7 @@ async fn https_server() {
     }
 
     let app = Router::new().route("/", get(https_handler))
+                                   .route("/invalid", get(invalid_handler))
                                    .route("/do_login", post(html_render::accept_login_form))
                                    .route("/user_home", get(html_render::user_home_handler))
                                    .layer(Extension(store));

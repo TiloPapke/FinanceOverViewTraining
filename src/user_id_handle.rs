@@ -48,6 +48,7 @@ where
             let user_id = UserId::new();
             let mut session = Session::new();
             session.insert("user_id", user_id).unwrap();
+            session.expire_in(std::time::Duration::from_secs(60*5));
             let cookie = store.store_session(session).await.unwrap().unwrap();
             return Ok(Self::CreatedFreshUserId(FreshUserId {
                 user_id,

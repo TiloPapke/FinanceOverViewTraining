@@ -1,5 +1,6 @@
 use askama::Template;
 use axum::{response::{Html, Response, IntoResponse, Redirect}, http::StatusCode, extract::Form};
+use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
 
@@ -27,7 +28,6 @@ pub struct UserHomeTemplate{
     username: String
 }
 
-
 pub struct HtmlTemplate<T>(pub T);
 
 impl<T> IntoResponse for HtmlTemplate<T>
@@ -46,15 +46,28 @@ where
     }
 }
 
-pub async fn accept_login_form(Form(_input): Form<LoginFormInput>)  -> Redirect   {
+pub async fn accept_login_form(Form(input): Form<LoginFormInput>)  -> Redirect   {
    // Redirect::to(&format!("/user_home&user={}", input.username));
    /*format!(
     "Welcome to the protected area :)\nHere's your info:\n{:?}",
     "Fake2"
 )*/
 
-    Redirect::to("/user_home")
+    //Redirect::to("/user_home")
+    let credentials = Credentials {
+        username: input.username,
+        password: input.password,
+    };
 
+    match validate_credentials(credentials).await {
+        Ok(user_id) => {
+            debug!("user_id is {}",user_id);
+            Redirect::to("/user_home")
+        }
+        Err(_) => {
+            Redirect::to("/invalid")
+        }
+    }
 
 
 }
@@ -77,4 +90,15 @@ pub async fn user_home_handler( form: Form<LoginFormInput>)  -> impl IntoRespons
         "Welcome to the protected area :)\nHere's your info:\n{:?}",
         user_id
     )
+}
+
+#[derive(Template)]
+#[template(path = "InvalidUser.html")]
+pub struct InvalidTemplate{
+    username: String 
+}
+
+pub async fn invalid_handler()  -> impl IntoResponse {
+    let st = InvalidTemplate{username:"invalid_check".to_string()};
+    HtmlTemplate(st)
 }
