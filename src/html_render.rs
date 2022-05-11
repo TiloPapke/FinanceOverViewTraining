@@ -55,7 +55,7 @@ pub async fn accept_login_form(Form (input): Form<LoginFormInput>)  -> Redirect 
 
     match validate_credentials(credentials).await {
         Ok(user_id) => {
-            debug!("user_id is {}",user_id);
+            debug!(target: "app::FinanceOverView","user_id is {}",user_id);
             Redirect::to("/user_home")
         }
         Err(_) => {
@@ -100,10 +100,13 @@ pub async fn invalid_handler()  -> impl IntoResponse {
 #[derive(Template)]
 #[template(path = "CreateLogin.html")]
 pub struct CreateLoginTemplate{
-    username: String 
+    user_name: String,
+    create_result:String 
 }
 
-pub async fn create_login_handler()  -> impl IntoResponse {
-    let st = CreateLoginTemplate{username:"not_set".to_string()};
+pub async fn create_login_handler(form: Form<LoginFormInput>)  -> impl IntoResponse {
+    debug!(target: "app::FinanceOverView","create_login data user {} with {:?}",&form.username,form.password);
+
+    let st = CreateLoginTemplate{user_name:"not_set".to_string(), create_result:"no Result given".to_string()};
     HtmlTemplate(st)
 }

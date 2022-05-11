@@ -1,5 +1,5 @@
-use mongodb::{options::{ClientOptions, Credential}, Client, Collection, Cursor, results::{InsertOneResult, UpdateResult}, bson::Document};
-use futures::executor;
+use mongodb::{options::{ClientOptions, Credential, FindOptions}, Client, Collection, Cursor, results::{InsertOneResult, UpdateResult}, bson::{Document, doc}};
+use futures::{executor, StreamExt};
 use log::{warn, trace, info};
 
 pub struct DbConnectionSetting{
@@ -17,6 +17,7 @@ impl DbHandlerMongoDB{
     pub const COLLECTION_NAME_GENERAL_INFORMATION:&'static str ="GeneralInformation";
     pub const COLLECTION_NAME_WEBSITE_TRAFFIC:&'static str ="WebSiteTraffic";
     pub const COLLECTION_NAME_SESSION_INFO:&'static str ="SessionInfo";
+    pub const COLLECTION_NAME_USER_LIST:&'static str ="UserList";
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool
     {
@@ -55,51 +56,33 @@ impl DbHandlerMongoDB{
 
     let db_instance = client.database(&conncetion_settings.instance);
 
+    let arr_required_collection:[&str;4]=[
+        &DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION,
+        &DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC,
+        &DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO,
+        &DbHandlerMongoDB::COLLECTION_NAME_USER_LIST
+    ];
+
     let query_result_collections = executor::block_on(db_instance.list_collection_names(None));
     if query_result_collections.is_err(){
         warn!(target: "app::FinanceOverView","error listing collections: {}",query_result_collections.unwrap_err());
         return false;
     }
     let collection_list = query_result_collections.unwrap();
-    if collection_list.contains(&DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION.to_string())
-    {   
-        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION);
-    }
-    else
-    {
-        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION);
-        let create_result=executor::block_on( db_instance.create_collection(DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION,None));
-        if create_result.is_err(){
-            warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION, conncetion_settings.instance, create_result.unwrap_err());
-            return false
-        }
-    }
-    if collection_list.contains(&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string())
-    {
-        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC);
-    }
-    else
-    {
-        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC);
 
-        let create_result=executor::block_on( db_instance.create_collection(&DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC,None));
-        if create_result.is_err(){
-            warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC, conncetion_settings.instance, create_result.unwrap_err());
-            return false
+    for required_collection in arr_required_collection {
+        if collection_list.contains(&required_collection.to_string())
+        {   
+            trace!(target: "app::FinanceOverView","found collection {}",required_collection);
         }
-    }
-    if collection_list.contains(&DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO.to_string())
-    {
-        trace!(target: "app::FinanceOverView","found collection {}",DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
-    }
-    else
-    {
-        info!(target: "app::FinanceOverView","collection {} not found, trying to create it",DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
-
-        let create_result=executor::block_on( db_instance.create_collection(&DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO,None));
-        if create_result.is_err(){
-            warn!(target: "app::FinanceOverView","could not missing create collection {} in database {}, error: {}",DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO, conncetion_settings.instance, create_result.unwrap_err());
-            return false
+        else
+        {
+            info!(target: "app::FinanceOverView","collection {} not found, trying to create it",required_collection);
+            let create_result=executor::block_on( db_instance.create_collection(required_collection,None));
+            if create_result.is_err(){
+                warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",required_collection, conncetion_settings.instance, create_result.unwrap_err());
+                return false
+            }
         }
     }
 
@@ -180,5 +163,62 @@ impl DbHandlerMongoDB{
         // Get a handle to the deployment.
         let client = Client::with_options(client_options).unwrap();
         return Result::Ok(client)
+    }
+
+    pub async fn _check_user_exsists_by_name(conncetion_settings: &DbConnectionSetting, user_name:&String) -> Result<bool,String>
+    {
+
+
+    // Get a handle to the deployment.
+    let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+    if client_create_result.is_err()
+    {
+        let client_err = &client_create_result.unwrap_err();
+        warn!(target:"app::FinanceOverView","{}",client_err);
+        return Err(client_err.to_string());
+    }
+    let client = client_create_result.unwrap();
+    
+    let db_instance = client.database(&conncetion_settings.instance);
+
+    let filter = doc!{"user_name":&user_name};
+    let projection = doc!{"user_name":<i32>::from(1)};
+    let options=FindOptions::builder().projection(projection).build();
+
+    let data_collcetion:Collection<Document> = db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+    let query_execute_result = data_collcetion.find(filter, options).await;
+    
+    if query_execute_result.is_err()
+     {
+        return Result::Err(query_execute_result.unwrap_err().to_string());
+    }
+
+    let mut cursor = query_execute_result.unwrap();
+
+    let mut doc_counter=0;
+    
+    while let Some(data_doc) = cursor.next().await{
+        doc_counter=doc_counter+1;
+        if data_doc.is_err() {
+            return Err(data_doc.unwrap_err().to_string());
+        }
+        
+
+        let inner_doc = data_doc.unwrap();
+        let stored_name = inner_doc.get_str("user_name");
+        if stored_name.is_err(){
+            return Err(stored_name.unwrap_err().to_string());
+        }
+        if stored_name.unwrap().eq(user_name){
+            return Ok(true);
+        }
+    }
+
+    if doc_counter>0{
+        return Err(format!("found {} entries",doc_counter));
+    }
+
+    return Result::Ok(false);
+
     }
 }
