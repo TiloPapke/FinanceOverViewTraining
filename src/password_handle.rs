@@ -1,6 +1,5 @@
 use argon2::{PasswordHash, Argon2, PasswordVerifier};
 use anyhow::Error;
-use futures::executor;
 use secrecy::{Secret, ExposeSecret};
 
 use crate::{setting_struct::SettingStruct, database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB}};
@@ -91,18 +90,23 @@ Ok(())
 
 }
 
-pub async fn _create_credentials(
-    credentials: Credentials,
+pub async fn create_credentials(
+    credentials: &Credentials,
 
 ) -> Result<uuid::Uuid, Error> {
-    let mut _user_id:Option<uuid::Uuid>=None;
-    let mut _expected_password_hash = Secret::new(
-        "$argon2id$v=19$m=15000,t=2,p=1$\
-        gZiV/M1gPc22ElAH/Jh1Hw$\
-        CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno"
-            .to_string()
-    );
 
+    let check_result = check_user_exsits(&credentials.username).await;
+    if check_result.is_err()
+    {
+        return Err(check_result.unwrap_err());
+    }
+
+    let user_exsists = check_result.unwrap();
+    if user_exsists
+    {
+        return Err(anyhow::anyhow!("User already exsists, can not recreate"));
+    }
+/*
     let get_result =  get_stored_credentials(&credentials.username).await;
     if get_result.is_err(){
        return Err(anyhow::anyhow!("Problem getting credentials"));
@@ -122,10 +126,12 @@ pub async fn _create_credentials(
     {
         return Ok(user_id.unwrap());
     }
-     Err(anyhow::anyhow!("Unknown username."))
+    */
+
+     return Err(anyhow::anyhow!("Creation not implemented"))
 }
 
-async fn _check_user_exsits(user_name: &str) -> Result<bool,Error>{
+async fn check_user_exsits(user_name: &str) -> Result<bool,Error>{
     let local_setting:SettingStruct = SettingStruct::global().clone();
     let db_connection=DbConnectionSetting{
         url: String::from(&local_setting.backend_database_url),
@@ -134,7 +140,7 @@ async fn _check_user_exsits(user_name: &str) -> Result<bool,Error>{
         instance: String::from(&local_setting.backend_database_instance)
     };
 
-    let check_result =  executor::block_on( DbHandlerMongoDB::_check_user_exsists_by_name(&db_connection,&user_name.to_string()));
+    let check_result =  DbHandlerMongoDB::_check_user_exsists_by_name(&db_connection,&user_name.to_string()).await;
 
     if check_result.is_err(){return Err(anyhow::anyhow!(check_result.unwrap_err()));}
 

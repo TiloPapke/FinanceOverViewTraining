@@ -5,7 +5,7 @@ use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
 
-use crate::password_handle::{validate_credentials, Credentials};
+use crate::password_handle::{validate_credentials, Credentials, create_credentials};
 
 #[derive(Template)]
 #[template(path = "WelcomePage.html")]
@@ -107,6 +107,26 @@ pub struct CreateLoginTemplate{
 pub async fn create_login_handler(form: Form<LoginFormInput>)  -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","create_login data user {} with {:?}",&form.username,form.password);
 
-    let st = CreateLoginTemplate{user_name:"not_set".to_string(), create_result:"no Result given".to_string()};
-    HtmlTemplate(st)
+    let mut clt_template = CreateLoginTemplate{user_name:"not_set".to_string(), create_result:"no Result given".to_string()};
+
+    let new_user_credentials = Credentials{
+        username: form.username.to_string(), 
+        password: form.password.clone()
+    };
+
+
+    let create_result=create_credentials(&new_user_credentials).await;
+    if create_result.is_err()
+    {
+        clt_template.user_name=new_user_credentials.username.to_string();
+        clt_template.create_result=create_result.unwrap_err().to_string();
+    }
+    else
+    {
+        clt_template.user_name=new_user_credentials.username.to_string();
+        clt_template.create_result="did not tryed to create".to_string();
+    }
+
+
+    HtmlTemplate(clt_template)
 }
