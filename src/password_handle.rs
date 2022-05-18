@@ -5,7 +5,7 @@ use secrecy::{Secret, ExposeSecret};
 use crate::{setting_struct::SettingStruct, database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB}};
 
 
-pub struct Credentials {
+pub struct UserCredentials {
     // These two fields were not marked as `pub` before!
     pub username: String,
     pub password: Secret<String>,
@@ -18,7 +18,7 @@ pub struct StoredCredentials {
 }
 
 pub async fn validate_credentials(
-    credentials: Credentials,
+    credentials: UserCredentials,
 
 ) -> Result<uuid::Uuid, Error> {
     let mut _user_id:Option<uuid::Uuid>=None;
@@ -91,7 +91,7 @@ Ok(())
 }
 
 pub async fn create_credentials(
-    credentials: &Credentials,
+    credentials: &UserCredentials,
 
 ) -> Result<uuid::Uuid, Error> {
 
@@ -106,29 +106,12 @@ pub async fn create_credentials(
     {
         return Err(anyhow::anyhow!("User already exsists, can not recreate"));
     }
-/*
-    let get_result =  get_stored_credentials(&credentials.username).await;
-    if get_result.is_err(){
-       return Err(anyhow::anyhow!("Problem getting credentials"));
-    }
-    
-    let stored_credentials = get_result.unwrap();
-    let user_id = Some(stored_credentials.user_id);
-    let expected_password_hash = stored_credentials.password;
-    
 
-    let verify_result =  verify_password_hash(expected_password_hash, credentials.password);  
-    if verify_result.is_err(){
-       return Err(verify_result.unwrap_err());
-    }
+    let insert_result = insert_user(&credentials).await;
+    if insert_result.is_err()
+    {return Err(insert_result.unwrap_err());}
 
-    if user_id.is_some()
-    {
-        return Ok(user_id.unwrap());
-    }
-    */
-
-     return Err(anyhow::anyhow!("Creation not implemented"))
+    return Ok(insert_result.unwrap())
 }
 
 async fn check_user_exsits(user_name: &str) -> Result<bool,Error>{
@@ -140,9 +123,26 @@ async fn check_user_exsits(user_name: &str) -> Result<bool,Error>{
         instance: String::from(&local_setting.backend_database_instance)
     };
 
-    let check_result =  DbHandlerMongoDB::_check_user_exsists_by_name(&db_connection,&user_name.to_string()).await;
+    let check_result =  DbHandlerMongoDB::check_user_exsists_by_name(&db_connection,&user_name.to_string()).await;
 
     if check_result.is_err(){return Err(anyhow::anyhow!(check_result.unwrap_err()));}
 
     Ok(check_result.unwrap())
+}
+
+async fn insert_user(some_credentials:&UserCredentials) -> Result<uuid::Uuid,Error>
+{
+    let local_setting:SettingStruct = SettingStruct::global().clone();
+    let db_connection=DbConnectionSetting{
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password) ,
+        instance: String::from(&local_setting.backend_database_instance)
+    };
+
+    let insert_result = DbHandlerMongoDB::insert_user(&db_connection, some_credentials).await;
+
+    if insert_result.is_err(){return Err(anyhow::anyhow!(insert_result.unwrap_err()));}
+
+    Ok(insert_result.unwrap())
 }

@@ -1,6 +1,9 @@
 use mongodb::{options::{ClientOptions, Credential, FindOptions}, Client, Collection, Cursor, results::{InsertOneResult, UpdateResult}, bson::{Document, doc}};
 use futures::{executor, StreamExt};
-use log::{warn, trace, info};
+use log::{warn, trace, info, debug};
+use secrecy::ExposeSecret;
+
+use crate::password_handle::UserCredentials;
 
 pub struct DbConnectionSetting{
     pub url: String,
@@ -165,10 +168,8 @@ impl DbHandlerMongoDB{
         return Result::Ok(client)
     }
 
-    pub async fn _check_user_exsists_by_name(conncetion_settings: &DbConnectionSetting, user_name:&String) -> Result<bool,String>
+    pub async fn check_user_exsists_by_name(conncetion_settings: &DbConnectionSetting, user_name:&String) -> Result<bool,String>
     {
-
-
     // Get a handle to the deployment.
     let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
     if client_create_result.is_err()
@@ -220,5 +221,37 @@ impl DbHandlerMongoDB{
 
     return Result::Ok(false);
 
+    }
+
+    pub async fn insert_user(conncetion_settings: &DbConnectionSetting, some_credentials: &UserCredentials) -> Result<uuid::Uuid,String>
+    {
+    // Get a handle to the deployment.
+    let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+    if client_create_result.is_err()
+    {
+        let client_err = &client_create_result.unwrap_err();
+        warn!(target:"app::FinanceOverView","{}",client_err);
+        return Err(client_err.to_string());
+    }
+    let client = client_create_result.unwrap();
+    
+    let db_instance = client.database(&conncetion_settings.instance);
+    let user_collcetion:Collection<Document> = db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+
+    let new_user_uuid = uuid::Uuid::new_v4();
+    let insert_doc = doc! {"user_id": mongodb::bson::Uuid::from_uuid_0_8(new_user_uuid),
+                                     "user_name":&some_credentials.username,
+                                     "password": &some_credentials.password.expose_secret()};
+
+    let insert_result = user_collcetion.insert_one(insert_doc, None).await;
+    if insert_result.is_err(){
+        let insert_err = &insert_result.unwrap_err();
+        warn!(target:"app::FinanceOverView","{}",insert_err);
+        return Err(insert_err.to_string()); 
+    }
+    
+    debug!(target:"app::FinanceOverView","new id of user object (not user_id): {}",insert_result.unwrap().inserted_id);
+
+    return Ok(new_user_uuid);
     }
 }

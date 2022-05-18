@@ -5,7 +5,7 @@ use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
 
-use crate::password_handle::{validate_credentials, Credentials, create_credentials};
+use crate::password_handle::{validate_credentials, UserCredentials, create_credentials};
 
 #[derive(Template)]
 #[template(path = "WelcomePage.html")]
@@ -48,7 +48,7 @@ where
 }
 
 pub async fn accept_login_form(Form (input): Form<LoginFormInput>)  -> Redirect   {
-    let credentials = Credentials {
+    let credentials = UserCredentials {
         username: input.username,
         password: input.password,
     };
@@ -68,7 +68,7 @@ pub async fn accept_login_form(Form (input): Form<LoginFormInput>)  -> Redirect 
 
 pub async fn user_home_handler( form: Form<LoginFormInput>)  -> impl IntoResponse {
 
-    let credentials = Credentials {
+    let credentials = UserCredentials {
         username: form.0.username,
         password: form.0.password,
     };
@@ -109,7 +109,7 @@ pub async fn create_login_handler(form: Form<LoginFormInput>)  -> impl IntoRespo
 
     let mut clt_template = CreateLoginTemplate{user_name:"not_set".to_string(), create_result:"no Result given".to_string()};
 
-    let new_user_credentials = Credentials{
+    let new_user_credentials = UserCredentials{
         username: form.username.to_string(), 
         password: form.password.clone()
     };
@@ -124,7 +124,7 @@ pub async fn create_login_handler(form: Form<LoginFormInput>)  -> impl IntoRespo
     else
     {
         clt_template.user_name=new_user_credentials.username.to_string();
-        clt_template.create_result="did not tryed to create".to_string();
+        clt_template.create_result=format!("your user id is {}", create_result.unwrap());
     }
 
 

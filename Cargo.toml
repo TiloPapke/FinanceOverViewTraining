@@ -23,9 +23,10 @@ rust-ini = {version = "0.18.0"}
 secrecy = {version = "0.8.0", features = ["serde", "alloc"] }
 serde ="1"
 tokio = { version = "1.0", features = ["full"] }
-uuid = { version = "1.0", features = ["v4", "serde"] }
+# mongodb uses uuid 0.8.2
+uuid = { version = "0.8.2", features = ["v4", "serde"] }
 
 [dependencies.mongodb]
 version = "2.2.1"
 default-features = false
-features = ["async-std-runtime"]
+features = ["async-std-runtime", "bson-uuid-0_8"]
