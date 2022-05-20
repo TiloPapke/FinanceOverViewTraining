@@ -3,7 +3,7 @@ use futures::{executor, StreamExt};
 use log::{warn, trace, info, debug};
 use secrecy::ExposeSecret;
 
-use crate::password_handle::UserCredentials;
+use crate::password_handle::{UserCredentials, StoredCredentials};
 
 pub struct DbConnectionSetting{
     pub url: String,
@@ -21,7 +21,7 @@ impl DbHandlerMongoDB{
     pub const COLLECTION_NAME_WEBSITE_TRAFFIC:&'static str ="WebSiteTraffic";
     pub const COLLECTION_NAME_SESSION_INFO:&'static str ="SessionInfo";
     pub const COLLECTION_NAME_USER_LIST:&'static str ="UserList";
-
+    
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool
     {
 
@@ -254,4 +254,81 @@ impl DbHandlerMongoDB{
 
     return Ok(new_user_uuid);
     }
+
+    pub async fn get_stored_credentials_by_name(conncetion_settings: &DbConnectionSetting, user_name:&String) -> Result<StoredCredentials,String>
+    {
+     // Get a handle to the deployment.
+     let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+     if client_create_result.is_err()
+     {
+         let client_err = &client_create_result.unwrap_err();
+         warn!(target:"app::FinanceOverView","{}",client_err);
+         return Err(client_err.to_string());
+     }
+     let client = client_create_result.unwrap();
+     
+     let db_instance = client.database(&conncetion_settings.instance);
+     let user_collcetion:Collection<Document> = db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);       
+
+     let filter = doc!{"user_name":&user_name};
+
+     let projection = doc!{"user_name":<i32>::from(1),
+                                     "user_id":<i32>::from(1),
+                                     "password":<i32>::from(1)};
+
+    let options=FindOptions::builder().projection(projection).build();
+
+    let query_execute_result = user_collcetion.find(filter, options).await;
+    
+    if query_execute_result.is_err()
+    {
+        return Result::Err(query_execute_result.unwrap_err().to_string());
+    }
+
+    let mut cursor = query_execute_result.unwrap();
+    
+    let mut doc_counter=0;
+    let mut result_doc=doc!{};
+  
+    while let Some(data_doc) = cursor.next().await{
+        doc_counter=doc_counter+1;
+        if data_doc.is_err() {
+            return Err(data_doc.unwrap_err().to_string());
+        }
+        
+
+        let inner_doc = data_doc.unwrap();
+        let stored_name = inner_doc.get_str("user_name");
+        if stored_name.is_err(){
+            return Err(stored_name.unwrap_err().to_string());
+        }
+        if stored_name.unwrap().eq(user_name){
+            result_doc = inner_doc;
+        }
+    }
+
+    if doc_counter>0{
+        return Err(format!("found {} entries",doc_counter));
+    }
+
+    let stored_user_id_as_string_read = result_doc.get_str("user_id");
+    if stored_user_id_as_string_read.is_err()
+    {return Err(stored_user_id_as_string_read.unwrap_err().to_string());}
+
+    let stored_password_read =result_doc.get_str("password");
+    if stored_password_read.is_err()
+    {return Err(stored_password_read.unwrap_err().to_string());}
+
+    let some_uuid_parse=uuid::Uuid::parse_str(stored_user_id_as_string_read.unwrap());
+    if some_uuid_parse.is_err()
+        {return Err(some_uuid_parse.unwrap_err().to_string());}
+    let some_password =secrecy::Secret::<String>::new(stored_password_read.unwrap().to_string());
+
+    let some_cred=StoredCredentials { user_id:some_uuid_parse.unwrap(), password: some_password };
+
+    return Ok(some_cred);
+                                 
+    }
+
+
 }

@@ -11,6 +11,7 @@ pub struct UserCredentials {
     pub password: Secret<String>,
 }
 
+#[derive(Debug)]
 pub struct StoredCredentials {
     // These two fields were not marked as `pub` before!
     pub user_id: uuid::Uuid,
@@ -48,7 +49,7 @@ pub async fn validate_credentials(
     {
         return Ok(user_id.unwrap());
     }
-     Err(anyhow::anyhow!("Unknown username."))
+    Err(anyhow::anyhow!("Unknown username."))
 }
 
 async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials,Error>{
@@ -60,7 +61,12 @@ async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials,Erro
         instance: String::from(&local_setting.backend_database_instance)
     };
 
-    let some_credential = StoredCredentials { user_id: uuid::Uuid::new_v4(), password: Secret::new("NOPE".to_string()) };
+    let query_credentials = DbHandlerMongoDB::get_stored_credentials_by_name(&_db_connection, &_user_id.to_string()).await;
+
+    if query_credentials.is_err()
+    {return Err(anyhow::anyhow!(query_credentials.unwrap_err()));}
+
+    let some_credential = query_credentials.unwrap();
 
     Ok(some_credential)
 }
