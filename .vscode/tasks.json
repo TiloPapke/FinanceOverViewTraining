@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo build debug",
+            "type": "shell",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "command": "cargo",
+            "args": [
+                "build",
+                "--bin=finance_overview_training",
+                "--package=finance_overview_training"
+            ]
+        }
+    ]
+}

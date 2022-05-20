@@ -10,7 +10,14 @@
             "name": "Debug executable (GDB) 'FinanceOverViewTraining'",
             "program": "${workspaceRoot}/target/debug/finance_overview_training.exe",
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "stopAtEntry": false,
+            "requireExactSource":true,
+            "symbolSearchPath": "${workspaceRoot}/target/debug",
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console":"internalConsole",
+            "preLaunchTask": "cargo build debug",
+            "visualizerFile": "${workspaceFolder}/my.natvis",
         },
         {
             "type": "lldb",

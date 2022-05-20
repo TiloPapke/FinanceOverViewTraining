@@ -307,7 +307,7 @@ impl DbHandlerMongoDB{
         }
     }
 
-    if doc_counter>0{
+    if doc_counter != 1{
         return Err(format!("found {} entries",doc_counter));
     }
 
