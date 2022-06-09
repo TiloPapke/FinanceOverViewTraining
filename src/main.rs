@@ -4,6 +4,7 @@ mod mdb_convert_tools;
 mod html_render;
 mod user_id_handle;
 mod password_handle;
+mod convert_tools;
 
 use async_mongodb_session::MongodbSessionStore;
 use axum::extract::Extension;

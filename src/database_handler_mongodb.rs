@@ -4,6 +4,7 @@ use log::{warn, trace, info, debug};
 use secrecy::ExposeSecret;
 
 use crate::password_handle::{UserCredentials, StoredCredentials};
+use crate::convert_tools::ConvertTools;
 
 pub struct DbConnectionSetting{
     pub url: String,
@@ -310,25 +311,28 @@ impl DbHandlerMongoDB{
     if doc_counter != 1{
         return Err(format!("found {} entries",doc_counter));
     }
+/*
+    let stored_user_id_as_bytes_read = result_doc.get_binary_generic("user_id");
+    if stored_user_id_as_bytes_read.is_err()
+    {return Err(stored_user_id_as_bytes_read.unwrap_err().to_string());}
+*/
 
-    let stored_user_id_as_string_read = result_doc.get_str("user_id");
-    if stored_user_id_as_string_read.is_err()
-    {return Err(stored_user_id_as_string_read.unwrap_err().to_string());}
 
     let stored_password_read =result_doc.get_str("password");
     if stored_password_read.is_err()
     {return Err(stored_password_read.unwrap_err().to_string());}
 
-    let some_uuid_parse=uuid::Uuid::parse_str(stored_user_id_as_string_read.unwrap());
-    if some_uuid_parse.is_err()
-        {return Err(some_uuid_parse.unwrap_err().to_string());}
+    let some_uuid_parse_result = ConvertTools::get_uuid_from_document(&result_doc,"user_id");
+
+    if some_uuid_parse_result.is_err()
+    {return Err("Could not parse UUID".to_string());}
+
     let some_password =secrecy::Secret::<String>::new(stored_password_read.unwrap().to_string());
 
-    let some_cred=StoredCredentials { user_id:some_uuid_parse.unwrap(), password: some_password };
+    let some_cred=StoredCredentials { user_id:some_uuid_parse_result.unwrap(), password: some_password };
 
     return Ok(some_cred);
                                  
     }
-
 
 }
