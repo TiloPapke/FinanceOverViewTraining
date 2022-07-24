@@ -153,9 +153,9 @@ async fn https_server() {
     }
     let mgdb_client = mgdb_client_create_result.unwrap();
 
-    let store =  MongodbSessionStore::from_client(mgdb_client,&db_connection.instance, DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
+    let server_session_store =  MongodbSessionStore::from_client(mgdb_client,&db_connection.instance, DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO);
 
-    let initilize_result = store.initialize().await;
+    let initilize_result = server_session_store.initialize().await;
     if initilize_result.is_err(){
         let error_info =initilize_result.unwrap_err();
         error!(target: "app::FinanceOverView","Could not initialize session store: {}", error_info);
@@ -168,7 +168,7 @@ async fn https_server() {
                                    .route("/do_login", post(html_render::accept_login_form))
                                    .route("/do_create", post(html_render::create_login_handler))
                                    .route("/user_home", get(html_render::user_home_handler))
-                                   .layer(Extension(store));
+                                   .layer(Extension(server_session_store));
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,
@@ -213,6 +213,7 @@ async fn http_handler(uri: Uri) -> Redirect {
 }
 
 async fn https_handler(user_id: UserIdFromSession) -> impl IntoResponse {
+    
     let (headers, user_id, create_cookie) = match user_id {
         UserIdFromSession::FoundUserId(user_id) => (HeaderMap::new(), user_id, false),
         UserIdFromSession::CreatedFreshUserId(new_user) => {

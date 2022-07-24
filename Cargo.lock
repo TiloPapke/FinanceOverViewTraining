@@ -731,6 +731,7 @@ dependencies = [
  "log4rs",
  "mongodb",
  "once_cell",
+ "rand 0.8.5",
  "rust-ini",
  "secrecy",
  "serde",

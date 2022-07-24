@@ -1,11 +1,10 @@
 use askama::Template;
-
 use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode}, extract::Form};
 use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
 
-use crate::password_handle::{validate_credentials, UserCredentials, create_credentials};
+use crate::{password_handle::{validate_credentials, UserCredentials, create_credentials}};
 
 #[derive(Template)]
 #[template(path = "WelcomePage.html")]
@@ -47,43 +46,52 @@ where
     }
 }
 
-pub async fn accept_login_form(Form (input): Form<LoginFormInput>)  -> Redirect   {
+pub async fn accept_login_form( Form (input): Form<LoginFormInput>)  -> impl IntoResponse    {
+    
     let credentials = UserCredentials {
-        username: input.username,
-        password: input.password,
+        username: input.username.clone(),
+        password: input.password.clone(),
     };
+    //session.insert("user_name", &credentials.username);
 
-    match validate_credentials(credentials).await {
+    match validate_credentials(&credentials).await {
         Ok(user_id) => {
             debug!(target: "app::FinanceOverView","user_id is {}",user_id);
-            Redirect::to("/user_home")
+            Redirect::to("/user_home").into_response()
+            //user_home_handler(Form(input))
         }
         Err(_) => {
-            Redirect::to("/invalid")
+            debug!(target: "app::FinanceOverView","no valid user name");
+            Redirect::to("/invalid").into_response()
+            //invalid_handler(Form(input))
+            //user_home_handler(Form(input)).await
         }
     }
 
 
 }
 
-pub async fn user_home_handler( form: Form<LoginFormInput>)  -> impl IntoResponse {
-
+pub async fn user_home_handler()  -> impl IntoResponse {
+//let username:String = session.get("username").unwrap();
+let username="SOME VALID";
+/*
     let credentials = UserCredentials {
         username: form.0.username,
         password: form.0.password,
     };
+*/
+    //let _user_id = validate_credentials(&credentials).await;
 
-    let user_id = validate_credentials(credentials).await;
-
- /*  let template = UserHomeTemplate { 
-        username: "Fake".to_string()
+   let template = UserHomeTemplate { 
+        username: username.to_string() //credentials.username
      };
-    HtmlTemplate(template);
-    */
+    HtmlTemplate(template)
+    /*
     format!(
         "Welcome to the protected area :)\nHere's your info:\n{:?}",
         user_id
     )
+    */
 }
 
 #[derive(Template)]
@@ -92,9 +100,14 @@ pub struct InvalidTemplate{
     username: String 
 }
 
-pub async fn invalid_handler()  -> impl IntoResponse {
-    let st = InvalidTemplate{username:"invalid_check".to_string()};
-    HtmlTemplate(st)
+pub async fn invalid_handler()  -> impl IntoResponse  {
+    //let username:String = session.get("username").unwrap();
+
+let username="INVALID";
+
+    let st = InvalidTemplate{username:format!("{} is invalid", username)};
+        HtmlTemplate(st)
+
 }
 
 #[derive(Template)]

@@ -3,7 +3,7 @@ use futures::{executor, StreamExt};
 use log::{warn, trace, info, debug};
 use secrecy::ExposeSecret;
 
-use crate::password_handle::{UserCredentials, StoredCredentials};
+use crate::password_handle::{StoredCredentials, UserCredentialsHashed};
 use crate::convert_tools::ConvertTools;
 
 pub struct DbConnectionSetting{
@@ -224,7 +224,7 @@ impl DbHandlerMongoDB{
 
     }
 
-    pub async fn insert_user(conncetion_settings: &DbConnectionSetting, some_credentials: &UserCredentials) -> Result<uuid::Uuid,String>
+    pub async fn insert_user(conncetion_settings: &DbConnectionSetting, some_credentials: &UserCredentialsHashed) -> Result<uuid::Uuid,String>
     {
     // Get a handle to the deployment.
     let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
@@ -242,7 +242,7 @@ impl DbHandlerMongoDB{
     let new_user_uuid = uuid::Uuid::new_v4();
     let insert_doc = doc! {"user_id": mongodb::bson::Uuid::from_uuid_0_8(new_user_uuid),
                                      "user_name":&some_credentials.username,
-                                     "password": &some_credentials.password.expose_secret()};
+                                     "password_hash": &some_credentials.password_hash.expose_secret()};
 
     let insert_result = user_collcetion.insert_one(insert_doc, None).await;
     if insert_result.is_err(){
@@ -275,7 +275,7 @@ impl DbHandlerMongoDB{
 
      let projection = doc!{"user_name":<i32>::from(1),
                                      "user_id":<i32>::from(1),
-                                     "password":<i32>::from(1)};
+                                     "password_hash":<i32>::from(1)};
 
     let options=FindOptions::builder().projection(projection).build();
 
@@ -318,18 +318,18 @@ impl DbHandlerMongoDB{
 */
 
 
-    let stored_password_read =result_doc.get_str("password");
-    if stored_password_read.is_err()
-    {return Err(stored_password_read.unwrap_err().to_string());}
+    let stored_password_hash_read =result_doc.get_str("password_hash");
+    if stored_password_hash_read.is_err()
+    {return Err(stored_password_hash_read.unwrap_err().to_string());}
 
     let some_uuid_parse_result = ConvertTools::get_uuid_from_document(&result_doc,"user_id");
 
     if some_uuid_parse_result.is_err()
     {return Err("Could not parse UUID".to_string());}
 
-    let some_password =secrecy::Secret::<String>::new(stored_password_read.unwrap().to_string());
+    let some_password_hash =secrecy::Secret::<String>::new(stored_password_hash_read.unwrap().to_string());
 
-    let some_cred=StoredCredentials { user_id:some_uuid_parse_result.unwrap(), password: some_password };
+    let some_cred=StoredCredentials { user_id:some_uuid_parse_result.unwrap(), password_hash: some_password_hash };
 
     return Ok(some_cred);
                                  

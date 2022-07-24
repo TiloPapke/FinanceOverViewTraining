@@ -1,4 +1,5 @@
-use argon2::{PasswordHash, Argon2, PasswordVerifier};
+use argon2::password_hash::SaltString;
+use argon2::{PasswordHash, PasswordHasher, Argon2, PasswordVerifier};
 use anyhow::Error;
 use secrecy::{Secret, ExposeSecret};
 
@@ -11,15 +12,21 @@ pub struct UserCredentials {
     pub password: Secret<String>,
 }
 
+pub struct UserCredentialsHashed {
+    // These two fields were not marked as `pub` before!
+    pub username: String,
+    pub password_hash: Secret<String>,
+}
+
 #[derive(Debug)]
 pub struct StoredCredentials {
     // These two fields were not marked as `pub` before!
     pub user_id: uuid::Uuid,
-    pub password: Secret<String>,
+    pub password_hash: Secret<String>
 }
 
 pub async fn validate_credentials(
-    credentials: UserCredentials,
+    credentials: &UserCredentials,
 
 ) -> Result<uuid::Uuid, Error> {
     let mut _user_id:Option<uuid::Uuid>=None;
@@ -37,10 +44,12 @@ pub async fn validate_credentials(
     
     let stored_credentials = get_result.unwrap();
     let user_id = Some(stored_credentials.user_id);
-    let expected_password_hash = stored_credentials.password;
+
+    let expected_password_hash = stored_credentials.password_hash;
+
     
 
-    let verify_result =  verify_password_hash(expected_password_hash, credentials.password);  
+    let verify_result =  verify_password_hash(&expected_password_hash, &credentials.password);  
     if verify_result.is_err(){
        return Err(verify_result.unwrap_err());
     }
@@ -72,20 +81,20 @@ async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials,Erro
 }
 
 fn verify_password_hash(
-    expected_password_hash: Secret<String>,
-    password_candidate: Secret<String>,
+    expected_password_hash: &Secret<String>,
+    password_candidate: &Secret<String>,
 ) -> Result<(), Error> {
-    let expected_password_hash = PasswordHash::new(
-        expected_password_hash.expose_secret()
+    let expected_password_hash_2 = PasswordHash::new(
+        &expected_password_hash.expose_secret()
     );
-    if expected_password_hash.is_err(){
+    if expected_password_hash_2.is_err(){
        return Err(anyhow::anyhow!("Failed to parse hash in PHC string format."));
     }
 
     let check_result=Argon2::default()
         .verify_password(
             password_candidate.expose_secret().as_bytes(), 
-            &expected_password_hash.unwrap()
+            &expected_password_hash_2.unwrap()
         );
     if check_result.is_err(){
         return Err(anyhow::anyhow!("AUTH ERROR: {}",check_result.unwrap_err()));
@@ -137,7 +146,7 @@ async fn check_user_exsits(user_name: &str) -> Result<bool,Error>{
 }
 
 async fn insert_user(some_credentials:&UserCredentials) -> Result<uuid::Uuid,Error>
-{
+{    
     let local_setting:SettingStruct = SettingStruct::global().clone();
     let db_connection=DbConnectionSetting{
         url: String::from(&local_setting.backend_database_url),
@@ -146,7 +155,19 @@ async fn insert_user(some_credentials:&UserCredentials) -> Result<uuid::Uuid,Err
         instance: String::from(&local_setting.backend_database_instance)
     };
 
-    let insert_result = DbHandlerMongoDB::insert_user(&db_connection, some_credentials).await;
+    let salt = SaltString::generate(&mut rand::thread_rng());
+    let user_password_hashed = Argon2::default()
+            .hash_password(some_credentials.password.expose_secret().as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
+    let some_credentials_hashed = UserCredentialsHashed
+    {
+        username: some_credentials.username.clone(),
+        password_hash:Secret::new(user_password_hashed)
+    };
+
+    let insert_result = DbHandlerMongoDB::insert_user(&db_connection, &some_credentials_hashed).await;
 
     if insert_result.is_err(){return Err(anyhow::anyhow!(insert_result.unwrap_err()));}
 
