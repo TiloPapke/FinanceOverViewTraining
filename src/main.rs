@@ -5,6 +5,8 @@ mod html_render;
 mod user_id_handle;
 mod password_handle;
 mod convert_tools;
+mod session_handle;
+mod mongo_dbsession_store_handle;
 
 use async_mongodb_session::MongodbSessionStore;
 use axum::extract::Extension;
