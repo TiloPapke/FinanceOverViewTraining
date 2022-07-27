@@ -49,12 +49,7 @@ where
             let mut session = Session::new();
             session.insert("user_id", user_id).unwrap();
             session.expire_in(std::time::Duration::from_secs(60*5));
-            session.insert("testvar1","Testvalue1").unwrap();
-            session.insert("testvar2","Testvalue2").unwrap();
             let cookie = store.store_session(session).await.unwrap().unwrap();
-            let mut session2 = store.load_session(cookie.clone()).await.unwrap().unwrap();
-            session2.insert("testvar3","Testvalue3").unwrap();
-            let cookie2 = store.store_session(session2).await;
             return Ok(Self::CreatedFreshUserId(FreshUserId {
                 user_id,
                 cookie: HeaderValue::from_str(

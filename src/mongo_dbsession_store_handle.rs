@@ -1,21 +1,10 @@
 use async_mongodb_session::MongodbSessionStore;
-use async_session::{Session, SessionStore};
-use axum::TypedHeader;
 use axum::http::StatusCode;
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts},
-    headers::Cookie,   
+    extract::{Extension, FromRequest, RequestParts},  
 };
-use log::trace;
 
-const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
-/*
-pub struct FreshUserId {
-    pub user_id: UserId,
-    pub cookie: HeaderValue,
-}
-*/
 pub enum MdbSessionStoreLoadResult {
     FoundSessionStore(MongodbSessionStore),
 }
@@ -36,20 +25,3 @@ where
         Ok(Self::FoundSessionStore(store))
     }
 }
-
-//#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-//pub struct UserId(Uuid);
-
-/*
-impl std::fmt::Display for UserId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-impl UserId {
-    fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-
-}
-*/

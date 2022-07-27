@@ -311,12 +311,6 @@ impl DbHandlerMongoDB{
     if doc_counter != 1{
         return Err(format!("found {} entries",doc_counter));
     }
-/*
-    let stored_user_id_as_bytes_read = result_doc.get_binary_generic("user_id");
-    if stored_user_id_as_bytes_read.is_err()
-    {return Err(stored_user_id_as_bytes_read.unwrap_err().to_string());}
-*/
-
 
     let stored_password_hash_read =result_doc.get_str("password_hash");
     if stored_password_hash_read.is_err()

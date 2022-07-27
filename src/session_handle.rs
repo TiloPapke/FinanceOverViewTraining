@@ -10,12 +10,7 @@ use axum::{
 use log::trace;
 
 const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
-/*
-pub struct FreshUserId {
-    pub user_id: UserId,
-    pub cookie: HeaderValue,
-}
-*/
+
 pub enum SessionRefOptionFromStore {
     FoundSession(Option<Session>),
 }
@@ -66,20 +61,3 @@ where
         Ok(Self::FoundSession(local_session))
     }
 }
-
-//#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-//pub struct UserId(Uuid);
-
-/*
-impl std::fmt::Display for UserId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-impl UserId {
-    fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-
-}
-*/

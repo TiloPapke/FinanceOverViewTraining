@@ -71,13 +71,10 @@ pub async fn accept_login_form(a_store: MdbSessionStoreLoadResult, a_session_opt
         Ok(user_id) => {
             debug!(target: "app::FinanceOverView","user_id is {}",user_id);
             Redirect::to("/user_home").into_response()
-            //user_home_handler(Form(input))
         }
         Err(_) => {
             debug!(target: "app::FinanceOverView","no valid user name");
             Redirect::to("/invalid").into_response()
-            //invalid_handler(Form(input))
-            //user_home_handler(Form(input)).await
         }
     }
 
@@ -92,26 +89,12 @@ pub async fn user_home_handler(a_session:SessionRefOptionFromStore)  -> impl Int
 
     let session = a_session.unwrap();
 
-let username:String = session.get("user_name").unwrap();
-//let username="SOME VALID";
-/*
-    let credentials = UserCredentials {
-        username: form.0.username,
-        password: form.0.password,
-    };
-*/
-    //let _user_id = validate_credentials(&credentials).await;
+    let username:String = session.get("user_name").unwrap();
 
    let template = UserHomeTemplate { 
-        username: username.to_string() //credentials.username
+        username: username.to_string()
      };
     HtmlTemplate(template)
-    /*
-    format!(
-        "Welcome to the protected area :)\nHere's your info:\n{:?}",
-        user_id
-    )
-    */
 }
 
 #[derive(Template)]
@@ -121,9 +104,8 @@ pub struct InvalidTemplate{
 }
 
 pub async fn invalid_handler()  -> impl IntoResponse  {
-    //let username:String = session.get("user_name").unwrap();
 
-let username="INVALID";
+    let username="chosen login";
 
     let st = InvalidTemplate{username:format!("{} is invalid", username)};
         HtmlTemplate(st)

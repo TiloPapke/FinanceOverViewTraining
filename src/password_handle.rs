@@ -29,13 +29,6 @@ pub async fn validate_credentials(
     credentials: &UserCredentials,
 
 ) -> Result<uuid::Uuid, Error> {
-    let mut _user_id:Option<uuid::Uuid>=None;
-    let mut _expected_password_hash = Secret::new(
-        "$argon2id$v=19$m=15000,t=2,p=1$\
-        gZiV/M1gPc22ElAH/Jh1Hw$\
-        CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno"
-            .to_string()
-    );
 
     let get_result =  get_stored_credentials(&credentials.username).await;
     if get_result.is_err(){
