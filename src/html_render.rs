@@ -1,11 +1,11 @@
 use askama::Template;
-use async_session::{Session, SessionStore};
+use async_session::SessionStore;
 use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode}, extract::Form};
 use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
 
-use crate::{password_handle::{validate_credentials, UserCredentials, create_credentials}, session_handle::SessionRefOptionFromStore, mongo_dbsession_store_handle::MdbSessionStoreLoadResult};
+use crate::{password_handle::{validate_credentials, UserCredentials, create_credentials}, session_data_handle::{SessionDataResult, SessionData}};
 
 #[derive(Template)]
 #[template(path = "WelcomePage.html")]
@@ -47,24 +47,21 @@ where
     }
 }
 
-pub async fn accept_login_form(a_store: MdbSessionStoreLoadResult, a_session_option:SessionRefOptionFromStore, Form (input): Form<LoginFormInput>)  -> impl IntoResponse    {
+pub async fn accept_login_form(session_data: SessionDataResult, Form (input): Form<LoginFormInput>)  -> impl IntoResponse    {
     
     let credentials = UserCredentials {
         username: input.username.clone(),
         password: input.password.clone(),
     };
 
-    let a_session_option:Option<Session> = match a_session_option {
-        SessionRefOptionFromStore::FoundSession(a_session_option) => ( a_session_option)
-    };
 
-    let mut session = a_session_option.unwrap();
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap();
     let _result = session.insert("user_name", &credentials.username);
 
-    //let a_store = MdbSessionStoreLoadResult::FoundSessionStore(a_store);
-    let a_store= match a_store {
-        MdbSessionStoreLoadResult::FoundSessionStore(a_store) => ( a_store)
-    };
+    let a_store= session_data.session_store;
+
     let _cookie3 = a_store.store_session(session).await;
 
     match validate_credentials(&credentials).await {
@@ -81,14 +78,11 @@ pub async fn accept_login_form(a_store: MdbSessionStoreLoadResult, a_session_opt
 
 }
 
-pub async fn user_home_handler(a_session:SessionRefOptionFromStore)  -> impl IntoResponse {
+pub async fn user_home_handler(session_data: SessionDataResult)  -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
 
-    let a_session:Option<Session> = match a_session {
-        SessionRefOptionFromStore::FoundSession(a_session) => ( a_session)
-    };
-
-    let session = a_session.unwrap();
-
+    let session = session_data.session_option.unwrap();
+    
     let username:String = session.get("user_name").unwrap();
 
    let template = UserHomeTemplate { 

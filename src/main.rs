@@ -2,11 +2,9 @@ mod database_handler_mongodb;
 mod setting_struct;
 mod mdb_convert_tools;
 mod html_render;
-mod user_id_handle;
 mod password_handle;
 mod convert_tools;
-mod session_handle;
-mod mongo_dbsession_store_handle;
+mod session_data_handle;
 
 use async_mongodb_session::MongodbSessionStore;
 use axum::extract::Extension;
@@ -30,13 +28,13 @@ use mdb_convert_tools::MdbConvertTools;
 use mongodb::bson::Bson;
 use mongodb::bson::Document;
 use mongodb::bson::doc;
+use session_data_handle::SessionDataResult;
 use setting_struct::SettingStruct;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
-use user_id_handle::UserIdFromSession;
 
 use crate::html_render::invalid_handler;
 
@@ -214,14 +212,14 @@ async fn http_handler(uri: Uri) -> Redirect {
 
 }
 
-async fn https_handler(user_id: UserIdFromSession) -> impl IntoResponse {
+async fn https_handler(session_data: SessionDataResult) -> impl IntoResponse {
     
-    let (headers, user_id, create_cookie) = match user_id {
-        UserIdFromSession::FoundUserId(user_id) => (HeaderMap::new(), user_id, false),
-        UserIdFromSession::CreatedFreshUserId(new_user) => {
+    let (headers, user_id, create_cookie) = match session_data {
+        SessionDataResult::FoundSessionData(session_data) => (HeaderMap::new(), session_data.user_id, false),
+        SessionDataResult::CreatedSessionData(new_session_data) => {
             let mut headers = HeaderMap::new();
-            headers.insert(http::header::SET_COOKIE, new_user.cookie);
-            (headers, new_user.user_id, true)
+            headers.insert(http::header::SET_COOKIE, new_session_data.cookie);
+            (headers, new_session_data.user_id, true)
         }
     };
     debug!("user_id is: {}\rcreate:cookie is {}",&user_id,&create_cookie);
