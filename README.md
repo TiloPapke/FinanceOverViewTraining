@@ -29,6 +29,7 @@ goal points for version 0.0.3:
 hint for later development: a user should only see his own data.
 
 goal points for version 0.0.4
+- [ ] unit tests
 - [ ] simple finance account management
 - [ ] journaling of income and expanses
 

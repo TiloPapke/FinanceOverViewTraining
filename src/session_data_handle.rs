@@ -1,6 +1,8 @@
 use async_mongodb_session::MongodbSessionStore;
 use async_session::{Session, SessionStore};
 use axum::TypedHeader;
+use axum::http;
+use axum::http::HeaderMap;
 use axum::http::HeaderValue;
 use axum::http::StatusCode;
 use axum::{
@@ -52,7 +54,7 @@ impl<B> FromRequest<B> for SessionDataResult
 where
     B: Send,
 {
-    type Rejection = (StatusCode, &'static str);
+    type Rejection = (StatusCode, HeaderMap, &'static str);
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let Extension(store) = Extension::<MongodbSessionStore>::from_request(req)
@@ -62,17 +64,22 @@ where
         let cookie = Option::<TypedHeader<Cookie>>::from_request(req)
             .await
             .unwrap();
-
+        
         let session_cookie = cookie
             .as_ref()
             .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
+        
+        let mut headers = HeaderMap::from_request(req)
+            .await
+            .unwrap();
 
         // return the new created session cookie for client
         if session_cookie.is_none() {
             let user_id = UserId::new();
             let mut session = Session::new();
             session.insert("user_id", user_id).unwrap();
-            session.expire_in(std::time::Duration::from_secs(60*5));
+            //session.expire_in(std::time::Duration::from_secs(60*5));
+            session.expire_in(std::time::Duration::from_secs(60*1));
             let cookie = store.store_session(session).await.unwrap().unwrap();
             let cookie_copy = cookie.to_owned();
             let reload_result = store.load_session(cookie_copy)
@@ -108,7 +115,9 @@ where
                 AXUM_SESSION_COOKIE_NAME,
                 session_cookie.unwrap()
             );
-            return Err((StatusCode::BAD_REQUEST, "No session found for cookie"));
+
+            remove_axum_session_cookie(&mut headers);
+            return Err(( StatusCode::BAD_REQUEST, headers, "No session found for cookie"));
         }
         
         // continue to decode the session cookie
@@ -122,6 +131,7 @@ where
             } else {
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
+                    headers,
                     "No `user_id` found in session",
                 ));
             };
@@ -147,6 +157,37 @@ impl std::fmt::Display for UserId {
 impl UserId {
     fn new() -> Self {
         Self(Uuid::new_v4())
+    }
+
+}
+
+fn remove_axum_session_cookie(headers: &mut HeaderMap) 
+{
+    let mut temp_vec:Vec<HeaderValue> = Vec::new();
+    let mut current_axum_cookie:String = String::new();
+    let all_cookies = headers.get_all(axum::http::header::COOKIE);
+    let cookie_iter = all_cookies.iter();
+    for cookie_entry in cookie_iter{
+        let header_value_text = cookie_entry.to_str().unwrap();
+        let check_text =AXUM_SESSION_COOKIE_NAME;
+        if header_value_text.starts_with(check_text)
+        {
+           current_axum_cookie=format!("{}",header_value_text);
+        }
+        else
+        {
+            temp_vec.push(cookie_entry.to_owned());
+        }
+    }
+    let _header_value_option_delete = headers.remove(axum::http::header::COOKIE);
+    
+    for header_value in temp_vec{
+        headers.append(axum::http::header::COOKIE, header_value);
+    }
+    if current_axum_cookie!=""{
+        let reset_axum_cookie = format!("{};expires=Tue, 01-Jan-2000 00:00:01 GMT",current_axum_cookie);
+        let reset_cookie_header = HeaderValue::from_str(&reset_axum_cookie).unwrap();
+        headers.insert(http::header::SET_COOKIE, reset_cookie_header);
     }
 
 }

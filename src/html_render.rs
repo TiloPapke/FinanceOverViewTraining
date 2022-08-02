@@ -1,6 +1,6 @@
 use askama::Template;
 use async_session::SessionStore;
-use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode}, extract::Form};
+use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode, HeaderMap}, extract::Form};
 use log::debug;
 use secrecy::Secret;
 use serde::Deserialize;
@@ -26,9 +26,11 @@ pub struct LoginFormInput {
 #[derive(Template)]
 #[template(path = "UserHome.html")]
 pub struct UserHomeTemplate{
-    username: String
+    username: String,
+    session_expire_timestamp: String,
+    logged_in:bool,
+    logout_reason:String
 }
-
 pub struct HtmlTemplate<T>(pub T);
 
 impl<T> IntoResponse for HtmlTemplate<T>
@@ -38,11 +40,15 @@ where
     fn into_response(self) -> Response {
         match self.0.render() {
             Ok(html) => Html(html).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to render template. Error: {}", err),
-            )
-                .into_response(),
+            Err(err) => {
+                let mut headers = HeaderMap::new();
+                headers.remove(axum::http::header::SET_COOKIE);
+                (   StatusCode::INTERNAL_SERVER_ERROR,
+                    headers,
+                    format!("Failed to render template. Error: {}", err),
+                )
+                .into_response()
+            },
         }
     }
 }
@@ -85,9 +91,45 @@ pub async fn user_home_handler(session_data: SessionDataResult)  -> impl IntoRes
     
     let username:String = session.get("user_name").unwrap();
 
-   let template = UserHomeTemplate { 
-        username: username.to_string()
-     };
+    let session_expire_timestamp = format!("{} seconds", session.expires_in().unwrap_or(std::time::Duration::new(1,0)).as_secs());
+
+    if session.is_expired()
+    {
+        let template = UserHomeTemplate{
+            logout_reason: "Session expired".to_string(),
+            username :"".to_string(),
+            session_expire_timestamp,
+            logged_in: false,
+        };
+        HtmlTemplate(template)
+    }
+    else
+    {
+        let template = UserHomeTemplate { 
+            username: username.to_string(),
+            session_expire_timestamp,
+            logged_in: true,
+            logout_reason: "".to_string()
+        };
+        HtmlTemplate(template)
+    }
+}
+
+pub async fn do_logout_handler(session_data: SessionDataResult)  -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap(); 
+
+    let session_expire_timestamp = format!("{} seconds", session.expires_in().unwrap_or(std::time::Duration::new(1,0)).as_secs());
+
+    session.destroy();
+
+    let template = UserHomeTemplate { 
+        username: "".to_string(),
+        session_expire_timestamp,
+        logged_in: false,
+        logout_reason: "You logout yourself".to_string()
+    };
     HtmlTemplate(template)
 }
 
