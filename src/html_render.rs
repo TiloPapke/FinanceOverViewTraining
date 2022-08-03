@@ -1,5 +1,5 @@
 use askama::Template;
-use async_session::SessionStore;
+use async_session::{SessionStore, chrono::{Utc, DateTime, NaiveDateTime}};
 use axum::{response::{Html, Response, IntoResponse, Redirect}, http::{StatusCode, HeaderMap}, extract::Form};
 use log::debug;
 use secrecy::Secret;
@@ -87,14 +87,13 @@ pub async fn accept_login_form(session_data: SessionDataResult, Form (input): Fo
 pub async fn user_home_handler(session_data: SessionDataResult)  -> impl IntoResponse {
     let session_data = SessionData::from_session_data_result(session_data);
 
-    let session = session_data.session_option.unwrap();
+    let mut session = session_data.session_option.unwrap();
     
     let username:String = session.get("user_name").unwrap();
 
-    let session_expire_timestamp = format!("{} seconds", session.expires_in().unwrap_or(std::time::Duration::new(1,0)).as_secs());
-
     if session.is_expired()
     {
+        let session_expire_timestamp = format!("{} UTC", (session.expiry().unwrap_or(&DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0,0), Utc)).naive_local().format("%Y-%m-%d %H:%M:%S")));
         let template = UserHomeTemplate{
             logout_reason: "Session expired".to_string(),
             username :"".to_string(),
@@ -105,12 +104,19 @@ pub async fn user_home_handler(session_data: SessionDataResult)  -> impl IntoRes
     }
     else
     {
+        session.expire_in(std::time::Duration::from_secs(60*1));
+        let session_expire_timestamp = format!("{} UTC", (session.expiry().unwrap_or(&DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0,0), Utc)).naive_local().format("%Y-%m-%d %H:%M:%S")));
+        
         let template = UserHomeTemplate { 
             username: username.to_string(),
             session_expire_timestamp,
             logged_in: true,
-            logout_reason: "".to_string()
+            logout_reason: "".to_string()   
         };
+        
+        let _new_cookie = session_data.session_store.store_session(session)
+            .await;
+
         HtmlTemplate(template)
     }
 }
@@ -120,8 +126,8 @@ pub async fn do_logout_handler(session_data: SessionDataResult)  -> impl IntoRes
 
     let mut session = session_data.session_option.unwrap(); 
 
-    let session_expire_timestamp = format!("{} seconds", session.expires_in().unwrap_or(std::time::Duration::new(1,0)).as_secs());
-
+    let session_expire_timestamp = format!("{} UTC", (session.expiry().unwrap_or(&DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0,0), Utc)).naive_local().format("%Y-%m-%d %H:%M:%S")));
+        
     session.destroy();
 
     let template = UserHomeTemplate { 

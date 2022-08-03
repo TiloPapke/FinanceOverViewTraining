@@ -1,7 +1,7 @@
 {% if logged_in %}
 <h2>this is your home {{username}}</h2>
 <br/>
-Your session expires in {{session_expire_timestamp}}
+Your session expires at {{session_expire_timestamp}}
 <form action="/do_logout" method="post">
     <button type="submit">Logout</button>
 </form>
