@@ -68,10 +68,11 @@ pub async fn accept_login_form(session_data: SessionDataResult, Form (input): Fo
 
     let a_store= session_data.session_store;
 
-    let _cookie3 = a_store.store_session(session).await;
-
     match validate_credentials(&credentials).await {
         Ok(user_id) => {
+            let _result = session.insert("logged_in", true);
+            let _cookie3 = a_store.store_session(session).await;
+
             debug!(target: "app::FinanceOverView","user_id is {}",user_id);
             Redirect::to("/user_home").into_response()
         }
@@ -88,7 +89,20 @@ pub async fn user_home_handler(session_data: SessionDataResult)  -> impl IntoRes
     let session_data = SessionData::from_session_data_result(session_data);
 
     let mut session = session_data.session_option.unwrap();
-    
+
+    let is_logged_in:bool = session.get("logged_in").unwrap_or(false);
+
+    if !is_logged_in{
+        let session_expire_timestamp = format!("{} UTC", (session.expiry().unwrap_or(&DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0,0), Utc)).naive_local().format("%Y-%m-%d %H:%M:%S")));
+        let template = UserHomeTemplate{
+            logout_reason: "not logged in".to_string(),
+            username :"".to_string(),
+            session_expire_timestamp,
+            logged_in: false,
+        };
+        return HtmlTemplate(template)       
+    }
+
     let username:String = session.get("user_name").unwrap();
 
     if session.is_expired()
@@ -124,17 +138,24 @@ pub async fn user_home_handler(session_data: SessionDataResult)  -> impl IntoRes
 pub async fn do_logout_handler(session_data: SessionDataResult)  -> impl IntoResponse {
     let session_data = SessionData::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap(); 
+    let session = session_data.session_option.unwrap(); 
 
     let session_expire_timestamp = format!("{} UTC", (session.expiry().unwrap_or(&DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0,0), Utc)).naive_local().format("%Y-%m-%d %H:%M:%S")));
-        
-    session.destroy();
+   
+    let is_logged_in:bool = session.get("logged_in").unwrap_or(false);
+
+    let _destroy_result=session_data.session_store.destroy_session(session)
+        .await;
 
     let template = UserHomeTemplate { 
         username: "".to_string(),
         session_expire_timestamp,
         logged_in: false,
-        logout_reason: "You logout yourself".to_string()
+        logout_reason: if is_logged_in {
+            "You logout yourself".to_string()
+        }  else{
+            "Not loged in".to_string()
+        }
     };
     HtmlTemplate(template)
 }
