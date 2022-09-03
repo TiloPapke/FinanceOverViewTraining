@@ -75,26 +75,7 @@ where
 
         // return the new created session cookie for client
         if session_cookie.is_none() {
-            let user_id = UserId::new();
-            let mut session = Session::new();
-            session.insert("user_id", user_id).unwrap();
-            //session.expire_in(std::time::Duration::from_secs(60*5));
-            session.expire_in(std::time::Duration::from_secs(60*1));
-            let cookie = store.store_session(session).await.unwrap().unwrap();
-            let cookie_copy = cookie.to_owned();
-            let reload_result = store.load_session(cookie_copy)
-                                                                    .await;
-            let reloaded_session=reload_result.unwrap();
-
-            return Ok(Self::CreatedSessionData(FreshSessionData {
-                user_id,
-                session_option: reloaded_session,
-                session_store: store,
-                cookie: HeaderValue::from_str(
-                    format!("{}={}", AXUM_SESSION_COOKIE_NAME, cookie).as_str(),
-                )
-                .unwrap(),
-            }));
+            return Ok(Self::CreatedSessionData(create_new_session(store).await));
         }
 
     
@@ -117,7 +98,15 @@ where
             );
 
             remove_axum_session_cookie(&mut headers);
-            return Err(( StatusCode::BAD_REQUEST, headers, "No session found for cookie"));
+
+            let request_uri_path=req.uri().path();
+            if request_uri_path.eq_ignore_ascii_case("/")
+            {
+                return Ok(Self::CreatedSessionData(create_new_session(store).await));
+            }
+            else{
+                return Err(( StatusCode::BAD_REQUEST, headers, "No session found for cookie"));
+            }
         }
         
         // continue to decode the session cookie
@@ -158,6 +147,31 @@ impl UserId {
     fn new() -> Self {
         Self(Uuid::new_v4())
     }
+
+}
+
+async fn create_new_session(store:MongodbSessionStore) -> FreshSessionData{
+    let user_id = UserId::new();
+    let mut session = Session::new();
+    session.insert("user_id", user_id).unwrap();
+    //session.expire_in(std::time::Duration::from_secs(60*5));
+    session.expire_in(std::time::Duration::from_secs(60*1));
+    let cookie = store.store_session(session).await.unwrap().unwrap();
+    let cookie_copy = cookie.to_owned();
+    let reload_result = store.load_session(cookie_copy)
+                                                            .await;
+    let reloaded_session=reload_result.unwrap();
+
+    return FreshSessionData {
+        user_id,
+        session_option: reloaded_session,
+        session_store: store,
+        cookie: HeaderValue::from_str(
+            format!("{}={}", AXUM_SESSION_COOKIE_NAME, cookie).as_str(),
+        )
+        .unwrap(),
+    };
+
 
 }
 

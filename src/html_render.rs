@@ -157,7 +157,9 @@ pub async fn do_logout_handler(session_data: SessionDataResult)  -> impl IntoRes
             "Not loged in".to_string()
         }
     };
-    HtmlTemplate(template)
+    HtmlTemplate(template);
+    Redirect::to("/").into_response()
+    
 }
 
 #[derive(Template)]
