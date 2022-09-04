@@ -105,6 +105,7 @@ where
                 return Ok(Self::CreatedSessionData(create_new_session(store).await));
             }
             else{
+                headers.insert(http::header::REFRESH, HeaderValue::from_str("5; url = /").unwrap());
                 return Err(( StatusCode::BAD_REQUEST, headers, "No session found for cookie"));
             }
         }
@@ -118,6 +119,7 @@ where
                 );
                 user_id
             } else {
+                headers.insert(http::header::REFRESH, HeaderValue::from_str("5; url = /").unwrap());
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     headers,
