@@ -256,6 +256,41 @@ impl DbHandlerMongoDB{
     return Ok(new_user_uuid);
     }
 
+    pub async fn update_user_password(conncetion_settings: &DbConnectionSetting, some_credentials: &UserCredentialsHashed) -> Result<bool,String>
+    {
+    // Get a handle to the deployment.
+    let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+    if client_create_result.is_err()
+    {
+        let client_err = &client_create_result.unwrap_err();
+        warn!(target:"app::FinanceOverView","{}",client_err);
+        return Err(client_err.to_string());
+    }
+    let client = client_create_result.unwrap();
+    
+    let db_instance = client.database(&conncetion_settings.instance);
+    let user_collcetion:Collection<Document> = db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+
+    let filter_doc = doc! {
+                                    "user_name":&some_credentials.username};
+    let inner_update_doc = doc! {
+                                    "password_hash": &some_credentials.password_hash.expose_secret()};
+    //otherwise we get "update document must have first key starting with '$"
+    let update_doc = doc! {"$set": inner_update_doc};
+
+    let update_result = user_collcetion.update_one(filter_doc,update_doc, None).await;
+    if update_result.is_err(){
+        let update_err = &update_result.unwrap_err();
+        warn!(target:"app::FinanceOverView","{}",update_err);
+        return Err(update_err.to_string()); 
+    }
+    let unwrapped_result = update_result.unwrap();
+
+    debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
+
+    return Ok(true);
+    }
+
     pub async fn get_stored_credentials_by_name(conncetion_settings: &DbConnectionSetting, user_name:&String) -> Result<StoredCredentials,String>
     {
      // Get a handle to the deployment.

@@ -169,6 +169,7 @@ async fn https_server() {
                                    .route("/do_create", post(html_render::create_login_handler))
                                    .route("/user_home", get(html_render::user_home_handler))
                                    .route("/do_logout", post(html_render::do_logout_handler))
+                                   .route("/do_changePasswort", post(html_render::do_change_passwort))
                                    .layer(Extension(server_session_store));
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,

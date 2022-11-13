@@ -98,6 +98,17 @@ Ok(())
 
 }
 
+pub fn compare_password(
+    password_1: &Secret<String>,
+    password_2: &Secret<String>
+) -> Result<(),Error>{
+    if password_1.expose_secret() != password_2.expose_secret() {
+        return Err(anyhow::anyhow!("new passwords do not math"));
+    }    
+
+Ok(())
+}
+
 pub async fn create_credentials(
     credentials: &UserCredentials,
 
@@ -165,4 +176,33 @@ async fn insert_user(some_credentials:&UserCredentials) -> Result<uuid::Uuid,Err
     if insert_result.is_err(){return Err(anyhow::anyhow!(insert_result.unwrap_err()));}
 
     Ok(insert_result.unwrap())
+}
+
+pub async fn update_user_password(some_credentials:&UserCredentials) -> Result<bool,Error>
+{    
+    let local_setting:SettingStruct = SettingStruct::global().clone();
+    let db_connection=DbConnectionSetting{
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password) ,
+        instance: String::from(&local_setting.backend_database_instance)
+    };
+
+    let salt = SaltString::generate(&mut rand::thread_rng());
+    let user_password_hashed = Argon2::default()
+            .hash_password(some_credentials.password.expose_secret().as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
+    let some_credentials_hashed = UserCredentialsHashed
+    {
+        username: some_credentials.username.clone(),
+        password_hash:Secret::new(user_password_hashed)
+    };
+
+    let update_result = DbHandlerMongoDB::update_user_password(&db_connection, &some_credentials_hashed).await;
+
+    if update_result.is_err(){return Err(anyhow::anyhow!(update_result.unwrap_err()));}
+
+    Ok(update_result.unwrap())
 }

@@ -2,7 +2,36 @@
 <h2>this is your home {{username}}</h2>
 <br/>
 Your session expires at {{session_expire_timestamp}}
+{% if information_show %}
+<br>
+{{information_text}}
+{% endif %}
 <form action="/do_logout" method="post">
+    <label>new password
+        <input 
+            type="password" 
+            placeholder=""
+            name="password_new_1"
+        >
+    </label>
+    <br>
+    <label>confirm password
+        <input 
+            type="password" 
+            placeholder=""
+            name="password_new_2"
+        >
+    </label>
+    <br>
+    <label>current password
+        <input 
+            type="password" 
+            placeholder=""
+            name="password_old"
+        >
+    </label>   
+    <button type="submit" formaction="/do_changePasswort">change password</button>
+    <br>
     <button type="submit">Logout</button>
 </form>
 {% else %}
