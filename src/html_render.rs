@@ -35,9 +35,9 @@ pub struct LoginFormInput {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct ChangePasswortFormInput {
-    password_new_1: Secret<String>,
-    password_new_2: Secret<String>,
-    password_old: Secret<String>,
+    pub password_new_1: Secret<String>,
+    pub password_new_2: Secret<String>,
+    pub password_old: Secret<String>,
 }
 
 #[derive(Template)]

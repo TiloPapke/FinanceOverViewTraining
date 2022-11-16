@@ -1,3 +1,4 @@
+mod ajax_handle;
 mod database_handler_mongodb;
 mod setting_struct;
 mod mdb_convert_tools;
@@ -170,7 +171,10 @@ async fn https_server() {
                                    .route("/user_home", get(html_render::user_home_handler))
                                    .route("/do_logout", post(html_render::do_logout_handler))
                                    .route("/do_changePasswort", post(html_render::do_change_passwort))
+                                   .route("/do_changePasswort_ajax", post(ajax_handle::do_change_passwort_ajax))
+                                   .nest("/js_code", get(ajax_handle::get_js_files))
                                    .layer(Extension(server_session_store));
+                                   
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,

@@ -1,39 +1,62 @@
-{% if logged_in %}
-<h2>this is your home {{username}}</h2>
-<br/>
-Your session expires at {{session_expire_timestamp}}
-{% if information_show %}
-<br>
-{{information_text}}
-{% endif %}
-<form action="/do_logout" method="post">
-    <label>new password
-        <input 
-            type="password" 
-            placeholder=""
-            name="password_new_1"
-        >
-    </label>
+<head>
+    <script src="/js_code/jquery-3.6.1.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $.fn.changePasswordRequest = function (e) {
+                // using this page stop being refreshing 
+                // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
+                e.preventDefault();
+                var formData = {
+                    password_new_1: $("#password_new_1").val(),
+                    password_new_2: $("#password_new_2").val(),
+                    password_old: $("#password_old").val(),
+                };
+
+                $.post("do_changePasswort_ajax", formData, function (data, status) {
+                    alert("Data: " + JSON.stringify(data, null, 4) + "\nStatus: " + status);
+                });
+            }
+            $("#changePasswordButton").click(function (e) {
+                $.fn.changePasswordRequest(e);
+            });
+        });
+    </script>
+</head>
+
+<body>
+    {% if logged_in %}
+    <h2>this is your home {{username}}</h2>
+    <br />
+    <div id="expire_information">
+        Your session expires at {{session_expire_timestamp}}
+    </div>
+    {% if information_show %}
     <br>
-    <label>confirm password
-        <input 
-            type="password" 
-            placeholder=""
-            name="password_new_2"
-        >
-    </label>
+    {{information_text}}
+    {% endif %}
+    <div class="js_response" style="display: none;">
+        nothing to report
+    </div>
+    <form id="ChangePsswordForm">
+        <label>new password
+            <input type="password" placeholder="" name="password_new_1" id="password_new_1">
+        </label>
+        <br>
+        <label>confirm password
+            <input type="password" placeholder="" name="password_new_2" id="password_new_2">
+        </label>
+        <br>
+        <label>current password
+            <input type="password" placeholder="" name="password_old" id="password_old">
+        </label>
+        <button id="changePasswordButton">change password</button>
+    </form>
     <br>
-    <label>current password
-        <input 
-            type="password" 
-            placeholder=""
-            name="password_old"
-        >
-    </label>   
-    <button type="submit" formaction="/do_changePasswort">change password</button>
-    <br>
-    <button type="submit">Logout</button>
-</form>
-{% else %}
-You were logged out because of {{logout_reason}}
-{% endif %}
+    <form action="/do_logout" method="post">
+        <button type="submit">Logout</button>
+    </form>
+    {% else %}
+    You were logged out because of {{logout_reason}}
+    {% endif %}
+
+</body>
