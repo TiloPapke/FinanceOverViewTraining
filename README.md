@@ -22,8 +22,8 @@ open mile stones:
 hint: new miles stones might be added
 
 goal points for version 0.0.3:
-- [ ] session controls
-- [ ] minimal user settings page
+- [x] session controls
+- [in progress] minimal user settings page
 - [ ] provide registration via email, choosing own user name
 - [ ] provide password reset via email
 hint for later development: a user should only see his own data.
