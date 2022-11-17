@@ -19,10 +19,10 @@ use axum::{
     Json,
 };
 use log::debug;
+use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    html_render::ChangePasswortFormInput,
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionData, SessionDataResult},
 };
@@ -79,6 +79,14 @@ pub async fn get_js_files(js_uri: Uri) -> impl IntoResponse {
     }
 }
 
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct ChangePasswortFormInput {
+    pub password_new_1: Secret<String>,
+    pub password_new_2: Secret<String>,
+    pub password_old: Secret<String>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChangePasswordRequestResult {
     result: String,
@@ -91,7 +99,7 @@ impl IntoResponse for ChangePasswordRequestResult {
     }
 }
 
-pub async fn do_change_passwort_ajax(
+pub async fn do_change_passwort(
     session_data: SessionDataResult,
     Form(input): Form<ChangePasswortFormInput>,
 ) -> impl IntoResponse {

@@ -170,8 +170,7 @@ async fn https_server() {
                                    .route("/do_create", post(html_render::create_login_handler))
                                    .route("/user_home", get(html_render::user_home_handler))
                                    .route("/do_logout", post(html_render::do_logout_handler))
-                                   .route("/do_changePasswort", post(html_render::do_change_passwort))
-                                   .route("/do_changePasswort_ajax", post(ajax_handle::do_change_passwort_ajax))
+                                   .route("/do_changePasswort", post(ajax_handle::do_change_passwort))
                                    .nest("/js_code", get(ajax_handle::get_js_files))
                                    .layer(Extension(server_session_store));
                                    

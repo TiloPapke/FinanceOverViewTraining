@@ -12,7 +12,7 @@
                     password_old: $("#password_old").val(),
                 };
 
-                $.post("do_changePasswort_ajax", formData, function (data, status) {
+                $.post("do_changePasswort", formData, function (data, status) {
                     $("#expire_information").text("Your session expires at "+data.new_expire_timestamp);
                     $("#js_response").text(data.result);
                     $("#js_response").prop('style').display="inline";
