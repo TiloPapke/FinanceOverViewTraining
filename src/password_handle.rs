@@ -103,7 +103,7 @@ pub fn compare_password(
     password_2: &Secret<String>
 ) -> Result<(),Error>{
     if password_1.expose_secret() != password_2.expose_secret() {
-        return Err(anyhow::anyhow!("new passwords do not math"));
+        return Err(anyhow::anyhow!("new passwords do not match"));
     }    
 
 Ok(())

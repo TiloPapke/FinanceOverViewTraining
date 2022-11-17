@@ -13,7 +13,12 @@
                 };
 
                 $.post("do_changePasswort_ajax", formData, function (data, status) {
-                    alert("Data: " + JSON.stringify(data, null, 4) + "\nStatus: " + status);
+                    $("#expire_information").text("Your session expires at "+data.new_expire_timestamp);
+                    $("#js_response").text(data.result);
+                    $("#js_response").prop('style').display="inline";
+                    $("#password_new_1").val('');
+                    $("#password_new_2").val('');
+                    $("#password_old").val('');
                 });
             }
             $("#changePasswordButton").click(function (e) {
@@ -34,7 +39,7 @@
     <br>
     {{information_text}}
     {% endif %}
-    <div class="js_response" style="display: none;">
+    <div id="js_response" style="display: none;">
         nothing to report
     </div>
     <form id="ChangePsswordForm">

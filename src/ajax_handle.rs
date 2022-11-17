@@ -168,22 +168,19 @@ pub async fn do_change_passwort_ajax(
                 Ok(user_id) => {
                     debug!(target: "app::FinanceOverView","trying to change password for user {}", user_id);
 
-                    /*
                     let credentials_new = UserCredentials {
                         username: username.clone(),
                         password: password_new_1.clone(),
                     };
 
-
                     let update_result = password_handle::update_user_password(&credentials_new).await;
 
                     if update_result.is_err() {
-                        change_result = update_result.unwrap_err().to_string();
+                        change_result = format!("error updating password: {}",update_result.unwrap_err().to_string());
                     } else {
-                        change_result = "change successfull".to_string();
+                        change_result = "password change successfull".to_string();
                     }
-                    */
-                    change_result = "did not changed password".to_string();
+                    
                 }
                 Err(_) => {
                     debug!(target: "app::FinanceOverView","no old password not valid");
