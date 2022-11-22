@@ -4,3 +4,6 @@ Couchbase_Raw/
 OtherFiles/
 config/ServerSettings.ini
 log/
+config/TestSettings.ini
+Cargo.lock
+.vscode/launch.json
