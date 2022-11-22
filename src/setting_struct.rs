@@ -17,10 +17,23 @@ pub struct SettingStruct {
     pub backend_database_user:String,
     pub backend_database_password:String,
     pub backend_database_instance:String,
-    pub log_config_path:String
+    pub log_config_path:String,
+    pub backend_mail_smtp_host:String,
+    pub backend_mail_smtp_user:String,
+    pub backend_mail_smtp_password:String,
+    pub backend_mail_smtp_mail_address:String
+}
+
+#[derive(Clone)]
+pub struct TestSettingStruct {
+    pub outgoing_mail_receiver:String,
+    pub outgoing_mail_title:String,
+    pub outgoing_mail_simple_body:String
 }
 
 pub static GLOBAL_SETTING: OnceCell<SettingStruct> = OnceCell::new();
+
+pub static GLOBAL_TEST_SETTING: OnceCell<TestSettingStruct> = OnceCell::new();
 
 impl SettingStruct{
     pub fn global() -> &'static SettingStruct {
@@ -50,6 +63,11 @@ impl SettingStruct{
             .set("DB_Instance", "StructureName");
         conf.with_section(Some("Logging"))
             .set("config_path", "config/default_log_settings.yaml");
+        conf.with_section(Some("BackendMail"))
+            .set("Mail_SMTP_Host", "smtp.server.org")
+            .set("Mail_SMTP_User", "username")
+            .set("Mail_SMTP_Password", "secret")
+            .set("Mail_SMTP_MailAddress", "username@server.org");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -69,6 +87,10 @@ impl SettingStruct{
         let _db_password:String = conf.get_from_or(Some("BackendDatabase"),"DB_Password","").to_string();
         let _db_instance:String = conf.get_from_or(Some("BackendDatabase"),"DB_Instance","").to_string();
         let _log_config_path:String= conf.get_from_or(Some("Logging"),"file_config_path","config/default_log_settings.yaml").to_string();
+        let _backend_mail_smtp_host:String = conf.get_from_or(Some("BackendMail"),"Mail_SMTP_Host","").to_string();
+        let _backend_mail_smtp_user:String = conf.get_from_or(Some("BackendMail"),"Mail_SMTP_User","").to_string();
+        let _backend_mail_smtp_password:String = conf.get_from_or(Some("BackendMail"),"Mail_SMTP_Password","").to_string();
+        let _backend_mail_smtp_mail_address:String = conf.get_from_or(Some("BackendMail"),"Mail_SMTP_MailAddress","").to_string();
 
         return SettingStruct { 
             web_server_ip_part1: _web_server_ip_part1,
@@ -83,7 +105,45 @@ impl SettingStruct{
             backend_database_user:_db_user,
             backend_database_password:_db_password,
             backend_database_instance:_db_instance,
-            log_config_path:_log_config_path
+            log_config_path:_log_config_path,
+            backend_mail_smtp_host:_backend_mail_smtp_host,
+            backend_mail_smtp_user:_backend_mail_smtp_user,
+            backend_mail_smtp_password:_backend_mail_smtp_password,
+            backend_mail_smtp_mail_address:_backend_mail_smtp_mail_address
+        };
+    }
+}
+
+impl TestSettingStruct{
+    pub fn global() -> &'static TestSettingStruct {
+        GLOBAL_TEST_SETTING.get().expect("GLOBAL_TEST_SETTING is not initialized")
+    }
+
+    pub fn create_dummy_setting(settingpath:&PathBuf)
+    {
+        let mut conf:Ini = Ini::new();
+        conf.with_section(Some("[WARNING]"))
+            .set("GITWARNING", "This is a default config file, when entering own value be sure to add this file to ignore")
+            .set("GITWARNING2", "Only push to repository if this file does not contain any private information")
+            .set("Renaming", "Use this file as tempalte to create your own ServerSettings.ini file");
+        conf.with_section(Some("OutgoingMail"))
+            .set("OutgoingMail_Receiver", "someUser@Server.org")
+            .set("OutgoingMail_Title", "Testmessage")
+            .set("OutgoingMail_SimpleBody", "This is just some placeholder text \r please your own");
+        conf.write_to_file(&settingpath).unwrap();
+    }
+
+    pub fn load_from_file(settingpath:&PathBuf) -> Self
+    {
+        let conf:Ini = Ini::load_from_file(&settingpath).unwrap();
+        let _outgoing_mail_receiver:String = conf.get_from_or(Some("OutgoingMail"),"OutgoingMail_Receiver","").parse().unwrap();
+        let _outgoing_mail_title:String = conf.get_from_or(Some("OutgoingMail"),"OutgoingMail_Title","").parse().unwrap();
+        let _outgoing_mail_simple_body:String = conf.get_from_or(Some("OutgoingMail"),"OutgoingMail_SimpleBody","").parse().unwrap();
+
+        return TestSettingStruct { 
+            outgoing_mail_receiver:_outgoing_mail_receiver,
+            outgoing_mail_title:_outgoing_mail_title,
+            outgoing_mail_simple_body:_outgoing_mail_simple_body
         };
     }
 }

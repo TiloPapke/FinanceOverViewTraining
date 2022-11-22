@@ -1,6 +1,6 @@
 mod ajax_handle;
 mod database_handler_mongodb;
-mod setting_struct;
+pub mod setting_struct;
 mod mdb_convert_tools;
 mod html_render;
 mod password_handle;

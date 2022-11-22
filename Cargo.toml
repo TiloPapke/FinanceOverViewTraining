@@ -18,6 +18,7 @@ futures = "0.3"
 #http-auth-basic = "0.3.3"
 log = "0.4.16"
 log4rs = "1.1.0"
+mail-send = "0.2.3"
 once_cell = { version = "1.10.0"}
 rand = "0.8.5"
 rust-ini = {version = "0.18.0"}
