@@ -24,7 +24,7 @@ pub struct SessionData {
 impl SessionData {
     pub(crate)  fn from_session_data_result(result_obj:SessionDataResult)->SessionData{
         let session_data = match result_obj {
-            SessionDataResult::FoundSessionData(result_obj) => ( result_obj),
+            SessionDataResult::FoundSessionData(result_obj) =>  result_obj,
             SessionDataResult::CreatedSessionData(result_obj) =>
                 return SessionData { user_id: result_obj.user_id,
                               session_option: result_obj.session_option,
