@@ -272,3 +272,14 @@ pub async fn create_login_handler(form: Form<LoginFormInput>) -> impl IntoRespon
 
     HtmlTemplate(clt_template)
 }
+
+#[derive(Template)]
+#[template(path = "RegisterUser.html")]
+pub struct RegisterUserTemplate {
+    //just a dummy template, currently no addtional data is shown
+}
+
+pub async fn register_user_handler() -> impl IntoResponse {
+    let st = RegisterUserTemplate {};
+    HtmlTemplate(st)
+}

@@ -1,0 +1,54 @@
+<head>
+    <script src="/js_code/jquery-3.6.1.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $.fn.registerViaEmail = function (e) {
+                // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
+                e.preventDefault();
+                var formData = {
+                    username: $("#username").val(),
+                    password: $("#password").val(),
+                    email: $("#email").val(),
+                };
+
+                $.post("do_register_via_email", formData, function (data, status) {
+                    $("#register_response").text(data.result);
+                    $("#register_response").prop('style').display = "inline";
+                    $("#username").val('');
+                    $("#password").val('');
+                    $("#email").val('');
+                });
+            }
+            $("#RegisterViaEmailBtn").click(function (e) {
+                $.fn.registerViaEmail(e);
+            });
+        });
+    </script>
+</head>
+
+<body>
+
+    <h1>Register a new user</h1>
+
+
+    <h3> please chose your password wisely</h3>
+    <form id="RegisterUserForm">
+        <label>Username
+            <input type="text" placeholder="Enter Username" name="username" id="username">
+        </label>
+
+        <label>Password
+            <input type="password" placeholder="Enter Password" name="password" id="password">
+        </label>
+
+        <label>Email
+            <input type="text" placeholder="Enter email" name="email" id="email">
+        </label>
+
+        <button id="RegisterViaEmailBtn">change password</button>
+    </form>
+    <div id="register_response" style="display: none;">
+        nothing to report
+    </div>
+
+</body>
