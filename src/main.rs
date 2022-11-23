@@ -1,11 +1,18 @@
 mod ajax_handle;
 mod convert_tools;
 mod database_handler_mongodb;
+mod frontend_functions;
 mod html_render;
+mod mail_handle;
 mod mdb_convert_tools;
 mod password_handle;
 mod session_data_handle;
 pub mod setting_struct;
+
+mod tests {
+    mod testing_email_smtp;
+    mod testing_email_validation;
+}
 
 use async_mongodb_session::MongodbSessionStore;
 use axum::extract::Extension;
@@ -187,7 +194,10 @@ async fn https_server() {
         .route("/do_logout", post(html_render::do_logout_handler))
         .route("/do_changePasswort", post(ajax_handle::do_change_passwort))
         .route("/registerUser", get(html_render::register_user_handler))
-        .route("/do_register_via_email",post(ajax_handle::do_register_user_via_email))
+        .route(
+            "/do_register_via_email",
+            post(ajax_handle::do_register_user_via_email),
+        )
         .nest("/js_code", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 

@@ -21,6 +21,7 @@ log4rs = "1.1.0"
 mail-send = "0.2.3"
 once_cell = { version = "1.10.0"}
 rand = "0.8.5"
+regex-automata = "0.1"
 rust-ini = {version = "0.18.0"}
 secrecy = {version = "0.8.0", features = ["serde", "alloc"] }
 serde ="1"

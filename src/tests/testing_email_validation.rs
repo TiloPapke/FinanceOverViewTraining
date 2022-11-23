@@ -1,20 +1,12 @@
-#[path = "../src/setting_struct.rs"]
-mod setting_struct;
-
-#[path = "../src/mail_handle.rs"]
-mod mail_handle;
-
 #[cfg(test)]
-mod tests {
-
+mod test_email_validation {
     use std::path::{Path, PathBuf};
 
     use crate::{
-        mail_handle::{self, SimpleMailData, SmtpMailSetting},
+        mail_handle,
         setting_struct::{self, SettingStruct, TestSettingStruct},
     };
 
-    //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
     static TEST_INIT: std::sync::Once = std::sync::Once::new();
 
     fn init() {
@@ -61,33 +53,54 @@ mod tests {
                 .ok();
         });
     }
-    #[tokio::test]
-    async fn test_mail_sending() {
+
+    #[test]
+    fn test_mail_validation() {
         init();
-        let local_setting: SettingStruct = SettingStruct::global().clone();
-        let test_setting = TestSettingStruct::global().clone();
 
-        let mail_content = SimpleMailData {
-            receiver: test_setting.outgoing_mail_receiver,
-            sender: local_setting.backend_mail_smtp_mail_address,
-            subject: test_setting.outgoing_mail_title,
-            body: test_setting.outgoing_mail_simple_body,
-        };
-
-        let mail_config = SmtpMailSetting {
-            host: local_setting.backend_mail_smtp_host,
-            client_name: local_setting.backend_mail_smtp_user,
-            client_password: local_setting.backend_mail_smtp_password,
-        };
-
-        let result_async = mail_handle::send_smtp_mail(mail_content, mail_config);
-        //let result =futures::executor::block_on(result_async);
-        let result = result_async.await;
-
+        let testmail = "someUser@website.org";
+        let mut result = mail_handle::validate_email(&testmail.to_string());
+        if result.is_err() {
+            panic!(
+                "Panic validation email {}: {}",
+                &testmail,
+                result.unwrap_err()
+            );
+        }
         assert!(
-            result.is_ok(),
-            "Error sending mail: {}",
-            result.unwrap_err()
+            result.unwrap(),
+            "Error validation e-mail address: {}",
+            &testmail
+        );
+
+        let invalidmail = "nopemail@";
+        result = mail_handle::validate_email(&invalidmail.to_string());
+        if result.is_err() {
+            panic!(
+                "Panic validation invalid email {}: {}",
+                &invalidmail,
+                result.unwrap_err()
+            );
+        }
+        assert!(
+            !result.unwrap(),
+            "Error invalid email marked as valid: {}",
+            &invalidmail
+        );
+
+        let emptymail = "";
+        result = mail_handle::validate_email(&emptymail.to_string());
+        if result.is_err() {
+            panic!(
+                "Panic validation empty email {}: {}",
+                &emptymail,
+                result.unwrap_err()
+            );
+        }
+        assert!(
+            !result.unwrap(),
+            "Error empty email marked as valid{}",
+            &emptymail
         );
     }
 }
