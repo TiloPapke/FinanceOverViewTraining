@@ -30,6 +30,7 @@ hint for later development: a user should only see his own data.
 
 goal points for version 0.0.4
 - [ ] unit tests
+- [ ] hashed session id to ensure a users identity for futres calls so that a user can only change own data
 - [ ] simple finance account management
 - [ ] journaling of income and expanses
 
