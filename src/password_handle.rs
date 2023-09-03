@@ -71,7 +71,7 @@ async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials, Err
     Ok(some_credential)
 }
 
-fn verify_password_hash(
+pub(crate) fn verify_password_hash(
     expected_password_hash: &Secret<String>,
     password_candidate: &Secret<String>,
 ) -> Result<(), Error> {

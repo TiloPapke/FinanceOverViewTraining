@@ -308,7 +308,18 @@ pub async fn do_register_user_via_email(
                 .format("%Y-%m-%d %H:%M:%S"))
         );
 
-        register_result = "nothing done".to_string();
+        let register_result_2 = crate::frontend_functions::register_user_with_email_verfication(
+            _new_user_name,
+            _new_password,
+            _new_email,
+        )
+        .await;
+
+        if register_result_2.is_err() {
+            register_result = register_result_2.unwrap_err().to_string()
+        } else {
+            register_result = register_result_2.unwrap()
+        };
 
         let return_value = SimpleAjaxRequestResult {
             result: register_result,

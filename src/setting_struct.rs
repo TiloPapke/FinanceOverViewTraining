@@ -25,6 +25,7 @@ pub struct SettingStruct {
     pub frontend_register_user_mail_validation_regex_path: String,
     pub frontend_register_user_mail_info_subject: String,
     pub frontend_register_user_mail_info_body_path: String,
+    pub frontend_register_user_mail_server_address: String,
 }
 
 #[derive(Clone)]
@@ -84,7 +85,8 @@ impl SettingStruct {
             .set(
                 "RegisterUser_Mail_Info_Body_Path",
                 "config/default_RegisterMailBody.html",
-            );
+            )
+            .set("RegisterUser_Mail_Server_Address", "https:127.0.0.1:3300");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -172,6 +174,13 @@ impl SettingStruct {
                 "",
             )
             .to_string();
+        let _frontend_register_user_mail_server_address: String = conf
+            .get_from_or(
+                Some("Frontend_RegisterUser"),
+                "RegisterUser_Mail_Server_Address",
+                "",
+            )
+            .to_string();
 
         return SettingStruct {
             web_server_ip_part1: _web_server_ip_part1,
@@ -195,6 +204,7 @@ impl SettingStruct {
                 _frontend_register_user_mail_validation_regex_path,
             frontend_register_user_mail_info_subject: _frontend_register_user_mail_info_subject,
             frontend_register_user_mail_info_body_path: _frontend_register_user_mail_info_body_path,
+            frontend_register_user_mail_server_address: _frontend_register_user_mail_server_address,
         };
     }
 }

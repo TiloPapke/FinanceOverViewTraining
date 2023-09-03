@@ -2,20 +2,20 @@ use mail_send::{mail_builder::MessageBuilder, Transport};
 
 use crate::setting_struct::SettingStruct;
 
-pub struct SimpleMailData {
+pub(crate) struct SimpleMailData {
     pub receiver: String,
     pub sender: String,
     pub subject: String,
     pub body: String,
 }
 
-pub struct SmtpMailSetting {
+pub(crate) struct SmtpMailSetting {
     pub host: String,
     pub client_name: String,
     pub client_password: String,
 }
 
-pub async fn send_smtp_mail(
+pub(crate) async fn send_smtp_mail(
     mail_content: SimpleMailData,
     mail_server_setting: SmtpMailSetting,
 ) -> Result<(), String> {
@@ -49,7 +49,7 @@ pub async fn send_smtp_mail(
     }
 }
 
-pub fn validate_email(email_address_to_check: &String) -> Result<bool, String> {
+pub(crate) fn validate_email(email_address_to_check: &String) -> Result<bool, String> {
     let local_setting = SettingStruct::global();
 
     let regexfile = &local_setting.frontend_register_user_mail_validation_regex_path;
