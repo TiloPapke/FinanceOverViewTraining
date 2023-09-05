@@ -1,4 +1,5 @@
-use mail_send::{mail_builder::MessageBuilder, Transport};
+use mail_send::mail_builder::MessageBuilder;
+use regex_automata::meta::Regex;
 
 use crate::setting_struct::SettingStruct;
 
@@ -28,18 +29,16 @@ pub(crate) async fn send_smtp_mail(
 
     // Connect to an SMTP relay server over TLS and
     // authenticate using the provided credentials.
-    let transport_create = Transport::new(mail_server_setting.host)
-        .credentials(
-            mail_server_setting.client_name,
-            mail_server_setting.client_password,
-        )
-        .connect_tls()
+    let smpt_connect_result = mail_send::SmtpClientBuilder::new(mail_server_setting.host, 587)
+        .implicit_tls(false)
+        .credentials((mail_server_setting.client_name,mail_server_setting.client_password))
+        .connect()
         .await;
 
-    if transport_create.is_err() {
+    if smpt_connect_result.is_err() {
         Err("Could not connect to mail server".to_string())
     } else {
-        let send_result = transport_create.unwrap().send(message).await;
+        let send_result = smpt_connect_result.unwrap().send(message).await;
 
         if send_result.is_ok() {
             Ok(())
@@ -69,7 +68,7 @@ pub(crate) fn validate_email(email_address_to_check: &String) -> Result<bool, St
                 read_result.unwrap_err()
             ))
         } else {
-            let regex_obj_build = regex_automata::Regex::new(&regex_contents);
+            let regex_obj_build = Regex::new(&regex_contents);
             if regex_obj_build.is_err() {
                 Err(format!(
                     "Error parsing regex rule for email validation: {}",
