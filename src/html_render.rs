@@ -68,7 +68,7 @@ where
 
 pub async fn accept_login_form(
     session_data: SessionDataResult,
-    Form(input): Form<LoginFormInput>,
+    input: Form<LoginFormInput>,
 ) -> impl IntoResponse {
     let credentials = UserCredentials {
         username: input.username.clone(),

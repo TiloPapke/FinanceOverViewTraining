@@ -13,14 +13,13 @@ mod tests {
     mod testing_email_smtp;
     mod testing_email_validation;
 }
-
+//https://tokio.rs/blog/2022-11-25-announcing-axum-0-6-0
 use async_mongodb_session::MongodbSessionStore;
-use axum::extract::Extension;
 use axum::http::uri::Uri;
 use axum::http::{self, HeaderMap};
 use axum::response::{IntoResponse, Redirect};
 use axum::routing::{get, post};
-use axum::Router;
+use axum::{Extension, Router};
 use axum_server;
 use axum_server::tls_rustls::RustlsConfig;
 use database_handler_mongodb::DbConnectionSetting;
@@ -198,9 +197,12 @@ async fn https_server() {
             "/do_register_via_email",
             post(ajax_handle::do_register_user_via_email),
         )
-        .nest("/js_code", get(ajax_handle::get_js_files))
+        .nest(
+            "/js_code",
+            Router::new().route("/", get(ajax_handle::get_js_files)),
+        )
         .layer(Extension(server_session_store));
-
+    
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,

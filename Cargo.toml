@@ -13,9 +13,7 @@ askama = "0.12.0"
 async-mongodb-session = "3.0.0"
 async-session = "3.0.0"
 
-axum = { version = "0.5.17", features = ["headers"]}
-#problem with traits from version 0.6.20 on
-#axum = { version = "0.6.20", features = ["headers"]}
+axum = { version = "0.6.20", features = ["headers"]}
 
 axum-server = {version ="0.5.1", features=["tls-rustls"]}
 
