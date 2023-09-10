@@ -17,6 +17,14 @@
                     $("#username").val('');
                     $("#password").val('');
                     $("#email").val('');
+                })
+                .done (function(data){
+                    $("#register_response").prop('style').display="inline";
+                    $("#register_response").text(data.result);
+                })
+                .fail (function(data){
+                    $("#register_response").prop('style').display="inline";
+                    $("#register_response").text("Fehler: "+data.responsetext);
                 });
             }
             $("#RegisterViaEmailBtn").click(function (e) {
@@ -45,7 +53,7 @@
             <input type="text" placeholder="Enter email" name="email" id="email">
         </label>
 
-        <button id="RegisterViaEmailBtn">change password</button>
+        <button id="RegisterViaEmailBtn">register via email</button>
     </form>
     <div id="register_response" style="display: none;">
         nothing to report

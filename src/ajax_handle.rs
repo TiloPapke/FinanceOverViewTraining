@@ -64,9 +64,7 @@ pub async fn get_js_files(js_uri: Uri) -> impl IntoResponse {
             .unwrap();
     }
 
-    let total_js_path = Path::new(&project_root_result.unwrap())
-        .join("js_code")
-        .join(js_path);
+    let total_js_path = Path::new(&project_root_result.unwrap()).join(js_path);
     if total_js_path.is_file() {
         let file_content = fs::read_to_string(total_js_path).unwrap_or_default();
         return Response::builder()
@@ -318,7 +316,7 @@ pub async fn do_register_user_via_email(
         if register_result_2.is_err() {
             register_result = register_result_2.unwrap_err().to_string()
         } else {
-            register_result = register_result_2.unwrap()
+            register_result = "OK, please check your E-Mail".to_string();
         };
 
         let return_value = SimpleAjaxRequestResult {

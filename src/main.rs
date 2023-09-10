@@ -197,12 +197,9 @@ async fn https_server() {
             "/do_register_via_email",
             post(ajax_handle::do_register_user_via_email),
         )
-        .nest(
-            "/js_code",
-            Router::new().route("/", get(ajax_handle::get_js_files)),
-        )
+        .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
-    
+
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,

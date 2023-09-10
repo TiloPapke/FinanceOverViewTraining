@@ -5,7 +5,6 @@ use secrecy::Secret;
 use crate::{
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     mail_handle::{self, validate_email, SimpleMailData, SmtpMailSetting},
-    password_handle::check_user_exsits,
     setting_struct::SettingStruct,
 };
 
@@ -26,11 +25,6 @@ pub async fn register_user_with_email_verfication(
         return Err(anyhow::anyhow!("email {} is not valid", user_email));
     }
 
-    let check_result = check_user_exsits(user_name).await;
-    if check_result.is_err() {
-        return Err(check_result.unwrap_err());
-    }
-
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
         url: String::from(&local_setting.backend_database_url),
@@ -44,6 +38,7 @@ pub async fn register_user_with_email_verfication(
         password: user_password.clone(),
     };
 
+    //create_credentials checks if user is already there
     let create_result = crate::password_handle::create_credentials(&new_user_credentials).await;
     if create_result.is_err() {
         return Err(anyhow::anyhow!(
@@ -83,8 +78,7 @@ async fn send_email_verification_mail(
 
     let reg_subject = local_setting.frontend_register_user_mail_info_subject;
     let working_dir = std::env::current_dir().unwrap();
-    let config_dir: std::path::PathBuf = std::path::Path::new(&working_dir).join("config");
-    let reg_body_template_file = std::path::Path::new(&config_dir)
+    let reg_body_template_file = std::path::Path::new(&working_dir)
         .join(local_setting.frontend_register_user_mail_info_body_path);
 
     if !reg_body_template_file.exists() {
