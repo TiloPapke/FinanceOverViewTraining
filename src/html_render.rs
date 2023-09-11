@@ -13,7 +13,10 @@ use secrecy::Secret;
 use serde::Deserialize;
 
 use crate::{
-    password_handle::{create_credentials, validate_credentials, UserCredentials},
+    database_handler_mongodb::EmailVerificationStatus,
+    password_handle::{
+        check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
+    },
     session_data_handle::{SessionData, SessionDataResult},
 };
 
@@ -84,11 +87,20 @@ pub async fn accept_login_form(
 
     match validate_credentials(&credentials).await {
         Ok(user_id) => {
-            let _result = session.insert("logged_in", true);
-            let _cookie3 = a_store.store_session(session).await;
+            let mail_check_result = check_email_status_by_name(&credentials.username).await;
+            match mail_check_result.unwrap() {
+                EmailVerificationStatus::NotVerified => {
+                    debug!(target: "app::FinanceOverView","email not verified");
+                    Redirect::to("/registration_incomplete").into_response()
+                }
+                _ => {
+                    let _result = session.insert("logged_in", true);
+                    let _cookie3 = a_store.store_session(session).await;
 
-            debug!(target: "app::FinanceOverView","user_id is {}",user_id);
-            Redirect::to("/user_home").into_response()
+                    debug!(target: "app::FinanceOverView","user_id is {}",user_id);
+                    Redirect::to("/user_home").into_response()
+                }
+            }
         }
         Err(_) => {
             debug!(target: "app::FinanceOverView","no valid user name");
@@ -224,6 +236,24 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
     };
     HtmlTemplate(template);
     Redirect::to("/").into_response()
+}
+
+#[derive(Template)]
+#[template(path = "RegistrationIncomplete.html")]
+pub struct RegistrationIncompleteTemplate {
+    username: String,
+    registration_failure: String,
+}
+
+pub async fn registration_incomplete_handler() -> impl IntoResponse {
+    let username = "chosen login";
+    let reason_info = "missing email validation";
+
+    let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
+        username: format!("{}", username),
+        registration_failure: reason_info.to_string(),
+    };
+    HtmlTemplate(st)
 }
 
 #[derive(Template)]

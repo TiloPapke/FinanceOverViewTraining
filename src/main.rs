@@ -43,7 +43,7 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::html_render::invalid_handler;
+use crate::html_render::{invalid_handler, registration_incomplete_handler};
 
 #[tokio::main]
 async fn main() {
@@ -187,6 +187,10 @@ async fn https_server() {
     let app = Router::new()
         .route("/", get(https_handler))
         .route("/invalid", get(invalid_handler))
+        .route(
+            "/registration_incomplete",
+            get(registration_incomplete_handler),
+        )
         .route("/do_login", post(html_render::accept_login_form))
         .route("/do_create", post(html_render::create_login_handler))
         .route("/user_home", get(html_render::user_home_handler))

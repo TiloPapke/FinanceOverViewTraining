@@ -76,7 +76,9 @@ async fn send_email_verification_mail(
 ) -> Result<bool, Error> {
     let local_setting: SettingStruct = SettingStruct::global().clone();
 
-    let reg_subject = local_setting.frontend_register_user_mail_info_subject;
+    let reg_subject = local_setting
+        .frontend_register_user_mail_info_subject
+        .replace("{{username}}", &user_name);
     let working_dir = std::env::current_dir().unwrap();
     let reg_body_template_file = std::path::Path::new(&working_dir)
         .join(local_setting.frontend_register_user_mail_info_body_path);

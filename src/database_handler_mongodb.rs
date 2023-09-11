@@ -19,6 +19,13 @@ pub struct DbConnectionSetting {
     pub instance: String,
 }
 
+#[derive(Debug)]
+pub enum EmailVerificationStatus {
+    NotGiven,
+    NotVerified,
+    Verified,
+}
+
 pub struct DbHandlerMongoDB {}
 
 impl DbHandlerMongoDB {
@@ -471,5 +478,81 @@ impl DbHandlerMongoDB {
         debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
 
         return Ok(mail_validation_token);
+    }
+
+    pub async fn check_email_verfification_by_name(
+        conncetion_settings: &DbConnectionSetting,
+        user_name: &String,
+    ) -> Result<EmailVerificationStatus, String> {
+        // Get a handle to the deployment.
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let filter = doc! {"user_name":&user_name};
+        let projection = doc! {"user_name":<i32>::from(1),
+        "mail_validated":<i32>::from(1),
+        "user_email":<i32>::from(1)};
+        let options = FindOptions::builder().projection(projection).build();
+
+        let data_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+        let query_execute_result = data_collcetion.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        let mut doc_counter = 0;
+
+        while let Some(data_doc) = cursor.next().await {
+            doc_counter = doc_counter + 1;
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
+            }
+
+            let inner_doc: Document = data_doc.unwrap();
+            let stored_name = inner_doc.get_str("user_name");
+            if stored_name.is_err() {
+                return Err(stored_name.unwrap_err().to_string());
+            }
+
+            if stored_name.unwrap().eq(user_name) {
+                if inner_doc.contains_key("user_email") {
+                    let stored_email = inner_doc.get_str("user_email");
+                    if stored_email.is_err() {
+                        return Err(stored_email.unwrap_err().to_string());
+                    }
+                    if stored_email.unwrap().is_empty() {
+                        return Ok(EmailVerificationStatus::NotGiven);
+                    }
+                    let stored_verfication_flag = inner_doc.get_bool("mail_validated");
+                    if stored_verfication_flag.is_err() {
+                        return Err(stored_verfication_flag.unwrap_err().to_string());
+                    }
+                    if stored_verfication_flag.unwrap() {
+                        return Ok(EmailVerificationStatus::Verified);
+                    } else {
+                        return Ok(EmailVerificationStatus::NotVerified);
+                    };
+                } else {
+                    return Ok(EmailVerificationStatus::NotGiven);
+                }
+            }
+        }
+
+        if doc_counter > 0 {
+            return Err(format!("found {} entries", doc_counter));
+        }
+
+        return Result::Ok(EmailVerificationStatus::NotVerified);
     }
 }

@@ -3,6 +3,7 @@ use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use secrecy::{ExposeSecret, Secret};
 
+use crate::database_handler_mongodb::EmailVerificationStatus;
 use crate::{
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     setting_struct::SettingStruct,
@@ -49,7 +50,7 @@ pub async fn validate_credentials(credentials: &UserCredentials) -> Result<uuid:
     Err(anyhow::anyhow!("Unknown username."))
 }
 
-async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials, Error> {
+async fn get_stored_credentials(_user_name: &str) -> Result<StoredCredentials, Error> {
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let _db_connection = DbConnectionSetting {
         url: String::from(&local_setting.backend_database_url),
@@ -59,7 +60,7 @@ async fn get_stored_credentials(_user_id: &str) -> Result<StoredCredentials, Err
     };
 
     let query_credentials =
-        DbHandlerMongoDB::get_stored_credentials_by_name(&_db_connection, &_user_id.to_string())
+        DbHandlerMongoDB::get_stored_credentials_by_name(&_db_connection, &_user_name.to_string())
             .await;
 
     if query_credentials.is_err() {
@@ -200,4 +201,23 @@ pub async fn update_user_password(some_credentials: &UserCredentials) -> Result<
     }
 
     Ok(update_result.unwrap())
+}
+
+pub async fn check_email_status_by_name(user_name: &str) -> Result<EmailVerificationStatus, Error> {
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+
+    let check_result =
+        DbHandlerMongoDB::check_email_verfification_by_name(&db_connection, &user_name.to_string())
+            .await;
+
+    if check_result.is_err() {
+        return Err(anyhow::anyhow!(check_result.unwrap_err()));
+    }
+    return Ok(check_result.unwrap());
 }
