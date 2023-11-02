@@ -7,7 +7,8 @@ use mongodb::{
     results::{InsertOneResult, UpdateResult},
     Client, Collection, Cursor,
 };
-use secrecy::ExposeSecret;
+
+use secrecy::{ExposeSecret,Secret};
 
 use crate::convert_tools::ConvertTools;
 use crate::password_handle::{StoredCredentials, UserCredentialsHashed};
@@ -555,4 +556,15 @@ impl DbHandlerMongoDB {
 
         return Result::Ok(EmailVerificationStatus::NotVerified);
     }
+
+    pub async fn verify_email_by_name(
+        _conncetion_settings: &DbConnectionSetting,
+        _user_name: &String,
+        _email_validation_string: &Secret<String>
+    ) -> Result<EmailVerificationStatus, String> {
+
+        return Err("not implemented".to_string());
+    }
 }
+
+

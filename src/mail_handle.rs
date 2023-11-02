@@ -48,7 +48,7 @@ pub(crate) async fn send_smtp_mail(
     }
 }
 
-pub(crate) fn validate_email(email_address_to_check: &String) -> Result<bool, String> {
+pub(crate) fn validate_email_format(email_address_to_check: &String) -> Result<bool, String> {
     let local_setting = SettingStruct::global();
 
     let regexfile = &local_setting.frontend_register_user_mail_validation_regex_path;

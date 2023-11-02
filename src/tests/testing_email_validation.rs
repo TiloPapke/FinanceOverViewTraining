@@ -59,7 +59,7 @@ mod test_email_validation {
         init();
 
         let testmail = "someUser@website.org";
-        let mut result = mail_handle::validate_email(&testmail.to_string());
+        let mut result = mail_handle::validate_email_format(&testmail.to_string());
         if result.is_err() {
             panic!(
                 "Panic validation email {}: {}",
@@ -74,7 +74,7 @@ mod test_email_validation {
         );
 
         let invalidmail = "nopemail@";
-        result = mail_handle::validate_email(&invalidmail.to_string());
+        result = mail_handle::validate_email_format(&invalidmail.to_string());
         if result.is_err() {
             panic!(
                 "Panic validation invalid email {}: {}",
@@ -89,7 +89,7 @@ mod test_email_validation {
         );
 
         let emptymail = "";
-        result = mail_handle::validate_email(&emptymail.to_string());
+        result = mail_handle::validate_email_format(&emptymail.to_string());
         if result.is_err() {
             panic!(
                 "Panic validation empty email {}: {}",

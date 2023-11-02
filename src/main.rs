@@ -8,6 +8,7 @@ mod mdb_convert_tools;
 mod password_handle;
 mod session_data_handle;
 pub mod setting_struct;
+mod user_handling;
 
 mod tests {
     mod testing_email_smtp;
@@ -201,6 +202,7 @@ async fn https_server() {
             "/do_register_via_email",
             post(ajax_handle::do_register_user_via_email),
         )
+        .route("/verify_email", get(html_render::validate_user_email_handler))
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 

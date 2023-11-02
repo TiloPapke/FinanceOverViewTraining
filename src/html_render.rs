@@ -17,7 +17,7 @@ use crate::{
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
-    session_data_handle::{SessionData, SessionDataResult},
+    session_data_handle::{SessionData, SessionDataResult}, user_handling::validate_user_email,
 };
 
 #[derive(Template)]
@@ -311,5 +311,24 @@ pub struct RegisterUserTemplate {
 
 pub async fn register_user_handler() -> impl IntoResponse {
     let st = RegisterUserTemplate {};
+    HtmlTemplate(st)
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct ValidateUserEmailInput {
+    user_name:String,
+    token: Secret<String>,
+}
+
+pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> impl IntoResponse {
+    debug!(target: "app::FinanceOverView","validateUserEmail");
+
+    let _check_result = validate_user_email(&form.user_name,&form.token);
+
+    let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
+        username: format!("{}", "UNKOWN"),
+        registration_failure: "function not implemented".to_string(),
+    };
     HtmlTemplate(st)
 }
