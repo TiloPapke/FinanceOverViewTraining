@@ -4,7 +4,7 @@ use secrecy::Secret;
 
 use crate::{
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-    mail_handle::{self, validate_email, SimpleMailData, SmtpMailSetting},
+    mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
 };
 
@@ -13,7 +13,7 @@ pub async fn register_user_with_email_verfication(
     user_password: &Secret<String>,
     user_email: &String,
 ) -> Result<String, Error> {
-    let check_mail_result = validate_email(user_email);
+    let check_mail_result = validate_email_format(user_email);
     if check_mail_result.is_err() {
         return Err(anyhow::anyhow!(
             "Error while validating email {}: {}",
