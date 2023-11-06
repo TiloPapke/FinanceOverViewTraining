@@ -1,8 +1,14 @@
 use secrecy::Secret;
 
-use crate::{database_handler_mongodb::{DbHandlerMongoDB, EmailVerificationStatus, DbConnectionSetting}, setting_struct::SettingStruct};
+use crate::{
+    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
+    setting_struct::SettingStruct,
+};
 
-pub(crate) fn validate_user_email(user_name:&String, email_secret: &Secret<String>) -> Result<EmailVerificationStatus, String> {
+pub(crate) async fn validate_user_email(
+    user_name: &String,
+    email_secret: &Secret<String>,
+) -> Result<EmailVerificationStatus, String> {
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
         url: String::from(&local_setting.backend_database_url),
@@ -11,7 +17,14 @@ pub(crate) fn validate_user_email(user_name:&String, email_secret: &Secret<Strin
         instance: String::from(&local_setting.backend_database_instance),
     };
 
-    let _validate_result = DbHandlerMongoDB::verify_email_by_name(&db_connection,user_name,email_secret);
-
-    return Err("Not implemented yet".to_string());
+    let validate_result =
+        DbHandlerMongoDB::verify_email_by_name(&db_connection, user_name, email_secret).await;
+    if validate_result.is_err() {
+        return Err(format!(
+            "Error during verfiy_email_by_name: {}",
+            validate_result.unwrap_err()
+        ));
+    } else {
+        return Ok(validate_result.unwrap());
+    }
 }

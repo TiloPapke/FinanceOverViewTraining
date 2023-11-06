@@ -17,7 +17,8 @@ use crate::{
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
-    session_data_handle::{SessionData, SessionDataResult}, user_handling::validate_user_email,
+    session_data_handle::{SessionData, SessionDataResult},
+    user_handling::validate_user_email,
 };
 
 #[derive(Template)]
@@ -317,18 +318,29 @@ pub async fn register_user_handler() -> impl IntoResponse {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct ValidateUserEmailInput {
-    user_name:String,
+    user_name: String,
     token: Secret<String>,
 }
 
 pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","validateUserEmail");
 
-    let _check_result = validate_user_email(&form.user_name,&form.token);
+    let check_result = validate_user_email(&form.user_name, &form.token).await;
 
-    let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
-        username: format!("{}", "UNKOWN"),
-        registration_failure: "function not implemented".to_string(),
-    };
-    HtmlTemplate(st)
+    if check_result.is_err() {
+        let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
+            username: format!("{}", form.user_name),
+            registration_failure: format!(
+                "error during user email validation: {}",
+                check_result.unwrap_err()
+            ),
+        };
+        HtmlTemplate(st)
+    } else {
+        let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
+            username: format!("{}", form.user_name),
+            registration_failure: "function OK Path not implemented".to_string(),
+        };
+        HtmlTemplate(st)
+    }
 }

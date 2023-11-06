@@ -8,7 +8,7 @@ use mongodb::{
     Client, Collection, Cursor,
 };
 
-use secrecy::{ExposeSecret,Secret};
+use secrecy::{ExposeSecret, Secret};
 
 use crate::convert_tools::ConvertTools;
 use crate::password_handle::{StoredCredentials, UserCredentialsHashed};
@@ -558,13 +558,131 @@ impl DbHandlerMongoDB {
     }
 
     pub async fn verify_email_by_name(
-        _conncetion_settings: &DbConnectionSetting,
-        _user_name: &String,
-        _email_validation_string: &Secret<String>
+        conncetion_settings: &DbConnectionSetting,
+        user_name: &String,
+        email_validation_string: &Secret<String>,
     ) -> Result<EmailVerificationStatus, String> {
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
 
-        return Err("not implemented".to_string());
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let filter = doc! {
+            "user_name":user_name
+        };
+        let projection = doc! {"user_name":<i32>::from(1),
+            "mail_validated":<i32>::from(1),
+            "mail_validation_token":<i32>::from(1),
+            "user_email":<i32>::from(1),
+            "user_id":<i32>::from(1),
+        };
+        let options = FindOptions::builder().projection(projection).build();
+
+        let data_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+        let query_execute_result = data_collcetion.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        let mut doc_counter = 0;
+
+        while let Some(data_doc) = cursor.next().await {
+            doc_counter = doc_counter + 1;
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
+            }
+
+            let inner_doc: Document = data_doc.unwrap();
+            let stored_name = inner_doc.get_str("user_name");
+            if stored_name.is_err() {
+                return Err(stored_name.unwrap_err().to_string());
+            }
+
+            if stored_name.unwrap().eq(user_name) {
+                if inner_doc.contains_key("user_email") {
+                    let stored_email = inner_doc.get_str("user_email");
+                    if stored_email.is_err() {
+                        return Err(stored_email.unwrap_err().to_string());
+                    }
+                    let stored_verfication_flag = inner_doc.get_bool("mail_validated");
+                    if stored_verfication_flag.is_err() {
+                        return Err(stored_verfication_flag.unwrap_err().to_string());
+                    }
+                    let stored_verfication_token = inner_doc.get_str("mail_validation_token");
+                    if stored_verfication_token.is_err() {
+                        return Err(stored_verfication_token.unwrap_err().to_string());
+                    }
+                    let stored_user_id =
+                        ConvertTools::get_uuid_from_document(&inner_doc, "user_id");
+                    if stored_user_id.is_err() {
+                        return Err(stored_user_id.unwrap_err().to_string());
+                    }
+
+                    if stored_verfication_flag.unwrap() {
+                        return Ok(EmailVerificationStatus::Verified);
+                    } else {
+                        if stored_verfication_token
+                            .unwrap()
+                            .eq(email_validation_string.expose_secret())
+                        {
+                            //addtional check for later: include E-Mail in hashed token and compared it to ensure that the token "belongs" to the E-Mail address
+                            //currently only the time plus a salt is used to generate token
+                            let filter_doc = doc! {
+                            "user_id":stored_user_id.unwrap()};
+                            let inner_update_doc = doc! {
+                            "mail_validated": true,
+                            };
+                            //otherwise we get "update document must have first key starting with '$"
+                            let update_doc = doc! {"$set": inner_update_doc};
+
+                            let user_collcetion: Collection<Document> =
+                                db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+                            let update_result = user_collcetion
+                                .update_one(filter_doc, update_doc, None)
+                                .await;
+                            if update_result.is_err() {
+                                let update_err = &update_result.unwrap_err();
+                                warn!(target:"app::FinanceOverView","{}",update_err);
+                                return Err(format!(
+                                    "Error updating email validated token: {}",
+                                    update_err
+                                ));
+                            }
+                            let unwrapped_result = update_result.unwrap();
+
+                            debug!(target:"app::FinanceOverView","count of updated objects during user email verfication: {}",unwrapped_result.modified_count);
+
+                            if unwrapped_result.modified_count == 1 {
+                                return Ok(EmailVerificationStatus::Verified);
+                            } else {
+                                return Err("number of updated monrecord not 1".to_string());
+                            }
+                        } else {
+                            return Err(
+                                "provided E-Mail Validation token not matching stored token"
+                                    .to_string(),
+                            );
+                        }
+                    }
+                } else {
+                    return Err("no E-Mail given".to_string());
+                }
+            }
+        }
+
+        if doc_counter > 0 {
+            return Err(format!("found {} entries", doc_counter));
+        }
+
+        return Result::Ok(EmailVerificationStatus::NotVerified);
     }
 }
-
-
