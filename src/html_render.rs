@@ -322,25 +322,41 @@ pub struct ValidateUserEmailInput {
     token: Secret<String>,
 }
 
+#[derive(Template)]
+#[template(path = "EmailValidationResult.html")]
+pub struct EmailValidationResultTemplate {
+    do_html_redirect: String,
+    validation_main_result: String,
+    validation_detail_result: String,
+}
+
 pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","validateUserEmail");
+
+    let mut st: EmailValidationResultTemplate = EmailValidationResultTemplate {
+        do_html_redirect: "false".to_string(),
+        validation_detail_result: "something went wrong".to_string(),
+        validation_main_result: "Error during validaiton".to_string(),
+    };
 
     let check_result = validate_user_email(&form.user_name, &form.token).await;
 
     if check_result.is_err() {
-        let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
-            username: format!("{}", form.user_name),
-            registration_failure: format!(
-                "error during user email validation: {}",
-                check_result.unwrap_err()
-            ),
-        };
-        HtmlTemplate(st)
+        st.validation_detail_result = check_result.unwrap_err();
     } else {
-        let st: RegistrationIncompleteTemplate = RegistrationIncompleteTemplate {
-            username: format!("{}", form.user_name),
-            registration_failure: "function OK Path not implemented".to_string(),
-        };
-        HtmlTemplate(st)
+        match check_result.unwrap() {
+            EmailVerificationStatus::NotGiven => {
+                st.validation_detail_result = "Validation not startet".to_string();
+            }
+            EmailVerificationStatus::NotVerified => {
+                st.validation_detail_result = "not verified".to_string();
+                return HtmlTemplate(st);
+            }
+            EmailVerificationStatus::Verified => {
+                st.validation_detail_result = format!("email for {} validated", form.user_name);
+            }
+        }
     }
+
+    HtmlTemplate(st)
 }

@@ -3,6 +3,7 @@ use log::error;
 use secrecy::Secret;
 
 use crate::{
+    convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
@@ -96,6 +97,7 @@ async fn send_email_verification_mail(
         ));
     }
 
+    let validation_token_masked = ConvertTools::escape_htmltext(validation_token);
     let reg_body = reg_body_read_result
         .unwrap()
         .replace("{{username}}", &user_name)
@@ -103,7 +105,7 @@ async fn send_email_verification_mail(
             "{{serveraddress}}",
             &local_setting.frontend_register_user_mail_server_address,
         )
-        .replace("{{hashedToken}}", validation_token);
+        .replace("{{hashedToken}}", &validation_token_masked);
     //
 
     let mail_content = SimpleMailData {

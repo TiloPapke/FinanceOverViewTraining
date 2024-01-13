@@ -40,4 +40,42 @@ impl ConvertTools {
             return Ok(file_content);
         }
     }
+
+    //need to escape characters for url: https://docs.microfocus.com/OMi/10.62/Content/OMi/ExtGuide/ExtApps/URL_encoding.htm
+    pub fn escape_htmltext(input: &String) -> String {
+        let internal_input = input.clone();
+        let mut vec_text: Vec<String> = Vec::new();
+        for c in internal_input.chars() {
+            match c {
+                ' ' => vec_text.push("%20".to_string()),
+                '<' => vec_text.push("%3C".to_string()),
+                '>' => vec_text.push("%3E".to_string()),
+                '#' => vec_text.push("%23".to_string()),
+                '%' => vec_text.push("%25".to_string()),
+                '+' => vec_text.push("%2B".to_string()),
+                '{' => vec_text.push("%7B".to_string()),
+                '}' => vec_text.push("%7D".to_string()),
+                '|' => vec_text.push("%7C".to_string()),
+                '\\' => vec_text.push("%5C".to_string()),
+                '^' => vec_text.push("%5E".to_string()),
+                '~' => vec_text.push("%7E".to_string()),
+                '[' => vec_text.push("%5B".to_string()),
+                ']' => vec_text.push("%5D".to_string()),
+                '\'' => vec_text.push("%60".to_string()),
+                ';' => vec_text.push("%3B".to_string()),
+                '/' => vec_text.push("%2F".to_string()),
+                '?' => vec_text.push("%3F".to_string()),
+                ':' => vec_text.push("%3A".to_string()),
+                '@' => vec_text.push("%40".to_string()),
+                '=' => vec_text.push("%3D".to_string()),
+                '&' => vec_text.push("%26".to_string()),
+                '$' => vec_text.push("%24".to_string()),
+                _ => {
+                    vec_text.push(c.to_string());
+                }
+            }
+        }
+        let result = vec_text.concat();
+        return result;
+    }
 }

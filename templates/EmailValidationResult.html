@@ -1,0 +1,23 @@
+<head>
+    <script src="/js_code/jquery-3.6.1.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            let bDoRedirect = (("{{do_html_redirect}}").toLowerCase() === "true");
+            if(bDoRedirect===true){
+                window.setTimeout(function () {
+                location.href = window.location.origin;
+                }, 5000);            }
+            else{
+                document.getElementById("redirectMessage").style.display="none"
+            }
+        });
+    </script>
+</head>
+
+<body>
+
+    <h1>{{validation_main_result}}</h1>
+    <br>{{validation_detail_result}}
+    <div id="redirectMessage"><br>You will be redirected to the main page. Please login with your chosen credentials
+    </div>
+</body>
