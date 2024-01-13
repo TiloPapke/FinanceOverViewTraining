@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use bson::uuid;
 use mongodb::bson::Document;
-use uuid;
 
 pub struct ConvertTools {}
 
@@ -23,7 +23,7 @@ impl ConvertTools {
 
         let uuid_var = uuid_bson_parse_result.unwrap().to_uuid_0_8();
 
-        return Ok(uuid_var);
+        return Ok(uuid_var.into());
     }
 
     pub fn load_text_from_file(filepath: &PathBuf) -> Result<String, String> {

@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.75"
-argon2 = "0.5.1"
-askama = "0.12.0"
+anyhow = "1.0.79"
+argon2 = "0.5.2"
+askama = "0.12.1"
 
 async-mongodb-session = "3.0.0"
 async-session = "3.0.0"
@@ -20,23 +20,22 @@ axum-server = {version ="0.5.1", features=["tls-rustls"]}
 futures = "0.3"
 log = "0.4.20"
 log4rs = "1.2.0"
-mail-send = "0.4.0"
-once_cell = { version = "1.18.0"}
+mail-send = "0.4.6"
+once_cell = { version = "1.19.0"}
 rand = "0.8.5"
-regex-automata = "0.3.8"
-rust-ini = {version = "0.19.0"}
+regex-automata = "0.4.3"
+rust-ini = {version = "0.20.0"}
 secrecy = {version = "0.8.0", features = ["serde", "alloc"] }
 serde ="1"
 tokio = { version = "1.32", features = ["full"] }
 # mongodb uses uuid 0.8.2
-uuid = { version = "0.8.2", features = ["v4", "serde"] }
+#uuid = { version = "0.8.2", features = ["v4", "serde"] }
 
 #limit bson to a specfic max version because of incompatibities with top new chrono crates from bson version 2.5.0 on (still uses MIN_DATE instead of MIN_UTC)
 bson = {version = "~2.4.0"}
 
 [dependencies.mongodb]
-version = "=2.3.1"
+version = "=2.3.1" # can not go higher because of bson
 #git = "https://github.com/TiloPapke/mongo-rust-driver.git"
-#branch = "2.6.x"
 default-features = false
 features = ["async-std-runtime", "bson-uuid-0_8"]

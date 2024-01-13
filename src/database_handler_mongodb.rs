@@ -1,4 +1,5 @@
 use argon2::{Argon2, PasswordHasher};
+use bson::{uuid, Uuid};
 use futures::{executor, StreamExt};
 use log::{debug, info, trace, warn};
 use mongodb::{
@@ -276,8 +277,8 @@ impl DbHandlerMongoDB {
         let user_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
 
-        let new_user_uuid = uuid::Uuid::new_v4();
-        let insert_doc = doc! {"user_id": mongodb::bson::Uuid::from_uuid_0_8(new_user_uuid),
+        let new_user_uuid = Uuid::new();
+        let insert_doc = doc! {"user_id": mongodb::bson::Uuid::from_uuid_0_8(new_user_uuid.into()),
         "user_name":&some_credentials.username,
         "password_hash": &some_credentials.password_hash.expose_secret()};
 

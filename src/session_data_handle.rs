@@ -9,9 +9,9 @@ use axum::http::StatusCode;
 use axum::Extension;
 use axum::TypedHeader;
 use axum::{async_trait, headers::Cookie};
+use bson::Uuid;
 use log::trace;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 pub struct SessionData {
@@ -150,7 +150,7 @@ impl std::fmt::Display for UserId {
 }
 impl UserId {
     fn new() -> Self {
-        Self(Uuid::new_v4())
+        Self(Uuid::new())
     }
 }
 

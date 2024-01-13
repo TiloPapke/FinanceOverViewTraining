@@ -1,6 +1,7 @@
 use anyhow::Error;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use bson::uuid;
 use secrecy::{ExposeSecret, Secret};
 
 use crate::database_handler_mongodb::EmailVerificationStatus;
