@@ -92,9 +92,9 @@ pub struct ChangePasswortFormInput {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SimpleAjaxRequestResult {
-    result: String,
-    new_expire_timestamp: String,
+pub(crate) struct SimpleAjaxRequestResult {
+    pub result: String,
+    pub new_expire_timestamp: String,
 }
 
 impl IntoResponse for SimpleAjaxRequestResult {

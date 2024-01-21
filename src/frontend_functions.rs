@@ -1,10 +1,11 @@
-use anyhow::Error;
+use anyhow::{Error, Ok};
 use log::error;
 use secrecy::Secret;
 
 use crate::{
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    datatypes::GenerallUserData,
     mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
 };
@@ -123,7 +124,7 @@ async fn send_email_verification_mail(
 
     let result_async = mail_handle::send_smtp_mail(mail_content, mail_config);
 
-    let result = result_async.await;
+    let result: Result<(), String> = result_async.await;
 
     if result.is_err() {
         return Err(anyhow::anyhow!(
@@ -133,4 +134,58 @@ async fn send_email_verification_mail(
     }
 
     return Ok(true);
+}
+
+pub async fn get_general_userdata_fromdatabase(
+    user_name: &String,
+) -> Result<GenerallUserData, Error> {
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+
+    let get_result_async =
+        DbHandlerMongoDB::get_user_general_data_by_user_name(&db_connection, user_name);
+
+    let get_result: Result<GenerallUserData, String> = get_result_async.await;
+
+    if get_result.is_err() {
+        return Err(anyhow::anyhow!(
+            "Error get data: {}",
+            get_result.unwrap_err()
+        ));
+    }
+
+    return Ok(get_result.unwrap());
+}
+
+pub async fn save_general_userdata(
+    user_name: &String,
+    general_user_data: &GenerallUserData,
+) -> Result<String, Error> {
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+
+    let save_data_result_async = DbHandlerMongoDB::update_general_user_data_by_name(
+        &db_connection,
+        user_name,
+        general_user_data,
+    );
+    let save_data_result = save_data_result_async.await;
+    if save_data_result.is_err() {
+        return Err(anyhow::anyhow!(
+            "Error while saving data {}",
+            save_data_result.unwrap_err()
+        ));
+    }
+
+    return Ok(save_data_result.unwrap());
 }

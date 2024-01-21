@@ -11,8 +11,8 @@ use mongodb::{
 
 use secrecy::{ExposeSecret, Secret};
 
-use crate::convert_tools::ConvertTools;
 use crate::password_handle::{StoredCredentials, UserCredentialsHashed};
+use crate::{convert_tools::ConvertTools, datatypes::GenerallUserData};
 
 pub struct DbConnectionSetting {
     pub url: String,
@@ -685,5 +685,137 @@ impl DbHandlerMongoDB {
         }
 
         return Result::Ok(EmailVerificationStatus::NotVerified);
+    }
+
+    pub async fn get_user_general_data_by_user_name(
+        conncetion_settings: &DbConnectionSetting,
+        user_name: &String,
+    ) -> Result<GenerallUserData, String> {
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let filter = doc! {
+            "user_name":user_name
+        };
+        let projection = doc! {"user_name":<i32>::from(1),
+            "first_name":<i32>::from(1),
+            "last_name":<i32>::from(1),
+            "reset_secret":<i32>::from(1),
+        };
+        let options = FindOptions::builder().projection(projection).build();
+
+        let data_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+        let query_execute_result = data_collcetion.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        let mut doc_counter = 0;
+
+        while let Some(data_doc) = cursor.next().await {
+            doc_counter = doc_counter + 1;
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
+            }
+
+            let inner_doc: Document = data_doc.unwrap();
+            let stored_name = inner_doc.get_str("user_name");
+            if stored_name.is_err() {
+                return Err(stored_name.unwrap_err().to_string());
+            }
+
+            if stored_name.unwrap().eq(user_name) {
+                let mut return_data: GenerallUserData = GenerallUserData {
+                    first_name: "".to_string(),
+                    last_name: "".to_string(),
+                    reset_secret: "".to_string(),
+                };
+                let stored_first_name = inner_doc.get_str("first_name");
+                if stored_first_name.is_ok() {
+                    return_data.first_name = stored_first_name.unwrap().to_string();
+                }
+                let stored_last_name = inner_doc.get_str("last_name");
+                if stored_last_name.is_ok() {
+                    return_data.last_name = stored_last_name.unwrap().to_string();
+                }
+                let stored_reset_secret = inner_doc.get_str("reset_secret");
+                if stored_reset_secret.is_ok() {
+                    return_data.reset_secret = stored_reset_secret.unwrap().to_string();
+                }
+
+                return Ok(return_data);
+            }
+        }
+
+        return Err(format!("found {} entries", doc_counter));
+    }
+
+    pub async fn update_general_user_data_by_name(
+        conncetion_settings: &DbConnectionSetting,
+        user_name: &String,
+        general_user_data: &GenerallUserData,
+    ) -> Result<String, String> {
+        //first validate if correct password is given
+        let query_username =
+            DbHandlerMongoDB::check_user_exsists_by_name(conncetion_settings, user_name).await;
+
+        if query_username.is_err() {
+            return Err(format!(
+                "Unable to verify username: {}",
+                query_username.unwrap_err()
+            ));
+        }
+
+        if !query_username.unwrap() {
+            return Err(format!("username does not exists: {}", user_name));
+        }
+
+        // Get a handle to the database.
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+        let user_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+
+        let filter_doc = doc! {
+        "user_name":user_name};
+        let inner_update_doc = doc! {
+        "first_name": general_user_data.first_name.clone(),
+        "last_name": general_user_data.last_name.clone(),
+        "reset_secret": general_user_data.reset_secret.clone()
+        };
+        //otherwise we get "update document must have first key starting with '$"
+        let update_doc = doc! {"$set": inner_update_doc};
+
+        let update_result = user_collcetion
+            .update_one(filter_doc, update_doc, None)
+            .await;
+        if update_result.is_err() {
+            let update_err = &update_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",update_err);
+            return Err(format!("Error updating email address: {}", update_err));
+        }
+        let unwrapped_result = update_result.unwrap();
+
+        debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
+
+        return Ok("updated".to_string());
     }
 }

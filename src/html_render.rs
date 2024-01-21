@@ -18,7 +18,7 @@ use crate::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
     session_data_handle::{SessionData, SessionDataResult},
-    user_handling::validate_user_email,
+    user_handling::validate_user_email, frontend_functions::get_general_userdata_fromdatabase,
 };
 
 #[derive(Template)]
@@ -45,6 +45,9 @@ pub struct UserHomeTemplate {
     logout_reason: String,
     information_show: bool,
     information_text: String,
+    user_vorname:String,
+    user_nachname:String,
+    user_reset_geheimnis:String,
 }
 
 pub struct HtmlTemplate<T>(pub T);
@@ -138,6 +141,9 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             logged_in: false,
             information_show: false,
             information_text: "".to_string(),
+            user_vorname:"".to_string(),
+            user_nachname:"".to_string(),
+            user_reset_geheimnis:"".to_string(),
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -167,6 +173,9 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             logged_in: false,
             information_show: false,
             information_text: "".to_string(),
+            user_vorname:"".to_string(),
+            user_nachname:"".to_string(),
+            user_reset_geheimnis:"".to_string(),
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -187,6 +196,32 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 .format("%Y-%m-%d %H:%M:%S"))
         );
 
+        let user_data_get_result_async=get_general_userdata_fromdatabase(&username);
+
+        let user_data_result=user_data_get_result_async.await;
+
+        if user_data_result.is_err(){
+            let template = UserHomeTemplate {
+                logout_reason: "error calling database".to_string(),
+                username: username.to_string(),
+                session_expire_timestamp,
+                logged_in: false,
+                information_show: false,
+                information_text: "".to_string(),
+                user_vorname:"".to_string(),
+                user_nachname:"".to_string(),
+                user_reset_geheimnis:"".to_string(),
+            };
+            headers.insert(
+                axum::http::header::REFRESH,
+                axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+            );
+            (headers, HtmlTemplate(template))
+        }
+        else{
+
+            let user_data=user_data_result.unwrap();
+
         let template = UserHomeTemplate {
             username: username.to_string(),
             session_expire_timestamp,
@@ -194,11 +229,15 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             logout_reason: "".to_string(),
             information_show: false,
             information_text: "".to_string(),
+            user_vorname:user_data.first_name,
+            user_nachname:user_data.last_name,
+            user_reset_geheimnis:user_data.reset_secret,
         };
 
         let _new_cookie = session_data.session_store.store_session(session).await;
 
         (headers, HtmlTemplate(template))
+    }
     }
 }
 
@@ -234,6 +273,9 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
         },
         information_show: false,
         information_text: "".to_string(),
+        user_vorname:"".to_string(),
+        user_nachname:"".to_string(),
+        user_reset_geheimnis:"".to_string(),
     };
     HtmlTemplate(template);
     Redirect::to("/").into_response()

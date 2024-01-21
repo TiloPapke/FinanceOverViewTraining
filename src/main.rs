@@ -1,5 +1,6 @@
 mod ajax_handle;
 mod convert_tools;
+pub mod datatypes;
 mod database_handler_mongodb;
 mod frontend_functions;
 mod html_render;
@@ -198,6 +199,7 @@ async fn https_server() {
         .route("/user_home", get(html_render::user_home_handler))
         .route("/do_logout", post(html_render::do_logout_handler))
         .route("/do_changePasswort", post(ajax_handle::do_change_passwort))
+        .route("/do_changeUserInfo", post(user_handling::do_update_general_user_data))
         .route("/registerUser", get(html_render::register_user_handler))
         .route(
             "/do_register_via_email",
