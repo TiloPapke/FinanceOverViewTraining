@@ -9,16 +9,17 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
 };
 use log::debug;
-use secrecy::Secret;
+use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 
 use crate::{
     database_handler_mongodb::EmailVerificationStatus,
+    frontend_functions::get_general_userdata_fromdatabase,
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
     session_data_handle::{SessionData, SessionDataResult},
-    user_handling::validate_user_email, frontend_functions::get_general_userdata_fromdatabase,
+    user_handling::validate_user_email,
 };
 
 #[derive(Template)]
@@ -45,9 +46,9 @@ pub struct UserHomeTemplate {
     logout_reason: String,
     information_show: bool,
     information_text: String,
-    user_vorname:String,
-    user_nachname:String,
-    user_reset_geheimnis:String,
+    user_vorname: String,
+    user_nachname: String,
+    user_reset_geheimnis: String,
 }
 
 pub struct HtmlTemplate<T>(pub T);
@@ -141,9 +142,9 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             logged_in: false,
             information_show: false,
             information_text: "".to_string(),
-            user_vorname:"".to_string(),
-            user_nachname:"".to_string(),
-            user_reset_geheimnis:"".to_string(),
+            user_vorname: "".to_string(),
+            user_nachname: "".to_string(),
+            user_reset_geheimnis: "".to_string(),
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -173,9 +174,9 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             logged_in: false,
             information_show: false,
             information_text: "".to_string(),
-            user_vorname:"".to_string(),
-            user_nachname:"".to_string(),
-            user_reset_geheimnis:"".to_string(),
+            user_vorname: "".to_string(),
+            user_nachname: "".to_string(),
+            user_reset_geheimnis: "".to_string(),
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -196,11 +197,11 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 .format("%Y-%m-%d %H:%M:%S"))
         );
 
-        let user_data_get_result_async=get_general_userdata_fromdatabase(&username);
+        let user_data_get_result_async = get_general_userdata_fromdatabase(&username);
 
-        let user_data_result=user_data_get_result_async.await;
+        let user_data_result = user_data_get_result_async.await;
 
-        if user_data_result.is_err(){
+        if user_data_result.is_err() {
             let template = UserHomeTemplate {
                 logout_reason: "error calling database".to_string(),
                 username: username.to_string(),
@@ -208,36 +209,34 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 logged_in: false,
                 information_show: false,
                 information_text: "".to_string(),
-                user_vorname:"".to_string(),
-                user_nachname:"".to_string(),
-                user_reset_geheimnis:"".to_string(),
+                user_vorname: "".to_string(),
+                user_nachname: "".to_string(),
+                user_reset_geheimnis: "".to_string(),
             };
             headers.insert(
                 axum::http::header::REFRESH,
                 axum::http::HeaderValue::from_str("5; url = /").unwrap(),
             );
             (headers, HtmlTemplate(template))
+        } else {
+            let user_data = user_data_result.unwrap();
+
+            let template = UserHomeTemplate {
+                username: username.to_string(),
+                session_expire_timestamp,
+                logged_in: true,
+                logout_reason: "".to_string(),
+                information_show: false,
+                information_text: "".to_string(),
+                user_vorname: user_data.first_name,
+                user_nachname: user_data.last_name,
+                user_reset_geheimnis: user_data.reset_secret,
+            };
+
+            let _new_cookie = session_data.session_store.store_session(session).await;
+
+            (headers, HtmlTemplate(template))
         }
-        else{
-
-            let user_data=user_data_result.unwrap();
-
-        let template = UserHomeTemplate {
-            username: username.to_string(),
-            session_expire_timestamp,
-            logged_in: true,
-            logout_reason: "".to_string(),
-            information_show: false,
-            information_text: "".to_string(),
-            user_vorname:user_data.first_name,
-            user_nachname:user_data.last_name,
-            user_reset_geheimnis:user_data.reset_secret,
-        };
-
-        let _new_cookie = session_data.session_store.store_session(session).await;
-
-        (headers, HtmlTemplate(template))
-    }
     }
 }
 
@@ -273,9 +272,9 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
         },
         information_show: false,
         information_text: "".to_string(),
-        user_vorname:"".to_string(),
-        user_nachname:"".to_string(),
-        user_reset_geheimnis:"".to_string(),
+        user_vorname: "".to_string(),
+        user_nachname: "".to_string(),
+        user_reset_geheimnis: "".to_string(),
     };
     HtmlTemplate(template);
     Redirect::to("/").into_response()
@@ -400,5 +399,41 @@ pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> 
         }
     }
 
+    HtmlTemplate(st)
+}
+
+#[derive(Template)]
+#[template(path = "PasswordResetTokenRequest.html")]
+pub struct RequestPasswortResetTokenTemplate {
+    //just a dummy template, currently no addtional data is shown
+}
+
+pub async fn display_paswword_reset_token_request_page() -> impl IntoResponse {
+    let st: RequestPasswortResetTokenTemplate = RequestPasswortResetTokenTemplate {};
+    HtmlTemplate(st)
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct PasswordResetWithTokenDisplayRequest {
+    user_name: String,
+    token: Secret<String>,
+}
+
+#[derive(Template)]
+#[template(path = "PasswordResetWithToken.html")]
+pub struct PasswordResetRequestTemplate {
+    pub user_name: String,
+    pub reset_token: String,
+}
+
+pub async fn display_paswword_reset_with_token_page(
+    form: Form<PasswordResetWithTokenDisplayRequest>,
+) -> impl IntoResponse {
+    debug!(target: "app::FinanceOverView","display password reset");
+    let st: PasswordResetRequestTemplate = PasswordResetRequestTemplate {
+        user_name: form.user_name.clone(),
+        reset_token: form.token.expose_secret().clone(),
+    };
     HtmlTemplate(st)
 }

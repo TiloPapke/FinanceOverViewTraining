@@ -26,6 +26,11 @@ pub struct SettingStruct {
     pub frontend_register_user_mail_info_subject: String,
     pub frontend_register_user_mail_info_body_path: String,
     pub frontend_register_user_mail_server_address: String,
+    pub frontend_password_reset_mail_validation_regex_path: String,
+    pub frontend_password_reset_mail_info_subject: String,
+    pub frontend_password_reset_mail_info_body_path: String,
+    pub frontend_password_reset_mail_server_address: String,
+    pub frontend_password_reset_token_time_limit_minutes: u16,
 }
 
 #[derive(Clone)]
@@ -87,6 +92,21 @@ impl SettingStruct {
                 "config/default_RegisterMailBody.html",
             )
             .set("RegisterUser_Mail_Server_Address", "https:127.0.0.1:3300");
+        conf.with_section(Some("Frontend_PasswordReset"))
+            .set(
+                "PasswordReset_Mail_Validation_Regex_Path",
+                "config/default_email_validation_regex.info",
+            )
+            .set(
+                "PasswordReset_Mail_Info_Subject",
+                "A password Reset was requested for FinanceTrainingPortal {{username}}",
+            )
+            .set(
+                "PasswordReset_Mail_Info_Body_Path",
+                "config/default_ResetPasswordBody.html",
+            )
+            .set("PasswordReset_Mail_Server_Address", "https:127.0.0.1:3300")
+            .set("PasswordReset_Token_Time_Limit_Minutes", "5");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -181,6 +201,42 @@ impl SettingStruct {
                 "",
             )
             .to_string();
+        let _frontend_password_reset_mail_validation_regex_path: String = conf
+            .get_from_or(
+                Some("Frontend_PasswordReset"),
+                "PasswordReset_Mail_Validation_Regex_Path",
+                "",
+            )
+            .to_string();
+        let _frontend_password_reset_mail_info_subject: String = conf
+            .get_from_or(
+                Some("Frontend_PasswordReset"),
+                "PasswordReset_Mail_Info_Subject",
+                "",
+            )
+            .to_string();
+        let _frontend_password_reset_mail_body_path: String = conf
+            .get_from_or(
+                Some("Frontend_PasswordReset"),
+                "PasswordReset_Mail_Info_Body_Path",
+                "",
+            )
+            .to_string();
+        let _frontend_password_reset_mail_server_address: String = conf
+            .get_from_or(
+                Some("Frontend_PasswordReset"),
+                "PasswordReset_Mail_Server_Address",
+                "",
+            )
+            .to_string();
+        let _frontend_password_reset_token_time_limit_minutes: u16 = conf
+            .get_from_or(
+                Some("Frontend_PasswordReset"),
+                "PasswordReset_Token_Time_Limit_Minutes",
+                "5",
+            )
+            .parse()
+            .unwrap();
 
         return SettingStruct {
             web_server_ip_part1: _web_server_ip_part1,
@@ -205,6 +261,14 @@ impl SettingStruct {
             frontend_register_user_mail_info_subject: _frontend_register_user_mail_info_subject,
             frontend_register_user_mail_info_body_path: _frontend_register_user_mail_info_body_path,
             frontend_register_user_mail_server_address: _frontend_register_user_mail_server_address,
+            frontend_password_reset_mail_validation_regex_path:
+                _frontend_password_reset_mail_validation_regex_path,
+            frontend_password_reset_mail_info_subject: _frontend_password_reset_mail_info_subject,
+            frontend_password_reset_mail_info_body_path: _frontend_password_reset_mail_body_path,
+            frontend_password_reset_mail_server_address:
+                _frontend_password_reset_mail_server_address,
+            frontend_password_reset_token_time_limit_minutes:
+                _frontend_password_reset_token_time_limit_minutes,
         };
     }
 }

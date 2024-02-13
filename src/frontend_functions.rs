@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use anyhow::{Error, Ok};
 use log::error;
 use secrecy::Secret;
@@ -5,7 +7,7 @@ use secrecy::Secret;
 use crate::{
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-    datatypes::GenerallUserData,
+    datatypes::{GenerallUserData, PasswordResetTokenRequestResult},
     mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
 };
@@ -93,7 +95,7 @@ async fn send_email_verification_mail(
         crate::convert_tools::ConvertTools::load_text_from_file(&reg_body_template_file);
     if reg_body_read_result.is_err() {
         return Err(anyhow::anyhow!(
-            "Error readin email registration template: {}",
+            "Error reading email registration template: {}",
             reg_body_read_result.unwrap_err()
         ));
     }
@@ -188,4 +190,81 @@ pub async fn save_general_userdata(
     }
 
     return Ok(save_data_result.unwrap());
+}
+
+pub async fn send_password_reset_email(
+    user_name: &String,
+    password_reset_token: &PasswordResetTokenRequestResult,
+) -> Result<bool, Error> {
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+
+    let password_reset_subject = local_setting
+        .frontend_password_reset_mail_info_subject
+        .replace("{{username}}", &user_name);
+    let working_dir = std::env::current_dir().unwrap();
+    let password_reset_body_template_file = std::path::Path::new(&working_dir)
+        .join(local_setting.frontend_password_reset_mail_info_body_path);
+
+    if !password_reset_body_template_file.exists() {
+        error!(target: "app::FinanceOverView","email template for password reset not found");
+        return Err(anyhow::anyhow!(
+            "email template for password reset not found"
+        ));
+    }
+    let password_reset_body_read_result =
+        crate::convert_tools::ConvertTools::load_text_from_file(&password_reset_body_template_file);
+    if password_reset_body_read_result.is_err() {
+        return Err(anyhow::anyhow!(
+            "Error reading email password reset template: {}",
+            password_reset_body_read_result.unwrap_err()
+        ));
+    }
+
+    let reset_token_masked =
+        ConvertTools::escape_htmltext(password_reset_token.reset_token.borrow());
+    let password_reset_body = password_reset_body_read_result
+        .unwrap()
+        .replace("{{username}}", &user_name)
+        .replace(
+            "{{serveraddress}}",
+            &local_setting.frontend_password_reset_mail_server_address,
+        )
+        .replace("{{resettoken}}", &reset_token_masked)
+        .replace(
+            "{{timelimit_minutes}}",
+            &local_setting
+                .frontend_password_reset_token_time_limit_minutes
+                .to_string(),
+        )
+        .replace(
+            "{{tokenexpriredatetime}}",
+            &password_reset_token.expires_at.to_string(),
+        );
+    //
+
+    let mail_content = SimpleMailData {
+        receiver: password_reset_token.user_email.clone(),
+        sender: local_setting.backend_mail_smtp_mail_address,
+        subject: password_reset_subject,
+        body: password_reset_body,
+    };
+
+    let mail_config = SmtpMailSetting {
+        host: local_setting.backend_mail_smtp_host,
+        client_name: local_setting.backend_mail_smtp_user,
+        client_password: local_setting.backend_mail_smtp_password,
+    };
+
+    let result_async = mail_handle::send_smtp_mail(mail_content, mail_config);
+
+    let result: Result<(), String> = result_async.await;
+
+    if result.is_err() {
+        return Err(anyhow::anyhow!(
+            "Error sending password reset mail: {}",
+            result.unwrap_err()
+        ));
+    }
+
+    return Ok(true);
 }

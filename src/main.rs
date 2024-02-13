@@ -1,7 +1,7 @@
 mod ajax_handle;
 mod convert_tools;
-pub mod datatypes;
 mod database_handler_mongodb;
+pub mod datatypes;
 mod frontend_functions;
 mod html_render;
 mod mail_handle;
@@ -199,13 +199,32 @@ async fn https_server() {
         .route("/user_home", get(html_render::user_home_handler))
         .route("/do_logout", post(html_render::do_logout_handler))
         .route("/do_changePasswort", post(ajax_handle::do_change_passwort))
-        .route("/do_changeUserInfo", post(user_handling::do_update_general_user_data))
+        .route(
+            "/do_changeUserInfo",
+            post(user_handling::do_update_general_user_data),
+        )
         .route("/registerUser", get(html_render::register_user_handler))
         .route(
             "/do_register_via_email",
             post(ajax_handle::do_register_user_via_email),
         )
-        .route("/verify_email", get(html_render::validate_user_email_handler))
+        .route(
+            "/verify_email",
+            get(html_render::validate_user_email_handler),
+        )
+        .route(
+            "/getPasswordResetToken",
+            get(html_render::display_paswword_reset_token_request_page),
+        )
+        .route(
+            "/do_RequestPasswordResetToken",
+            post(ajax_handle::do_request_password_reset),
+        )
+        .route(
+            "/reset_password",
+            get(html_render::display_paswword_reset_with_token_page),
+        )
+        .route("/do_reset_password", post(ajax_handle::do_change_password))
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 

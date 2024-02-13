@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use anyhow::Error;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
@@ -5,6 +7,9 @@ use bson::uuid;
 use secrecy::{ExposeSecret, Secret};
 
 use crate::database_handler_mongodb::EmailVerificationStatus;
+use crate::datatypes::{
+    PasswordResetRequest, PasswordResetTokenRequest, PasswordResetTokenRequestResult,
+};
 use crate::{
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     setting_struct::SettingStruct,
@@ -189,7 +194,7 @@ pub async fn update_user_password(some_credentials: &UserCredentials) -> Result<
         .unwrap()
         .to_string();
 
-    let some_credentials_hashed = UserCredentialsHashed {
+    let some_credentials_hashed: UserCredentialsHashed = UserCredentialsHashed {
         username: some_credentials.username.clone(),
         password_hash: Secret::new(user_password_hashed),
     };
@@ -221,4 +226,67 @@ pub async fn check_email_status_by_name(user_name: &str) -> Result<EmailVerifica
         return Err(anyhow::anyhow!(check_result.unwrap_err()));
     }
     return Ok(check_result.unwrap());
+}
+
+pub async fn request_password_reset_token(
+    request_data: &PasswordResetTokenRequest,
+) -> Result<PasswordResetTokenRequestResult, Error> {
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+
+    let generate_token_result_async = DbHandlerMongoDB::generate_passwort_reset_token(
+        &db_connection,
+        request_data.user_name.borrow(),
+        request_data.reset_secret.borrow(),
+        &local_setting.frontend_password_reset_token_time_limit_minutes,
+    );
+
+    let generate_token_result = generate_token_result_async.await;
+
+    if generate_token_result.is_err() {
+        return Err(anyhow::anyhow!(
+            "Error get data: {}",
+            generate_token_result.unwrap_err()
+        ));
+    }
+
+    return Ok(generate_token_result.unwrap());
+}
+
+pub async fn reset_password_with_token(request_data: &PasswordResetRequest) -> Result<bool, Error> {
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+
+    let salt = SaltString::generate(&mut rand::thread_rng());
+    let user_password_hashed = Argon2::default()
+        .hash_password(request_data.new_password.expose_secret().as_bytes(), &salt)
+        .unwrap()
+        .to_string();
+
+    let passwort_reset_result = DbHandlerMongoDB::change_password_with_token(
+        &db_connection,
+        &request_data.username,
+        &request_data.reset_token,
+        &Secret::new(user_password_hashed),
+    )
+    .await;
+
+    if passwort_reset_result.is_err() {
+        return Err(anyhow::anyhow!(
+            "Error get data: {}",
+            passwort_reset_result.unwrap_err()
+        ));
+    }
+
+    return Ok(passwort_reset_result.unwrap());
 }

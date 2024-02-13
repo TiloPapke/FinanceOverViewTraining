@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     env,
     ffi::OsString,
     fs::{self, read_dir},
@@ -23,6 +24,8 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    datatypes::{PasswordResetRequest, PasswordResetTokenRequest},
+    frontend_functions::send_password_reset_email,
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionData, SessionDataResult},
 };
@@ -321,6 +324,195 @@ pub async fn do_register_user_via_email(
 
         let return_value = SimpleAjaxRequestResult {
             result: register_result,
+            new_expire_timestamp: session_expire_timestamp,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (headers, return_value)
+    }
+}
+
+pub async fn do_request_password_reset(
+    session_data: SessionDataResult,
+    Form(input): Form<PasswordResetTokenRequest>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let headers = HeaderMap::new();
+
+    if is_logged_in {
+        let session_expire_timestamp = format!(
+            "{} UTC",
+            (session
+                .expiry()
+                .unwrap_or(&DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(0, 0),
+                    Utc
+                ))
+                .naive_local()
+                .format("%Y-%m-%d %H:%M:%S"))
+        );
+        let return_value = SimpleAjaxRequestResult {
+            result: "You are logged in, please use normal password change function".to_string(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
+
+        return (headers, return_value);
+    }
+
+    if session.is_expired() {
+        let session_expire_timestamp = format!(
+            "{} UTC",
+            (session
+                .expiry()
+                .unwrap_or(&DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(0, 0),
+                    Utc
+                ))
+                .naive_local()
+                .format("%Y-%m-%d %H:%M:%S"))
+        );
+        let return_value = SimpleAjaxRequestResult {
+            result: "Session expired, please try again".to_string(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
+
+        (headers, return_value)
+    } else {
+        let request_result: String;
+        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        let session_expire_timestamp = format!(
+            "{} UTC",
+            (session
+                .expiry()
+                .unwrap_or(&DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(0, 0),
+                    Utc
+                ))
+                .naive_local()
+                .format("%Y-%m-%d %H:%M:%S"))
+        );
+
+        let password_reset_request_result =
+            crate::password_handle::request_password_reset_token(input.borrow()).await;
+
+        if password_reset_request_result.is_err() {
+            request_result = password_reset_request_result.unwrap_err().to_string();
+        } else {
+            //send Email
+            let unwrapped_password_reset_request_result = password_reset_request_result.unwrap();
+            let send_result = send_password_reset_email(
+                input.user_name.borrow(),
+                unwrapped_password_reset_request_result.borrow(),
+            )
+            .await;
+            if send_result.is_err() {
+                request_result = send_result.unwrap_err().to_string();
+            } else {
+                request_result =
+                    "Password Request successful, please check your e-mail".to_string();
+            }
+        };
+
+        let return_value = SimpleAjaxRequestResult {
+            result: request_result,
+            new_expire_timestamp: session_expire_timestamp,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (headers, return_value)
+    }
+}
+
+pub async fn do_change_password(
+    session_data: SessionDataResult,
+    Form(input): Form<PasswordResetRequest>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let headers = HeaderMap::new();
+
+    if is_logged_in {
+        let session_expire_timestamp = format!(
+            "{} UTC",
+            (session
+                .expiry()
+                .unwrap_or(&DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(0, 0),
+                    Utc
+                ))
+                .naive_local()
+                .format("%Y-%m-%d %H:%M:%S"))
+        );
+        let return_value = SimpleAjaxRequestResult {
+            result: "You are logged in, please use normal password change function".to_string(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
+
+        return (headers, return_value);
+    }
+
+    if session.is_expired() {
+        let session_expire_timestamp = format!(
+            "{} UTC",
+            (session
+                .expiry()
+                .unwrap_or(&DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(0, 0),
+                    Utc
+                ))
+                .naive_local()
+                .format("%Y-%m-%d %H:%M:%S"))
+        );
+        let return_value = SimpleAjaxRequestResult {
+            result: "Session expired, please try again".to_string(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
+
+        (headers, return_value)
+    } else {
+        let request_result: String;
+        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        let session_expire_timestamp = format!(
+            "{} UTC",
+            (session
+                .expiry()
+                .unwrap_or(&DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(0, 0),
+                    Utc
+                ))
+                .naive_local()
+                .format("%Y-%m-%d %H:%M:%S"))
+        );
+
+        let password_change_result =
+            crate::password_handle::reset_password_with_token(input.borrow()).await;
+
+        if password_change_result.is_err() {
+            request_result = password_change_result.unwrap_err().to_string();
+        } else {
+            //send Email
+            let unwrapped_password_change_result = password_change_result.unwrap();
+            if unwrapped_password_change_result {
+                request_result =
+                    "Password Change successful, please login via normal page".to_string();
+            } else {
+                request_result = "Password Change unsuccessful".to_string();
+            }
+        };
+
+        let return_value = SimpleAjaxRequestResult {
+            result: request_result,
             new_expire_timestamp: session_expire_timestamp,
         };
 

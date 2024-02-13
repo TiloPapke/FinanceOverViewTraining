@@ -1,4 +1,5 @@
 use argon2::{Argon2, PasswordHasher};
+use async_session::chrono::Duration;
 use bson::{uuid, Uuid};
 use futures::{executor, StreamExt};
 use log::{debug, info, trace, warn};
@@ -11,8 +12,13 @@ use mongodb::{
 
 use secrecy::{ExposeSecret, Secret};
 
-use crate::password_handle::{StoredCredentials, UserCredentialsHashed};
-use crate::{convert_tools::ConvertTools, datatypes::GenerallUserData};
+use crate::{
+    convert_tools::ConvertTools, datatypes::GenerallUserData, mail_handle::validate_email_format,
+};
+use crate::{
+    datatypes::PasswordResetTokenRequestResult,
+    password_handle::{StoredCredentials, UserCredentialsHashed},
+};
 
 pub struct DbConnectionSetting {
     pub url: String,
@@ -817,5 +823,204 @@ impl DbHandlerMongoDB {
         debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
 
         return Ok("updated".to_string());
+    }
+
+    pub async fn generate_passwort_reset_token(
+        conncetion_settings: &DbConnectionSetting,
+        user_name: &String,
+        reset_secret: &String,
+        passwort_reset_time_limit_minutes: &u16,
+    ) -> Result<PasswordResetTokenRequestResult, String> {
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let filter = doc! {
+            "user_name":user_name
+        };
+        let projection = doc! {
+            "user_name":<i32>::from(1),
+            "user_email":<i32>::from(1),
+            "reset_secret":<i32>::from(1),
+        };
+        let options = FindOptions::builder().projection(projection).build();
+
+        let data_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+        let query_execute_result = data_collcetion.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        while let Some(data_doc) = cursor.next().await {
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
+            }
+
+            let inner_doc: Document = data_doc.unwrap();
+            let stored_name = inner_doc.get_str("user_name");
+            if stored_name.is_err() {
+                return Err(stored_name.unwrap_err().to_string());
+            }
+            let stored_email = inner_doc.get_str("user_email");
+            if stored_email.is_err() {
+                return Err(stored_email.unwrap_err().to_string());
+            }
+            let stored_user_email = stored_email.unwrap();
+
+            if stored_name.unwrap().eq(user_name) {
+                let stored_reset_secret = inner_doc.get_str("reset_secret");
+                if stored_reset_secret.is_ok() {
+                    if stored_reset_secret.unwrap().eq(reset_secret) {
+                        let email_validation_result =
+                            validate_email_format(&stored_user_email.to_string());
+                        if email_validation_result.is_err() {
+                            return Err(email_validation_result.unwrap_err().to_string());
+                        }
+                        if !email_validation_result.unwrap() {
+                            return Err("no valid e-mail address for operation".to_string());
+                        }
+                        let reset_token_value = Uuid::new().to_string();
+                        let reset_token_timestamp = async_session::chrono::Utc::now()
+                            + Duration::minutes(passwort_reset_time_limit_minutes.clone() as i64);
+
+                        let inner_update_doc = doc! {
+                        "password_reset_token_value": reset_token_value.clone(),
+                        "password_reset_token_timestamp": reset_token_timestamp.timestamp()
+                        };
+
+                        let filter2 = doc! {
+                            "user_name":user_name
+                        };
+                        //otherwise we get "update document must have first key starting with '$"
+                        let update_doc = doc! {"$set": inner_update_doc};
+
+                        let update_result =
+                            data_collcetion.update_one(filter2, update_doc, None).await;
+                        if update_result.is_err() {
+                            let update_err = &update_result.unwrap_err();
+                            warn!(target:"app::FinanceOverView","{}",update_err);
+                            return Err("Error validating reset token".to_string());
+                        }
+                        let unwrapped_result = update_result.unwrap();
+
+                        debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
+
+                        let return_value = PasswordResetTokenRequestResult {
+                            reset_token: reset_token_value,
+                            expires_at: reset_token_timestamp,
+                            user_email: stored_user_email.to_string(),
+                        };
+
+                        return Ok(return_value);
+                    }
+                }
+                return Err("error generating token".to_string());
+            }
+
+            return Err("can not generate token".to_string());
+        }
+        return Err("unable to generate token".to_string());
+    }
+
+    pub async fn change_password_with_token(
+        conncetion_settings: &DbConnectionSetting,
+        user_name: &String,
+        reset_token: &String,
+        new_password: &Secret<String>,
+    ) -> Result<bool, String> {
+        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let filter = doc! {
+            "user_name":user_name
+        };
+        let projection = doc! {"user_name":<i32>::from(1),
+            "password_reset_token_value":<i32>::from(1),
+            "password_reset_token_timestamp":<i32>::from(1),
+        };
+        let options = FindOptions::builder().projection(projection).build();
+
+        let data_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+        let query_execute_result = data_collcetion.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        while let Some(data_doc) = cursor.next().await {
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
+            }
+
+            let inner_doc: Document = data_doc.unwrap();
+            let stored_name = inner_doc.get_str("user_name");
+            if stored_name.is_err() {
+                return Err(stored_name.unwrap_err().to_string());
+            }
+
+            if stored_name.unwrap().eq(user_name) {
+                let stored_reset_token_value = inner_doc.get_str("password_reset_token_value");
+                let stored_reset_token_timestamp =
+                    inner_doc.get_i64("password_reset_token_timestamp");
+
+                if stored_reset_token_timestamp.is_err() || stored_reset_token_value.is_err() {
+                    return Err("unable to retrive reset settings".to_string());
+                }
+                if stored_reset_token_value.unwrap().ne(reset_token) {
+                    return Err("token missmatch".to_string());
+                }
+                let timestamp_now = async_session::chrono::Utc::now();
+                if timestamp_now.timestamp() > stored_reset_token_timestamp.unwrap() {
+                    return Err("token expired".to_string());
+                }
+
+                let inner_update_doc = doc! {
+                "password_reset_token_value": "",
+                "password_reset_token_timestamp": "",
+                "password_hash":new_password.expose_secret()
+                };
+
+                let filter2 = doc! {
+                    "user_name":user_name
+                };
+                //otherwise we get "update document must have first key starting with '$"
+                let update_doc = doc! {"$set": inner_update_doc};
+
+                let update_result = data_collcetion.update_one(filter2, update_doc, None).await;
+                if update_result.is_err() {
+                    let update_err = &update_result.unwrap_err();
+                    warn!(target:"app::FinanceOverView","{}",update_err);
+                    return Err("Error resetting value".to_string());
+                }
+                let unwrapped_result = update_result.unwrap();
+
+                debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
+
+                return Ok(true);
+            }
+
+            return Err("can not  value".to_string());
+        }
+        return Err("unable to reset value".to_string());
     }
 }

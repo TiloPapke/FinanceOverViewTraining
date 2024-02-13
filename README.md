@@ -3,7 +3,14 @@ Main goal of this project is to train development using "rust". Side goal is to 
 
 reached mile stones:
 
-goal points for version 0.0.2:
+version 0.0.3:
+- [x] session controls
+- [x] minimal user settings page
+- [x] provide registration via email, choosing own user name
+- [x] provide password reset via email
+hint for later development: a user should only see his own data.
+
+version 0.0.2:
 - [x] integrate simple log mechanismn
 - [x] using database to count amount of incoming request (might be removed in later versions)
 - [x] providing secure https connection with self signed certificates
@@ -20,13 +27,6 @@ version 0.0.1:
 open mile stones:
 
 hint: new miles stones might be added
-
-goal points for version 0.0.3:
-- [x] session controls
-- [x] minimal user settings page
-- [x] provide registration via email, choosing own user name
-- [ ] provide password reset via email
-hint for later development: a user should only see his own data.
 
 goal points for version 0.0.4
 - [ ] unit tests
