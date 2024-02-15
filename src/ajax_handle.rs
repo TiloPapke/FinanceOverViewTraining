@@ -13,7 +13,7 @@ use async_session::{
     SessionStore,
 };
 use axum::{
-    body::{self, Empty, Full},
+    body::Body,
     extract::Form,
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Response},
@@ -61,9 +61,9 @@ pub async fn get_js_files(js_uri: Uri) -> impl IntoResponse {
     if project_root_result.is_err() {
         return Response::builder()
             .status(StatusCode::NOT_ACCEPTABLE)
-            .body(body::boxed(body::Full::from(
+            .body(Body::from(
                 project_root_result.unwrap_err().to_string(),
-            )))
+            ))
             .unwrap();
     }
 
@@ -76,12 +76,12 @@ pub async fn get_js_files(js_uri: Uri) -> impl IntoResponse {
                 header::CONTENT_TYPE,
                 HeaderValue::from_str("text/javascript").unwrap(),
             )
-            .body(body::boxed(Full::from(file_content)))
+            .body(Body::from(file_content))
             .unwrap();
     } else {
         return Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(body::boxed(Empty::new()))
+            .body(Body::empty())
             .unwrap();
     }
 }

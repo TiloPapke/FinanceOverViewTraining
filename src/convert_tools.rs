@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use bson::uuid;
-use mongodb::bson::Document;
+
+use mongodb::bson::{uuid, Document};
 
 pub struct ConvertTools {}
 
@@ -21,7 +21,7 @@ impl ConvertTools {
             return Err(uuid_bson_parse_result.unwrap_err().to_string());
         }
 
-        let uuid_var = uuid_bson_parse_result.unwrap().to_uuid_0_8();
+        let uuid_var = uuid_bson_parse_result.unwrap();
 
         return Ok(uuid_var.into());
     }

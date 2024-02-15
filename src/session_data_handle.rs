@@ -7,10 +7,11 @@ use axum::http::HeaderMap;
 use axum::http::HeaderValue;
 use axum::http::StatusCode;
 use axum::Extension;
-use axum::TypedHeader;
-use axum::{async_trait, headers::Cookie};
-use bson::Uuid;
+use axum::async_trait;
+use axum_extra::headers::Cookie;
+use axum_extra::TypedHeader;
 use log::trace;
+use mongodb::bson::Uuid;
 use serde::{Deserialize, Serialize};
 
 const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
