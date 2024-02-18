@@ -10,6 +10,11 @@ mod password_handle;
 mod session_data_handle;
 pub mod setting_struct;
 mod user_handling;
+mod tests {
+    mod testing_convert_tools;
+    mod testing_email_smtp;
+    mod testing_email_validation;
+}
 
 use async_mongodb_session::MongodbSessionStore;
 use axum::{http::{self, HeaderMap, Uri}, response::{IntoResponse, Redirect}, routing::{get, post}, Extension, Router};
@@ -108,19 +113,15 @@ async fn main() {
         return;
     }
 
-    let http = tokio::spawn(http_server_simple());
-    let https = tokio::spawn(https_server_simple());
+    let http = tokio::spawn(http_server());
+    let https = tokio::spawn(https_server());
 
     // Ignore errors.
     let _ = tokio::join!(http, https);
 
-    let http_o = tokio::spawn(http_server());
-    let https_o = tokio::spawn(https_server());
-
-    // Ignore errors.
-    let _ = tokio::join!(http_o, https_o);
 }
 
+#[allow(dead_code)]
 async fn http_server_simple() {
     let app = Router::new().route("/", get(|| async { "Hello, world!" }));
 
@@ -129,6 +130,7 @@ async fn http_server_simple() {
     axum::serve(listener, app).await.unwrap();
 }
 
+#[allow(dead_code)]
 async fn https_server_simple() {
     let app = Router::new().route("/", get(|| async { "Hello, https world!" }));
 
