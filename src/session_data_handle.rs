@@ -8,8 +8,11 @@ use axum::http::HeaderValue;
 use axum::http::StatusCode;
 use axum::Extension;
 use axum::async_trait;
-use axum_extra::headers::Cookie;
-use axum_extra::TypedHeader;
+use axum::RequestPartsExt;
+use axum_extra::{
+    headers::Cookie,
+    TypedHeader,
+};
 use log::trace;
 use mongodb::bson::Uuid;
 use serde::{Deserialize, Serialize};
@@ -62,13 +65,10 @@ where
             .await
             .expect("`MongoDBSessionStore` extension missing");
 
-        let cookie = Option::<TypedHeader<Cookie>>::from_request_parts(parts, state)
+        let cookie = parts.extract::<TypedHeader<Cookie>>()
             .await
             .unwrap();
-
-        let session_cookie = cookie
-            .as_ref()
-            .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
+        let session_cookie = cookie.get(AXUM_SESSION_COOKIE_NAME);
 
         let mut headers = HeaderMap::from_request_parts(parts, state).await.unwrap();
 
