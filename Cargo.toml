@@ -29,11 +29,9 @@ rust-ini = {version = "0.20.0"}
 secrecy = {version = "0.8.0", features = ["serde", "alloc"] }
 serde ="1"
 tokio = { version = "1.36", features = ["full"] }
-tower = "0.4.13"
 
 
 [dependencies.mongodb]
-version = "=2.3.1" # can not go higher because of bson
-#git = "https://github.com/TiloPapke/mongo-rust-driver.git"
+version = "=2.8.1"
 default-features = false
 features = ["async-std-runtime", "bson-uuid-0_8"]
