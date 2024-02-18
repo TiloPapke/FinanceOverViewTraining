@@ -7,7 +7,7 @@ use crate::{
 };
 
 use async_session::{
-    chrono::{DateTime, NaiveDateTime, Utc},
+    chrono::{DateTime, Utc},
     SessionStore,
 };
 
@@ -52,10 +52,7 @@ pub async fn do_update_general_user_data(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -77,10 +74,7 @@ pub async fn do_update_general_user_data(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -111,10 +105,7 @@ pub async fn do_update_general_user_data(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );

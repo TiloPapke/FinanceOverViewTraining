@@ -1,6 +1,6 @@
 use askama::Template;
 use async_session::{
-    chrono::{DateTime, NaiveDateTime, Utc},
+    chrono::{DateTime, Utc},
     SessionStore,
 };
 use axum::{
@@ -128,10 +128,7 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -160,10 +157,7 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -189,10 +183,7 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -249,10 +240,7 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
         "{} UTC",
         (session
             .expiry()
-            .unwrap_or(&DateTime::<Utc>::from_utc(
-                NaiveDateTime::from_timestamp(0, 0),
-                Utc
-            ))
+            .unwrap_or(&DateTime::<Utc>::MIN_UTC)
             .naive_local()
             .format("%Y-%m-%d %H:%M:%S"))
     );

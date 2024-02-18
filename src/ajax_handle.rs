@@ -8,7 +8,7 @@ use std::{
 };
 
 use async_session::{
-    chrono::{DateTime, NaiveDateTime, Utc},
+    chrono::{DateTime, Utc},
     serde_json::json,
     SessionStore,
 };
@@ -123,10 +123,7 @@ pub async fn do_change_passwort(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -148,10 +145,7 @@ pub async fn do_change_passwort(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -213,10 +207,7 @@ pub async fn do_change_passwort(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -256,10 +247,7 @@ pub async fn do_register_user_via_email(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -277,10 +265,7 @@ pub async fn do_register_user_via_email(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -301,10 +286,7 @@ pub async fn do_register_user_via_email(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -350,10 +332,7 @@ pub async fn do_request_password_reset(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -370,10 +349,7 @@ pub async fn do_request_password_reset(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -390,10 +366,7 @@ pub async fn do_request_password_reset(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -447,10 +420,7 @@ pub async fn do_change_password(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -467,10 +437,7 @@ pub async fn do_change_password(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
@@ -487,10 +454,7 @@ pub async fn do_change_password(
             "{} UTC",
             (session
                 .expiry()
-                .unwrap_or(&DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(0, 0),
-                    Utc
-                ))
+                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
