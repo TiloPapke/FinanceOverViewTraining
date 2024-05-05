@@ -3,6 +3,12 @@ Main goal of this project is to train development using "rust". Side goal is to 
 
 reached mile stones:
 
+goal points for version 0.0.4
+- [ ] unit tests
+- [ ] hashed session id to ensure a users identity for futres calls so that a user can only change own data
+- [ ] simple finance account management
+- [ ] journaling of income and expanses
+
 version 0.0.3:
 - [x] session controls
 - [x] minimal user settings page
@@ -27,12 +33,6 @@ version 0.0.1:
 open mile stones:
 
 hint: new miles stones might be added
-
-goal points for version 0.0.4
-- [ ] unit tests
-- [ ] hashed session id to ensure a users identity for futres calls so that a user can only change own data
-- [ ] simple finance account management
-- [ ] journaling of income and expanses
 
 goal points for version 0.0.5
 - [ ] calculting saldo over all finance accounts
