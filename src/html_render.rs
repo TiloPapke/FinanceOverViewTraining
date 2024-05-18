@@ -9,6 +9,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
 };
 use log::debug;
+use mongodb::bson::uuid;
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 
@@ -424,4 +425,81 @@ pub async fn display_paswword_reset_with_token_page(
         reset_token: form.token.expose_secret().clone(),
     };
     HtmlTemplate(st)
+}
+
+#[derive(Template)]
+#[template(path = "AccountingConfig/AccountingConfig_main.html")]
+pub struct AccountingMainConfigTemplate {
+    username: String,
+    account_types: Vec<AccountTypeTemplate>,
+}
+
+pub struct AccountTypeTemplate {
+    id: String,
+    name: String,
+    description: String,
+}
+
+pub async fn display_accounting_config_main_page(
+    session_data: SessionDataResult,
+) -> impl IntoResponse {
+    debug!(target: "app::FinanceOverView","display accounting main config page");
+
+    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    let empty_accountlist: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
+
+    if !is_logged_in {
+        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+            username: "not logged in".to_string(),
+            account_types: empty_accountlist,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
+    }
+
+    if session.is_expired() {
+        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+            username: "Session expired".to_string(),
+            account_types: empty_accountlist,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
+    }
+
+    let username: String = session.get("user_name").unwrap();
+
+    let dummy_types = vec![
+        AccountTypeTemplate {
+            id: uuid::Uuid::new().to_string(),
+            name: "Type1".to_string(),
+            description: "Details for Type 1".to_string(),
+        },
+        AccountTypeTemplate {
+            id: uuid::Uuid::new().to_string(),
+            name: "Type2".to_string(),
+            description: "Details for another Type".to_string(),
+        },
+    ];
+
+    let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+        username: username,
+        account_types: dummy_types,
+    };
+
+    session.expire_in(std::time::Duration::from_secs(60 * 1));
+    let _new_cookie = session_data.session_store.store_session(session).await;
+
+    HtmlTemplate(return_value)
 }

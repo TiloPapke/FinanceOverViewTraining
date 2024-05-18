@@ -37,6 +37,11 @@ open mile stones:
 hint: new miles stones might be added
 
 goal points for version 0.0.5
+- [ ] correct spellings like display_paswword_reset_with_token_page
+- [ ] code refactoring: centralizse session handle
 - [ ] calculting saldo over all finance accounts
 - [ ] export to csv (simple)
 
+goal points for version 0.0.6
+- [ ] redesign UI
+- [ ] using a css framework for better styles

@@ -1,0 +1,31 @@
+<head>
+    <script src="/js_code/jquery-3.6.1.js"></script>
+</head>
+
+<body>
+    <h2>Account configration for {{username}}</h2>
+    <br>
+    <h3>Finance Accont Types</h3>
+    <table>
+        <tr>
+            <td style="display:none;">IDs</td>
+            <td>Name</td>
+            <td>Description</td>
+            <td></td>
+        </tr>
+        {% for accountType in account_types %}
+        <tr>
+            <td style="display:none;">{{accountType.id}}</td>
+            <td>{{accountType.name}}</td>
+            <td>{{accountType.description}}</td>
+            <td><button id="accountTypeUpdate">Update</button></td>
+        </tr>
+        {% endfor %}
+        <tr id="newAccountTypeRow">
+            <td style="display:none;"></td>
+            <td>new account type</td>
+            <td>description of new account type</td>
+            <td><button id="accountTypeCreate">Create</button></td>
+        </tr>
+    </table>
+</body>

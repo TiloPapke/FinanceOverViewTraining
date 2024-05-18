@@ -211,6 +211,7 @@ async fn https_server() {
             get(html_render::display_paswword_reset_with_token_page),
         )
         .route("/do_reset_password", post(ajax_handle::do_change_password))
+        .route("/accountingconfig", get(html_render::display_accounting_config_main_page))
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 
