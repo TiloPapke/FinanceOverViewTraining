@@ -6,7 +6,7 @@ reached mile stones:
 goal points for version 0.0.4
 - [ ] unit tests
 - [ ] hashed session id to ensure a users identity for futres calls so that a user can only change own data
-- [ ] defintion of data structure for storage
+- [x] defintion of data structure for storage
 - [ ] hash content of field "reset_secret"
 - [ ] simple finance account management
 - [ ] journaling of income and expanses

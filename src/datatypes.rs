@@ -1,3 +1,4 @@
+use mongodb::bson::Uuid;
 use async_session::chrono::{DateTime, Utc};
 use serde::Deserialize;
 
@@ -26,4 +27,12 @@ pub struct PasswordResetRequest {
     pub username: String,
     pub reset_token: String,
     pub new_password: secrecy::Secret<String>,
+}
+
+
+#[derive(Deserialize, Debug)]
+pub struct FinanceAccountType {
+    pub id: Uuid,
+    pub title: String,
+    pub descriptiom: String,
 }

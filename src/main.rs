@@ -1,3 +1,5 @@
+mod accounting_config_database;
+mod accounting_config_logic;
 mod ajax_handle;
 mod convert_tools;
 mod database_handler_mongodb;
@@ -17,7 +19,12 @@ mod tests {
 }
 
 use async_mongodb_session::MongodbSessionStore;
-use axum::{http::{self, HeaderMap, Uri}, response::{IntoResponse, Redirect}, routing::{get, post}, Extension, Router};
+use axum::{
+    http::{self, HeaderMap, Uri},
+    response::{IntoResponse, Redirect},
+    routing::{get, post},
+    Extension, Router,
+};
 use axum_server::tls_rustls::RustlsConfig;
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log4rs::{
@@ -33,7 +40,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB}, html_render::{invalid_handler, registration_incomplete_handler, HtmlTemplate, MainPageTemplate}, mdb_convert_tools::MdbConvertTools, setting_struct::SettingStruct};
+use crate::{
+    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    html_render::{
+        invalid_handler, registration_incomplete_handler, HtmlTemplate, MainPageTemplate,
+    },
+    mdb_convert_tools::MdbConvertTools,
+    setting_struct::SettingStruct,
+};
 
 #[tokio::main]
 async fn main() {
@@ -118,13 +132,12 @@ async fn main() {
 
     // Ignore errors.
     let _ = tokio::join!(http, https);
-
 }
 
 async fn http_server() {
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let app = Router::new().route("/", get(http_handler));
-    
+
     let addr = SocketAddr::from((
         [
             local_setting.web_server_ip_part1,
@@ -211,7 +224,10 @@ async fn https_server() {
             get(html_render::display_paswword_reset_with_token_page),
         )
         .route("/do_reset_password", post(ajax_handle::do_change_password))
-        .route("/accountingconfig", get(html_render::display_accounting_config_main_page))
+        .route(
+            "/accountingconfig",
+            get(html_render::display_accounting_config_main_page),
+        )
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 
