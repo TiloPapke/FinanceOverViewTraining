@@ -1,5 +1,5 @@
-use mongodb::bson::Uuid;
 use async_session::chrono::{DateTime, Utc};
+use mongodb::bson::Uuid;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -28,7 +28,6 @@ pub struct PasswordResetRequest {
     pub reset_token: String,
     pub new_password: secrecy::Secret<String>,
 }
-
 
 #[derive(Deserialize, Debug)]
 pub struct FinanceAccountType {
