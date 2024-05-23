@@ -9,23 +9,23 @@ use crate::{
 #[async_trait]
 pub trait DBFinanceConfigFunctions {
     async fn finance_account_type_list(
-        &self,
+        &mut self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
     ) -> Result<Vec<FinanceAccountType>, String>;
     async fn finance_account_type_upsert(
-        &self,
+        &mut self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
-    ) -> Result<bool, String>;
+    ) -> Result<(), String>;
 }
 
 #[async_trait]
 impl DBFinanceConfigFunctions for DbHandlerMongoDB {
     async fn finance_account_type_list(
-        &self,
+        &mut self,
         _conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
         _finance_account_type: &FinanceAccountType,
@@ -49,11 +49,11 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
     }
 
     async fn finance_account_type_upsert(
-        &self,
+        &mut self,
         _conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
         _finance_account_type: &FinanceAccountType,
-    ) -> Result<bool, String> {
+    ) -> Result<(), String> {
         // Get a handle to the deployment.
         /*
         let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
