@@ -1,18 +1,20 @@
-use axum::async_trait;
+#[cfg(test)]
+use crate::database_handler_mongodb::DbConnectionSetting;
+#[cfg(test)]
+use crate::datatypes::FinanceAccountType;
+#[cfg(test)]
 use mongodb::bson::Uuid;
+#[cfg(test)]
 use std::collections::HashMap;
 
-use crate::{
-    accounting_config_database::DBFinanceConfigFunctions,
-    database_handler_mongodb::DbConnectionSetting, datatypes::FinanceAccountType,
-};
-
+#[cfg(test)]
 pub struct InMemoryDatabase {
     user_account_types: HashMap<Uuid, Vec<FinanceAccountType>>,
 }
 
-#[async_trait]
-impl DBFinanceConfigFunctions for InMemoryDatabase {
+#[cfg(test)]
+#[axum::async_trait]
+impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDatabase {
     async fn finance_account_type_list(
         &mut self,
         _conncetion_settings: &DbConnectionSetting,
@@ -54,12 +56,29 @@ impl DBFinanceConfigFunctions for InMemoryDatabase {
     }
 }
 
+#[cfg(test)]
 impl InMemoryDatabase {
+    pub fn new() -> Self {
+        Self {
+            user_account_types: HashMap::new(),
+        }
+    }
+
+    pub fn insert_user(&mut self, user_id: &Uuid) -> () {
+        match self.user_account_types.get(&user_id) {
+            None => {
+                let new_vetor: Vec<FinanceAccountType> = Vec::new();
+                self.user_account_types.insert(user_id.clone(), new_vetor);
+            }
+            Some(_) => return (),
+        }
+    }
+
     fn clone_finance_account_type(object_to_clone: &FinanceAccountType) -> FinanceAccountType {
         let return_obj = FinanceAccountType {
             id: object_to_clone.id,
             title: object_to_clone.title.to_owned(),
-            descriptiom: object_to_clone.descriptiom.to_owned(),
+            description: object_to_clone.description.to_owned(),
         };
         return return_obj;
     }

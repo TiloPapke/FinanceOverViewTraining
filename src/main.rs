@@ -14,6 +14,7 @@ pub mod setting_struct;
 mod user_handling;
 mod tests {
     mod mocking_database;
+    mod testing_accounting_config;
     mod testing_convert_tools;
     mod testing_email_smtp;
     mod testing_email_validation;

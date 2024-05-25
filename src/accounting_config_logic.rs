@@ -15,13 +15,12 @@ impl<'a> FinanceAccounttingHandle<'a> {
         }
     }
 
-    pub async fn finance_account_type_list(
-        _finance_account_type: &FinanceAccountType,
-    ) -> Result<Vec<FinanceAccountType>, String> {
+    pub async fn finance_account_type_list(&self) -> Result<Vec<FinanceAccountType>, String> {
         unimplemented!("Listing finance account type not impplemented")
     }
 
     pub async fn finance_account_type_upsert(
+        &self,
         _finance_account_type: &FinanceAccountType,
     ) -> Result<bool, String> {
         unimplemented!("upsert new finance account type not impplemented")

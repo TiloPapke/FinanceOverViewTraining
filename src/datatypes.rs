@@ -29,9 +29,9 @@ pub struct PasswordResetRequest {
     pub new_password: secrecy::Secret<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(PartialEq, Deserialize, Debug, Clone)]
 pub struct FinanceAccountType {
     pub id: Uuid,
     pub title: String,
-    pub descriptiom: String,
+    pub description: String,
 }
