@@ -16,13 +16,19 @@ impl<'a> FinanceAccounttingHandle<'a> {
     }
 
     pub async fn finance_account_type_list(&self) -> Result<Vec<FinanceAccountType>, String> {
-        unimplemented!("Listing finance account type not impplemented")
+        let temp_var_0 = self.db_connector.finance_account_type_list(&self.user_id);
+        let temp_var_1: Result<Vec<FinanceAccountType>, String> = temp_var_0.await;
+        return temp_var_1;
     }
 
     pub async fn finance_account_type_upsert(
-        &self,
-        _finance_account_type: &FinanceAccountType,
-    ) -> Result<bool, String> {
-        unimplemented!("upsert new finance account type not impplemented")
+        &mut self,
+        finance_account_type: &FinanceAccountType,
+    ) -> Result<(), String> {
+        let temp_var_0 = self
+            .db_connector
+            .finance_account_type_upsert(&self.user_id, finance_account_type);
+        let temp_var_1 = temp_var_0.await;
+        return temp_var_1;
     }
 }

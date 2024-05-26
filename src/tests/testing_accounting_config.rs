@@ -1,11 +1,13 @@
 #[cfg(test)]
 
 mod test_accounting_handle {
+    use std::rc::Rc;
+
     use mongodb::bson::Uuid;
 
     use crate::{
         accounting_config_logic::FinanceAccounttingHandle, datatypes::FinanceAccountType,
-        tests::mocking_database::InMemoryDatabase,
+        tests::mocking_database::InMemoryDatabaseHandler,
     };
 
     #[tokio::test]
@@ -14,16 +16,25 @@ mod test_accounting_handle {
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
         let user_id_4 = Uuid::new();
+        let mut id_list: Vec<&mut Uuid> = Vec::new();
+        let mut user_id_1_2 = user_id_1.clone();
+        let mut user_id_2_2 = user_id_2.clone();
+        let mut user_id_3_2 = user_id_3.clone();
+        let mut user_id_4_2 = user_id_4.clone();
+        id_list.push(&mut user_id_1_2);
+        id_list.push(&mut user_id_2_2);
+        id_list.push(&mut user_id_3_2);
+        id_list.push(&mut user_id_4_2);
 
-        let mut in_memory_db = InMemoryDatabase::new();
-        in_memory_db.insert_user(&user_id_1);
-        in_memory_db.insert_user(&user_id_2);
-        in_memory_db.insert_user(&user_id_3);
+        let internal_data_obj =
+            InMemoryDatabaseHandler::create_in_memory_database_data_object(id_list);
+        let mut rc_data_obj = Rc::new(internal_data_obj);
+        let in_memory_db = InMemoryDatabaseHandler::new(&mut rc_data_obj);
 
         let account_handle_1 = FinanceAccounttingHandle::new(&user_id_1, &in_memory_db);
-        let account_handle_2 = FinanceAccounttingHandle::new(&user_id_2, &in_memory_db);
-        let account_handle_3 = FinanceAccounttingHandle::new(&user_id_3, &in_memory_db);
-        let account_handle_4 = FinanceAccounttingHandle::new(&user_id_4, &in_memory_db);
+        let mut account_handle_2 = FinanceAccounttingHandle::new(&user_id_2, &in_memory_db);
+        let mut account_handle_3 = FinanceAccounttingHandle::new(&user_id_3, &in_memory_db);
+        let mut account_handle_4 = FinanceAccounttingHandle::new(&user_id_4, &in_memory_db);
 
         //prepare data
         //empty list

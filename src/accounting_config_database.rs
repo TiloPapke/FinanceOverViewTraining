@@ -1,34 +1,30 @@
 use axum::async_trait;
 use mongodb::bson::Uuid;
 
-use crate::{
-    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-    datatypes::FinanceAccountType,
-};
+use crate::{database_handler_mongodb::DbHandlerMongoDB, datatypes::FinanceAccountType};
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait DBFinanceConfigFunctions {
     async fn finance_account_type_list(
-        &mut self,
-        conncetion_settings: &DbConnectionSetting,
+        &self,
+        //conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        finance_account_type: &FinanceAccountType,
     ) -> Result<Vec<FinanceAccountType>, String>;
     async fn finance_account_type_upsert(
-        &mut self,
-        conncetion_settings: &DbConnectionSetting,
+        &self,
+        //conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
     ) -> Result<(), String>;
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl DBFinanceConfigFunctions for DbHandlerMongoDB {
     async fn finance_account_type_list(
-        &mut self,
-        _conncetion_settings: &DbConnectionSetting,
+        &self,
+        //_conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
-        _finance_account_type: &FinanceAccountType,
+        //_finance_account_type: &FinanceAccountType,
     ) -> Result<Vec<FinanceAccountType>, String> {
         // Get a handle to the deployment.
         /*
@@ -49,8 +45,8 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
     }
 
     async fn finance_account_type_upsert(
-        &mut self,
-        _conncetion_settings: &DbConnectionSetting,
+        &self,
+        //_conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
         _finance_account_type: &FinanceAccountType,
     ) -> Result<(), String> {

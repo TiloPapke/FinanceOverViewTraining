@@ -1,53 +1,61 @@
 #[cfg(test)]
-use crate::database_handler_mongodb::DbConnectionSetting;
-#[cfg(test)]
 use crate::datatypes::FinanceAccountType;
 #[cfg(test)]
 use mongodb::bson::Uuid;
 #[cfg(test)]
-use std::collections::HashMap;
-
+use std::rc::Rc;
 #[cfg(test)]
-pub struct InMemoryDatabase {
-    user_account_types: HashMap<Uuid, Vec<FinanceAccountType>>,
+#[cfg(test)]
+pub struct InMemoryDatabaseHandler<'a, 'b> {
+    internal_data: &'a mut Rc<InMemoryDatabaseData<'a, 'b>>,
 }
 
 #[cfg(test)]
-#[axum::async_trait]
-impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDatabase {
+pub struct InMemoryDatabaseData<'a, 'b> {
+    user_ids: Vec<&'a mut Uuid>,
+    account_types_per_user: Vec<Vec<&'b mut FinanceAccountType>>,
+}
+
+#[cfg(test)]
+#[axum::async_trait(?Send)]
+impl<'a, 'b> crate::accounting_config_database::DBFinanceConfigFunctions
+    for InMemoryDatabaseHandler<'a, 'b>
+{
     async fn finance_account_type_list(
-        &mut self,
-        _conncetion_settings: &DbConnectionSetting,
+        &self,
+        // _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        _finance_account_type: &FinanceAccountType,
+        //_finance_account_type: &FinanceAccountType,
     ) -> Result<Vec<FinanceAccountType>, String> {
-        let empty_value: Vec<FinanceAccountType> = Vec::new();
-        if self.user_account_types.contains_key(user_id) {
-            match self.user_account_types.get(user_id) {
-                Some(return_value) => Ok(InMemoryDatabase::clone_finance_account_type_vector(
-                    return_value,
-                )),
-                None => Ok(empty_value),
-            }
+        let data_obj = Rc::clone(self.internal_data);
+        let position_option = data_obj.user_ids.iter().position(|elem| elem.eq(&user_id));
+        if let Some(position) = position_option {
+            return Ok(InMemoryDatabaseHandler::clone_finance_account_type_vector(
+                &data_obj.account_types_per_user[position],
+            ));
         } else {
             Err("User not found".to_string())
         }
     }
 
     async fn finance_account_type_upsert(
-        &mut self,
-        _conncetion_settings: &DbConnectionSetting,
+        &self,
+        //_conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
     ) -> Result<(), String> {
-        let current_list_option = self.user_account_types.get_mut(&user_id);
-        if let Some(current_list) = current_list_option {
-            let index = current_list
+        let mut data_obj = Rc::clone(self.internal_data);
+        let data_obj2 = Rc::get_mut(&mut data_obj).unwrap();
+        let position_option = data_obj2.user_ids.iter().position(|elem| elem.eq(&user_id));
+        if let Some(position) = position_option {
+            let current_list = &mut data_obj2.account_types_per_user.get_mut(position).unwrap();
+            let position2_option = current_list
                 .iter()
                 .position(|elem| elem.id.eq(&finance_account_type.id));
-            match index {
-                Some(position) => current_list[position] = finance_account_type.clone(),
-                None => current_list.push(finance_account_type.clone()),
+            if let Some(position2) = position2_option {
+                current_list[position2] = &mut finance_account_type.clone();
+            } else {
+                current_list.push(&mut finance_account_type.clone());
             }
             Ok(())
         } else {
@@ -57,21 +65,21 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 }
 
 #[cfg(test)]
-impl InMemoryDatabase {
-    pub fn new() -> Self {
+impl<'a, 'b> InMemoryDatabaseHandler<'a, 'b> {
+    pub fn new(data_obj: &'a mut Rc<InMemoryDatabaseData<'a, 'b>>) -> Self {
         Self {
-            user_account_types: HashMap::new(),
+            internal_data: data_obj,
         }
     }
 
-    pub fn insert_user(&mut self, user_id: &Uuid) -> () {
-        match self.user_account_types.get(&user_id) {
-            None => {
-                let new_vetor: Vec<FinanceAccountType> = Vec::new();
-                self.user_account_types.insert(user_id.clone(), new_vetor);
-            }
-            Some(_) => return (),
-        }
+    pub fn create_in_memory_database_data_object(
+        user_ids: Vec<&'a mut Uuid>,
+    ) -> InMemoryDatabaseData<'a, 'b> {
+        let data_object = InMemoryDatabaseData {
+            account_types_per_user: Vec::with_capacity(user_ids.len()),
+            user_ids: user_ids,
+        };
+        return data_object;
     }
 
     fn clone_finance_account_type(object_to_clone: &FinanceAccountType) -> FinanceAccountType {
@@ -83,12 +91,12 @@ impl InMemoryDatabase {
         return return_obj;
     }
     fn clone_finance_account_type_vector(
-        vector_in: &Vec<FinanceAccountType>,
+        vector_in: &Vec<&'a mut FinanceAccountType>,
     ) -> Vec<FinanceAccountType> {
         let mut return_vetor: Vec<FinanceAccountType> = Vec::new();
 
         for some_finance_account_type in vector_in {
-            return_vetor.push(InMemoryDatabase::clone_finance_account_type(
+            return_vetor.push(InMemoryDatabaseHandler::clone_finance_account_type(
                 &some_finance_account_type,
             ));
         }
