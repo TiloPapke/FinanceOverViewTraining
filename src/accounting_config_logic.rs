@@ -23,7 +23,7 @@ impl<'a> FinanceAccounttingHandle<'a> {
 
     pub async fn finance_account_type_upsert(
         &mut self,
-        finance_account_type: &FinanceAccountType,
+        finance_account_type: &mut FinanceAccountType,
     ) -> Result<(), String> {
         let temp_var_0 = self
             .db_connector

@@ -14,7 +14,7 @@ pub trait DBFinanceConfigFunctions {
         &self,
         //conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        finance_account_type: &FinanceAccountType,
+        finance_account_type: *mut FinanceAccountType,
     ) -> Result<(), String>;
 }
 
@@ -48,7 +48,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         &self,
         //_conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
-        _finance_account_type: &FinanceAccountType,
+        _finance_account_type: *mut FinanceAccountType,
     ) -> Result<(), String> {
         // Get a handle to the deployment.
         /*

@@ -1,13 +1,12 @@
 #[cfg(test)]
 
 mod test_accounting_handle {
-    use std::rc::Rc;
-
     use mongodb::bson::Uuid;
 
     use crate::{
-        accounting_config_logic::FinanceAccounttingHandle, datatypes::FinanceAccountType,
-        tests::mocking_database::InMemoryDatabaseHandler,
+        accounting_config_logic::FinanceAccounttingHandle,
+        datatypes::FinanceAccountType,
+        tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
     };
 
     #[tokio::test]
@@ -16,20 +15,35 @@ mod test_accounting_handle {
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
         let user_id_4 = Uuid::new();
-        let mut id_list: Vec<&mut Uuid> = Vec::new();
-        let mut user_id_1_2 = user_id_1.clone();
-        let mut user_id_2_2 = user_id_2.clone();
-        let mut user_id_3_2 = user_id_3.clone();
-        let mut user_id_4_2 = user_id_4.clone();
-        id_list.push(&mut user_id_1_2);
-        id_list.push(&mut user_id_2_2);
-        id_list.push(&mut user_id_3_2);
-        id_list.push(&mut user_id_4_2);
+        let mut id_list: Vec<Uuid> = Vec::new();
+        //let user_id_1_2 = user_id_1.clone();
+        //let mut user_id_2_2 = user_id_2.clone();
+        //let mut user_id_3_2 = user_id_3.clone();
+        //let mut user_id_4_2 = user_id_4.clone();
+        id_list.push(user_id_1.clone());
+        id_list.push(user_id_2.clone());
+        id_list.push(user_id_3.clone());
+        id_list.push(user_id_4.clone());
 
-        let internal_data_obj =
-            InMemoryDatabaseHandler::create_in_memory_database_data_object(id_list);
-        let mut rc_data_obj = Rc::new(internal_data_obj);
-        let in_memory_db = InMemoryDatabaseHandler::new(&mut rc_data_obj);
+        let account_types_user_1: Vec<FinanceAccountType> = Vec::new();
+        let account_types_user_2: Vec<FinanceAccountType> = Vec::new();
+        let account_types_user_3: Vec<FinanceAccountType> = Vec::new();
+        let account_types_user_4: Vec<FinanceAccountType> = Vec::new();
+        let mut account_types_all_users = Vec::new();
+        account_types_all_users.push(account_types_user_1);
+        account_types_all_users.push(account_types_user_2);
+        account_types_all_users.push(account_types_user_3);
+        account_types_all_users.push(account_types_user_4);
+
+        let data_obj = InMemoryDatabaseData::create_in_memory_database_data_object(
+            id_list,
+            account_types_all_users,
+        );
+        let mutex_obj = std::sync::Mutex::new(data_obj);
+
+        let _ = crate::tests::mocking_database::GLOBAL_IN_MEMORY_DATA.set(mutex_obj);
+
+        let in_memory_db = InMemoryDatabaseHandler {};
 
         let account_handle_1 = FinanceAccounttingHandle::new(&user_id_1, &in_memory_db);
         let mut account_handle_2 = FinanceAccounttingHandle::new(&user_id_2, &in_memory_db);
@@ -46,7 +60,7 @@ mod test_accounting_handle {
             id: Uuid::new(),
         };
         let insert_result_1 = account_handle_2
-            .finance_account_type_upsert(&finance_account_type_1)
+            .finance_account_type_upsert(&mut finance_account_type_1.clone())
             .await;
         //list with two elements where one is updated
         let mut finance_account_type_2 = FinanceAccountType {
@@ -59,16 +73,16 @@ mod test_accounting_handle {
             title: "SomeType3".to_string(),
             id: Uuid::new(),
         };
-        let insert_result_2 = account_handle_2
-            .finance_account_type_upsert(&finance_account_type_2)
+        let insert_result_2 = account_handle_3
+            .finance_account_type_upsert(&mut finance_account_type_2.clone())
             .await;
         let insert_result_3 = account_handle_3
-            .finance_account_type_upsert(&finance_account_type_3)
+            .finance_account_type_upsert(&mut finance_account_type_3.clone())
             .await;
         finance_account_type_2.description = "UpdatedDescription".to_string();
         finance_account_type_2.title = "UpdatedTitle".to_string();
         let update_result_1 = account_handle_3
-            .finance_account_type_upsert(&finance_account_type_2)
+            .finance_account_type_upsert(&mut finance_account_type_2)
             .await;
         //listing that returns an error
         let finance_account_type_4 = FinanceAccountType {
@@ -77,7 +91,7 @@ mod test_accounting_handle {
             id: Uuid::new(),
         };
         let insert_result_4 = account_handle_4
-            .finance_account_type_upsert(&finance_account_type_4)
+            .finance_account_type_upsert(&mut finance_account_type_4.clone())
             .await;
 
         //test data
