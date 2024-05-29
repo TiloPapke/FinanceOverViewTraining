@@ -5,6 +5,7 @@ mod test_accounting_handle {
 
     use crate::{
         accounting_config_logic::FinanceAccounttingHandle,
+        database_handler_mongodb::DbHandlerMongoDB,
         datatypes::FinanceAccountType,
         tests::{
             mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
@@ -129,6 +130,77 @@ mod test_accounting_handle {
         }
 
         assert!(insert_result_4.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_acounting_with_mongodb() {
+        let user_id_1 = Uuid::new();
+        let mongo_db = DbHandlerMongoDB {};
+
+        let mut account_handle_1 = FinanceAccounttingHandle::new(&user_id_1, &mongo_db);
+
+        //prepare data
+        //First lilst
+        let list_1_result = account_handle_1.finance_account_type_list().await;
+        //inserting 2 Elements
+        let finance_account_type_1 = FinanceAccountType {
+            description: "SomeTypeDescription_".to_string() + &Uuid::new().to_string(),
+            title: "SomeType_".to_string() + &Uuid::new().to_string(),
+            id: Uuid::new(),
+        };
+        let insert_result_1 = account_handle_1
+            .finance_account_type_upsert(&mut finance_account_type_1.clone())
+            .await;
+        let finance_account_type_2 = FinanceAccountType {
+            description: "SomeTypeDescription2_".to_string() + &Uuid::new().to_string(),
+            title: "SomeType2_".to_string() + &Uuid::new().to_string(),
+            id: Uuid::new(),
+        };
+        let insert_result_2 = account_handle_1
+            .finance_account_type_upsert(&mut finance_account_type_2.clone())
+            .await;
+        let list_2_result = account_handle_1.finance_account_type_list().await;
+        let mut finance_account_type_3 = finance_account_type_2.clone();
+        finance_account_type_3.description =
+            "UpdatedDescription_".to_string() + &Uuid::new().to_string();
+        finance_account_type_3.title = "UpdatedTitle_".to_string() + &Uuid::new().to_string();
+        let update_result_1 = account_handle_1
+            .finance_account_type_upsert(&mut finance_account_type_3)
+            .await;
+        let list_3_result = account_handle_1.finance_account_type_list().await;
+
+        //test data
+
+        assert!(list_1_result.is_ok());
+        assert!(list_2_result.is_ok());
+        assert!(list_3_result.is_ok());
+        assert!(insert_result_1.is_ok());
+        assert!(insert_result_2.is_ok());
+        assert!(update_result_1.is_ok());
+
+        let list1 = list_1_result.unwrap();
+        let list2 = list_2_result.unwrap();
+        let list3 = list_3_result.unwrap();
+
+        assert_eq!(list1.len() + 2, list2.len());
+        assert_eq!(list1.len(), list3.len());
+
+        assert!(test_accounting_handle::account_type_list_contains_element(
+            &list2,
+            &finance_account_type_1
+        ));
+        assert!(test_accounting_handle::account_type_list_contains_element(
+            &list2,
+            &finance_account_type_2
+        ));
+        assert!(test_accounting_handle::account_type_list_contains_element(
+            &list3,
+            &finance_account_type_1
+        ));
+        assert!(test_accounting_handle::account_type_list_contains_element(
+            &list3,
+            &finance_account_type_3
+        ));
     }
 
     fn account_type_list_contains_element(
