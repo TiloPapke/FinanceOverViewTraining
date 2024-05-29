@@ -23,9 +23,7 @@ pub static GLOBAL_IN_MEMORY_DATA: OnceCell<Mutex<InMemoryDatabaseData>> = OnceCe
 impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDatabaseHandler {
     async fn finance_account_type_list(
         &self,
-        // _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        //_finance_account_type: &FinanceAccountType,
     ) -> Result<Vec<FinanceAccountType>, String> {
         let data_obj = GLOBAL_IN_MEMORY_DATA.get().unwrap();
         let data_obj2 = data_obj.lock().unwrap();
@@ -43,7 +41,6 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 
     async fn finance_account_type_upsert(
         &self,
-        //_conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: *mut FinanceAccountType,
     ) -> Result<(), String> {
@@ -89,13 +86,7 @@ impl InMemoryDatabaseData {
         };
         return data_obj;
     }
-    /*
-        pub fn global() -> &'static TestSettingStruct {
-            GLOBAL_TEST_SETTING
-                .get()
-                .expect("GLOBAL_TEST_SETTING is not initialized")
-        }
-    */
+
     fn clone_finance_account_type(object_to_clone: &FinanceAccountType) -> FinanceAccountType {
         let return_obj = FinanceAccountType {
             id: object_to_clone.id,

@@ -7,12 +7,10 @@ use crate::{database_handler_mongodb::DbHandlerMongoDB, datatypes::FinanceAccoun
 pub trait DBFinanceConfigFunctions {
     async fn finance_account_type_list(
         &self,
-        //conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccountType>, String>;
     async fn finance_account_type_upsert(
         &self,
-        //conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: *mut FinanceAccountType,
     ) -> Result<(), String>;
@@ -22,9 +20,7 @@ pub trait DBFinanceConfigFunctions {
 impl DBFinanceConfigFunctions for DbHandlerMongoDB {
     async fn finance_account_type_list(
         &self,
-        //_conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
-        //_finance_account_type: &FinanceAccountType,
     ) -> Result<Vec<FinanceAccountType>, String> {
         // Get a handle to the deployment.
         /*
@@ -46,7 +42,6 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
 
     async fn finance_account_type_upsert(
         &self,
-        //_conncetion_settings: &DbConnectionSetting,
         _user_id: &Uuid,
         _finance_account_type: *mut FinanceAccountType,
     ) -> Result<(), String> {
