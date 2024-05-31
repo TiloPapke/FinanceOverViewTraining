@@ -38,10 +38,8 @@ pub struct TestSettingStruct {
     pub outgoing_mail_receiver: String,
     pub outgoing_mail_title: String,
     pub outgoing_mail_simple_body: String,
-    pub test_database_db_url: String,
-    pub test_database_db_user: String,
-    pub test_database_db_password: String,
-    pub test_database_db_instance: String,
+    pub test_user_account_user_login: String,
+    pub test_user_account_user_password: String,
 }
 
 pub static GLOBAL_SETTING: OnceCell<SettingStruct> = OnceCell::new();
@@ -297,11 +295,9 @@ impl TestSettingStruct {
                 "OutgoingMail_SimpleBody",
                 "This is just some placeholder text \r please your own",
             );
-        conf.with_section(Some("TestDatabase"))
-            .set("DB_URL", "mongodb://localhost:27017")
-            .set("DB_User", "TestUser")
-            .set("DB_Password", "password")
-            .set("DB_Instance", "StructureName");
+        conf.with_section(Some("TestUserAccount"))
+            .set("User_Login", "someUser")
+            .set("User_Password", "somePassword");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -319,20 +315,12 @@ impl TestSettingStruct {
             .get_from_or(Some("OutgoingMail"), "OutgoingMail_SimpleBody", "")
             .parse()
             .unwrap();
-        let _test_database_db_url: String = conf
-            .get_from_or(Some("TestDatabase"), "DB_URL", "")
+        let _test_user_account_user_login: String = conf
+            .get_from_or(Some("TestUserAccount"), "User_Login", "")
             .parse()
             .unwrap();
-        let _test_database_db_user: String = conf
-            .get_from_or(Some("TestDatabase"), "DB_User", "")
-            .parse()
-            .unwrap();
-        let _test_database_db_password: String = conf
-            .get_from_or(Some("TestDatabase"), "DB_Password", "")
-            .parse()
-            .unwrap();
-        let _test_database_db_instance: String = conf
-            .get_from_or(Some("TestDatabase"), "DB_Instance", "")
+        let _test_user_account_user_password: String = conf
+            .get_from_or(Some("TestUserAccount"), "User_Password", "")
             .parse()
             .unwrap();
 
@@ -340,10 +328,8 @@ impl TestSettingStruct {
             outgoing_mail_receiver: _outgoing_mail_receiver,
             outgoing_mail_title: _outgoing_mail_title,
             outgoing_mail_simple_body: _outgoing_mail_simple_body,
-            test_database_db_instance: _test_database_db_instance,
-            test_database_db_password: _test_database_db_password,
-            test_database_db_url: _test_database_db_url,
-            test_database_db_user: _test_database_db_user,
+            test_user_account_user_login: _test_user_account_user_login,
+            test_user_account_user_password: _test_user_account_user_password,
         };
     }
 }

@@ -1,4 +1,6 @@
 #[cfg(test)]
+use crate::database_handler_mongodb::DbConnectionSetting;
+#[cfg(test)]
 use crate::datatypes::FinanceAccountType;
 #[cfg(test)]
 use mongodb::bson::Uuid;
@@ -23,6 +25,7 @@ pub static GLOBAL_IN_MEMORY_DATA: OnceCell<Mutex<InMemoryDatabaseData>> = OnceCe
 impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDatabaseHandler {
     async fn finance_account_type_list(
         &self,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccountType>, String> {
         let data_obj = GLOBAL_IN_MEMORY_DATA.get().unwrap();
@@ -41,35 +44,34 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 
     async fn finance_account_type_upsert(
         &self,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        finance_account_type: *mut FinanceAccountType,
+        finance_account_type: &FinanceAccountType,
     ) -> Result<(), String> {
-        unsafe {
-            let data_obj = GLOBAL_IN_MEMORY_DATA.get();
-            let data_obj2 = data_obj.unwrap();
-            let mut data_obj3 = data_obj2.lock().unwrap();
-            let position_option = data_obj3.user_ids.iter().position(|elem| elem.eq(&user_id));
-            if let Some(position) = position_option {
-                let current_list = &mut data_obj3.account_types_per_user.get_mut(position).unwrap();
-                let position2_option = current_list
-                    .iter()
-                    .position(|elem| elem.id.eq(&(*finance_account_type).id));
-                if let Some(position2) = position2_option {
-                    let temp_var = finance_account_type.as_mut().unwrap();
-                    let temp_var2 = temp_var.clone();
-                    current_list.push(temp_var2);
-                    current_list.remove(position2);
-                } else {
-                    let temp_var = finance_account_type.as_mut().unwrap();
-                    let temp_var2 = temp_var.clone();
-                    current_list.push(temp_var2);
-                }
-                drop(data_obj3);
-                Ok(())
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let mut data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3.user_ids.iter().position(|elem| elem.eq(&user_id));
+        if let Some(position) = position_option {
+            let current_list = &mut data_obj3.account_types_per_user.get_mut(position).unwrap();
+            let position2_option = current_list
+                .iter()
+                .position(|elem| elem.id.eq(&(*finance_account_type).id));
+            if let Some(position2) = position2_option {
+                let temp_var = finance_account_type;
+                let temp_var2 = temp_var.clone();
+                current_list.push(temp_var2);
+                current_list.remove(position2);
             } else {
-                drop(data_obj3);
-                Err("User not found".to_string())
+                let temp_var = finance_account_type;
+                let temp_var2 = temp_var.clone();
+                current_list.push(temp_var2);
             }
+            drop(data_obj3);
+            Ok(())
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
         }
     }
 }

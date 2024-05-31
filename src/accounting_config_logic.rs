@@ -1,6 +1,9 @@
 use mongodb::bson::Uuid;
 
-use crate::{accounting_config_database::DBFinanceConfigFunctions, datatypes::FinanceAccountType};
+use crate::{
+    accounting_config_database::DBFinanceConfigFunctions,
+    database_handler_mongodb::DbConnectionSetting, datatypes::FinanceAccountType,
+};
 
 pub struct FinanceAccounttingHandle<'a> {
     user_id: &'a Uuid,
@@ -15,19 +18,27 @@ impl<'a> FinanceAccounttingHandle<'a> {
         }
     }
 
-    pub async fn finance_account_type_list(&self) -> Result<Vec<FinanceAccountType>, String> {
-        let temp_var_0 = self.db_connector.finance_account_type_list(&self.user_id);
+    pub async fn finance_account_type_list(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+    ) -> Result<Vec<FinanceAccountType>, String> {
+        let temp_var_0 = self
+            .db_connector
+            .finance_account_type_list(conncetion_settings, &self.user_id);
         let temp_var_1: Result<Vec<FinanceAccountType>, String> = temp_var_0.await;
         return temp_var_1;
     }
 
     pub async fn finance_account_type_upsert(
         &mut self,
+        conncetion_settings: &DbConnectionSetting,
         finance_account_type: &mut FinanceAccountType,
     ) -> Result<(), String> {
-        let temp_var_0 = self
-            .db_connector
-            .finance_account_type_upsert(&self.user_id, finance_account_type);
+        let temp_var_0 = self.db_connector.finance_account_type_upsert(
+            conncetion_settings,
+            &self.user_id,
+            finance_account_type,
+        );
         let temp_var_1 = temp_var_0.await;
         return temp_var_1;
     }

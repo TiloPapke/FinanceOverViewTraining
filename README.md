@@ -39,9 +39,13 @@ hint: new miles stones might be added
 goal points for version 0.0.5
 - [ ] correct spellings like display_paswword_reset_with_token_page
 - [ ] code refactoring: centralizse session handle
+- [ ] code refactoring: connection setting handle
 - [ ] calculting saldo over all finance accounts
 - [ ] export to csv (simple)
 
 goal points for version 0.0.6
 - [ ] redesign UI
 - [ ] using a css framework for better styles
+
+goal points for version 0.0.7
+- [ ] better way for validating database structure, when each new trait could have new tables

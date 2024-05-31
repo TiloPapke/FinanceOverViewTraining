@@ -33,13 +33,40 @@ pub enum EmailVerificationStatus {
     Verified,
 }
 
-pub struct DbHandlerMongoDB {}
+pub struct DbHandlerMongoDB {
+    internal_db_connection_setting: DbConnectionSetting,
+}
 
 impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_GENERAL_INFORMATION: &'static str = "GeneralInformation";
     pub const COLLECTION_NAME_WEBSITE_TRAFFIC: &'static str = "WebSiteTraffic";
     pub const COLLECTION_NAME_SESSION_INFO: &'static str = "SessionInfo";
     pub const COLLECTION_NAME_USER_LIST: &'static str = "UserList";
+    pub const COLLECTION_NAME_ACCOUNTING_TYPES: &'static str = "FinanceAccountTypes";
+
+    pub fn new() -> Self {
+        let handler_obj = DbHandlerMongoDB {
+            internal_db_connection_setting: DbConnectionSetting {
+                instance: "".to_string(),
+                password: "".to_string(),
+                url: "".to_string(),
+                user: "".to_string(),
+            },
+        };
+        return handler_obj;
+    }
+
+    pub fn create_db_handler_object(connection_setting: &DbConnectionSetting) -> DbHandlerMongoDB {
+        let handler_object = DbHandlerMongoDB {
+            internal_db_connection_setting: DbConnectionSetting {
+                instance: connection_setting.instance.clone(),
+                password: connection_setting.password.clone(),
+                url: connection_setting.url.clone(),
+                user: connection_setting.user.clone(),
+            },
+        };
+        return handler_object;
+    }
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
         // Get a handle to the deployment.
@@ -72,11 +99,12 @@ impl DbHandlerMongoDB {
 
         let db_instance = client.database(&conncetion_settings.instance);
 
-        let arr_required_collection: [&str; 4] = [
+        let arr_required_collection: [&str; 5] = [
             &DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION,
             &DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC,
             &DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO,
             &DbHandlerMongoDB::COLLECTION_NAME_USER_LIST,
+            &DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES,
         ];
 
         let query_result_collections = executor::block_on(db_instance.list_collection_names(None));
