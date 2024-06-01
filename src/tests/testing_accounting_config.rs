@@ -163,13 +163,13 @@ mod test_accounting_handle {
     #[tokio::test]
     async fn test_acounting_with_mongodb() {
         init();
-        let local_setting: SettingStruct = SettingStruct::global().clone();
+        //let local_setting: SettingStruct = SettingStruct::global().clone();
         let test_setting = TestSettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
-            url: String::from(local_setting.backend_database_url),
-            user: String::from(local_setting.backend_database_user),
-            password: String::from(local_setting.backend_database_password),
-            instance: String::from(local_setting.backend_database_instance),
+            url: String::from(test_setting.backend_database_url),
+            user: String::from(test_setting.backend_database_user),
+            password: String::from(test_setting.backend_database_password),
+            instance: String::from(test_setting.backend_database_instance),
         };
         //
         let credentials = UserCredentials {
@@ -187,7 +187,7 @@ mod test_accounting_handle {
         }
 
         let user_id_1 = validate_result.unwrap();
-        let mongo_db = DbHandlerMongoDB::create_db_handler_object(&db_connection);
+        let mongo_db = DbHandlerMongoDB {};
 
         let mut account_handle_1 = FinanceAccounttingHandle::new(&user_id_1, &mongo_db);
 
@@ -241,7 +241,7 @@ mod test_accounting_handle {
         let list3 = list_3_result.unwrap();
 
         assert_eq!(list1.len() + 2, list2.len());
-        assert_eq!(list1.len(), list3.len());
+        assert_eq!(list2.len(), list3.len());
 
         assert!(test_accounting_handle::account_type_list_contains_element(
             &list2,

@@ -38,6 +38,10 @@ pub struct TestSettingStruct {
     pub outgoing_mail_receiver: String,
     pub outgoing_mail_title: String,
     pub outgoing_mail_simple_body: String,
+    pub backend_database_url: String,
+    pub backend_database_user: String,
+    pub backend_database_password: String,
+    pub backend_database_instance: String,
     pub test_user_account_user_login: String,
     pub test_user_account_user_password: String,
 }
@@ -295,6 +299,11 @@ impl TestSettingStruct {
                 "OutgoingMail_SimpleBody",
                 "This is just some placeholder text \r please your own",
             );
+        conf.with_section(Some("BackendDatabase"))
+            .set("DB_URL", "mongodb://localhost:27017")
+            .set("DB_User", "Administrator")
+            .set("DB_Password", "password")
+            .set("DB_Instance", "StructureName");
         conf.with_section(Some("TestUserAccount"))
             .set("User_Login", "someUser")
             .set("User_Password", "somePassword");
@@ -315,6 +324,18 @@ impl TestSettingStruct {
             .get_from_or(Some("OutgoingMail"), "OutgoingMail_SimpleBody", "")
             .parse()
             .unwrap();
+        let _db_url: String = conf
+            .get_from_or(Some("BackendDatabase"), "DB_URL", "")
+            .to_string();
+        let _db_user: String = conf
+            .get_from_or(Some("BackendDatabase"), "DB_User", "")
+            .to_string();
+        let _db_password: String = conf
+            .get_from_or(Some("BackendDatabase"), "DB_Password", "")
+            .to_string();
+        let _db_instance: String = conf
+            .get_from_or(Some("BackendDatabase"), "DB_Instance", "")
+            .to_string();
         let _test_user_account_user_login: String = conf
             .get_from_or(Some("TestUserAccount"), "User_Login", "")
             .parse()
@@ -328,6 +349,10 @@ impl TestSettingStruct {
             outgoing_mail_receiver: _outgoing_mail_receiver,
             outgoing_mail_title: _outgoing_mail_title,
             outgoing_mail_simple_body: _outgoing_mail_simple_body,
+            backend_database_url: _db_url,
+            backend_database_user: _db_user,
+            backend_database_password: _db_password,
+            backend_database_instance: _db_instance,
             test_user_account_user_login: _test_user_account_user_login,
             test_user_account_user_password: _test_user_account_user_password,
         };

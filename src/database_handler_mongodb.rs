@@ -33,9 +33,7 @@ pub enum EmailVerificationStatus {
     Verified,
 }
 
-pub struct DbHandlerMongoDB {
-    internal_db_connection_setting: DbConnectionSetting,
-}
+pub struct DbHandlerMongoDB {}
 
 impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_GENERAL_INFORMATION: &'static str = "GeneralInformation";
@@ -43,30 +41,6 @@ impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_SESSION_INFO: &'static str = "SessionInfo";
     pub const COLLECTION_NAME_USER_LIST: &'static str = "UserList";
     pub const COLLECTION_NAME_ACCOUNTING_TYPES: &'static str = "FinanceAccountTypes";
-
-    pub fn new() -> Self {
-        let handler_obj = DbHandlerMongoDB {
-            internal_db_connection_setting: DbConnectionSetting {
-                instance: "".to_string(),
-                password: "".to_string(),
-                url: "".to_string(),
-                user: "".to_string(),
-            },
-        };
-        return handler_obj;
-    }
-
-    pub fn create_db_handler_object(connection_setting: &DbConnectionSetting) -> DbHandlerMongoDB {
-        let handler_object = DbHandlerMongoDB {
-            internal_db_connection_setting: DbConnectionSetting {
-                instance: connection_setting.instance.clone(),
-                password: connection_setting.password.clone(),
-                url: connection_setting.url.clone(),
-                user: connection_setting.user.clone(),
-            },
-        };
-        return handler_object;
-    }
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
         // Get a handle to the deployment.

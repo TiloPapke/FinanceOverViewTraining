@@ -140,12 +140,10 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         }
         let upsert_info = upsert_result.unwrap();
 
-        let summed_changes = upsert_info.matched_count + upsert_info.modified_count;
-
-        if summed_changes != 1 {
+        if (upsert_info.matched_count > 1) || (upsert_info.modified_count > 1) {
             return Err(format!(
-                "Error upserting element, changed count was {}",
-                summed_changes
+                "Error upserting element, matched count was {}, changed count was {}",
+                upsert_info.matched_count, upsert_info.modified_count
             ));
         }
 
