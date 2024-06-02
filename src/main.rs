@@ -231,6 +231,10 @@ async fn https_server() {
             "/accountingconfig",
             get(html_render::display_accounting_config_main_page),
         )
+        .route(
+            "/request_create_new_account_type",
+            post(ajax_handle::do_create_new_finance_account_type),
+        )
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 
@@ -299,12 +303,12 @@ async fn http_handler(uri: Uri) -> Redirect {
 async fn https_handler(session_data: SessionDataResult) -> impl IntoResponse {
     let (headers, user_id, create_cookie) = match session_data {
         SessionDataResult::FoundSessionData(session_data) => {
-            (HeaderMap::new(), session_data.user_id, false)
+            (HeaderMap::new(), session_data.session_user_id, false)
         }
         SessionDataResult::CreatedSessionData(new_session_data) => {
             let mut headers = HeaderMap::new();
             headers.insert(http::header::SET_COOKIE, new_session_data.cookie);
-            (headers, new_session_data.user_id, true)
+            (headers, new_session_data.session_user_id, true)
         }
     };
     debug!(

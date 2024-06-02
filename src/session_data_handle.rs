@@ -1,5 +1,6 @@
 use async_mongodb_session::MongodbSessionStore;
 use async_session::{Session, SessionStore};
+use axum::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http;
 use axum::http::request::Parts;
@@ -7,19 +8,15 @@ use axum::http::HeaderMap;
 use axum::http::HeaderValue;
 use axum::http::StatusCode;
 use axum::Extension;
-use axum::async_trait;
 use axum::RequestPartsExt;
-use axum_extra::{
-    headers::Cookie,
-    TypedHeader,
-};
+use axum_extra::{headers::Cookie, TypedHeader};
 use log::trace;
 use mongodb::bson::Uuid;
 use serde::{Deserialize, Serialize};
 
 const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 pub struct SessionData {
-    pub user_id: UserId,
+    pub session_user_id: UserId,
     pub session_option: Option<Session>,
     pub session_store: MongodbSessionStore,
 }
@@ -30,7 +27,7 @@ impl SessionData {
             SessionDataResult::FoundSessionData(result_obj) => result_obj,
             SessionDataResult::CreatedSessionData(result_obj) => {
                 return SessionData {
-                    user_id: result_obj.user_id,
+                    session_user_id: result_obj.session_user_id,
                     session_option: result_obj.session_option,
                     session_store: result_obj.session_store,
                 }
@@ -42,7 +39,7 @@ impl SessionData {
 }
 
 pub struct FreshSessionData {
-    pub user_id: UserId,
+    pub session_user_id: UserId,
     pub session_option: Option<Session>,
     pub session_store: MongodbSessionStore,
     pub cookie: HeaderValue,
@@ -65,9 +62,7 @@ where
             .await
             .expect("`MongoDBSessionStore` extension missing");
 
-        let cookie = parts.extract::<TypedHeader<Cookie>>()
-            .await
-            .unwrap();
+        let cookie = parts.extract::<TypedHeader<Cookie>>().await.unwrap();
         let session_cookie = cookie.get(AXUM_SESSION_COOKIE_NAME);
 
         let mut headers = HeaderMap::from_request_parts(parts, state).await.unwrap();
@@ -114,27 +109,30 @@ where
         }
 
         // continue to decode the session cookie
-        let user_id =
-            if let Some(user_id) = reloaded_session.clone().unwrap().get::<UserId>("user_id") {
-                trace!(
-                    "UserIdFromSession: session decoded success, user_id={:?}",
-                    user_id
-                );
+        let session_user_id = if let Some(user_id) = reloaded_session
+            .clone()
+            .unwrap()
+            .get::<UserId>("session_user_id")
+        {
+            trace!(
+                "SessionUserIdFromSession: session decoded success, user_id={:?}",
                 user_id
-            } else {
-                headers.insert(
-                    http::header::REFRESH,
-                    HeaderValue::from_str("5; url = /").unwrap(),
-                );
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    headers,
-                    "No `user_id` found in session",
-                ));
-            };
+            );
+            user_id
+        } else {
+            headers.insert(
+                http::header::REFRESH,
+                HeaderValue::from_str("5; url = /").unwrap(),
+            );
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                headers,
+                "No `session_user_id` found in session",
+            ));
+        };
 
         Ok(Self::FoundSessionData(SessionData {
-            user_id,
+            session_user_id,
             session_option: reloaded_session,
             session_store: store,
         }))
@@ -156,9 +154,9 @@ impl UserId {
 }
 
 async fn create_new_session(store: MongodbSessionStore) -> FreshSessionData {
-    let user_id = UserId::new();
+    let session_user_id = UserId::new();
     let mut session = Session::new();
-    session.insert("user_id", user_id).unwrap();
+    session.insert("session_user_id", session_user_id).unwrap();
     //session.expire_in(std::time::Duration::from_secs(60*5));
     session.expire_in(std::time::Duration::from_secs(60 * 1));
     let cookie = store.store_session(session).await.unwrap().unwrap();
@@ -167,7 +165,7 @@ async fn create_new_session(store: MongodbSessionStore) -> FreshSessionData {
     let reloaded_session = reload_result.unwrap();
 
     return FreshSessionData {
-        user_id,
+        session_user_id,
         session_option: reloaded_session,
         session_store: store,
         cookie: HeaderValue::from_str(format!("{}={}", AXUM_SESSION_COOKIE_NAME, cookie).as_str())

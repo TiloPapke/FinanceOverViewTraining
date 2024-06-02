@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use askama::Template;
 use async_session::{
     chrono::{DateTime, Utc},
     serde_json::json,
@@ -20,13 +21,16 @@ use axum::{
     Json,
 };
 use log::debug;
+use mongodb::bson::Uuid;
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database_handler_mongodb::DbConnectionSetting,
-    datatypes::{PasswordResetRequest, PasswordResetTokenRequest},
+    accounting_config_logic::FinanceAccounttingHandle,
+    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    datatypes::{FinanceAccountType, PasswordResetRequest, PasswordResetTokenRequest},
     frontend_functions::send_password_reset_email,
+    html_render::{AccountTypeTemplate, HtmlTemplate},
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionData, SessionDataResult},
     setting_struct::SettingStruct,
@@ -513,5 +517,126 @@ pub async fn do_change_password(
         let _new_cookie = session_data.session_store.store_session(session).await;
 
         (headers, return_value)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateNewFinanceAccountTypeFormInput {
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct CreateNewFinanceAccountTypeResponse {
+    pub result: String,
+    pub new_id: String,
+    pub subpage: String,
+}
+
+#[derive(Template)]
+#[template(path = "AccountingConfig/accountTypeRow.html")]
+pub struct AccountTypeCreateResponseTemplate {
+    account_type: AccountTypeTemplate,
+}
+
+impl IntoResponse for CreateNewFinanceAccountTypeResponse {
+    fn into_response(self) -> Response {
+        return Json(json!(self)).into_response();
+    }
+}
+
+pub async fn do_create_new_finance_account_type(
+    session_data: SessionDataResult,
+    Form(input): Form<CreateNewFinanceAccountTypeFormInput>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    if !is_logged_in {
+        let return_value = CreateNewFinanceAccountTypeResponse {
+            result: "not logged in".to_string(),
+            new_id: "".into(),
+            subpage: "".into(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = CreateNewFinanceAccountTypeResponse {
+            result: "Session expired, please try again".to_string(),
+            new_id: "".into(),
+            subpage: "".into(),
+        };
+
+        (StatusCode::BAD_REQUEST, headers, return_value)
+    } else {
+        let create_result: String;
+        let new_title = &input.title;
+        let new_description = &input.description;
+        let new_uuid = Uuid::new();
+        let mut new_account_type = FinanceAccountType {
+            id: new_uuid,
+            title: new_title.into(),
+            description: new_description.into(),
+        };
+
+        session.expire_in(std::time::Duration::from_secs(60 * 1));
+
+        let db_handler = DbHandlerMongoDB {};
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let mut return_status_code = StatusCode::OK;
+        {
+            let mut accounting_config_handle =
+                FinanceAccounttingHandle::new(&db_connection, &user_id, &db_handler);
+
+            let register_result_2 =
+                accounting_config_handle.finance_account_type_upsert(&mut new_account_type);
+            {
+                if register_result_2.is_err() {
+                    return_status_code = StatusCode::BAD_REQUEST;
+                    create_result = register_result_2.unwrap_err().to_string()
+                } else {
+                    create_result = "OK, created".to_string();
+                };
+            }
+        }
+
+        let new_account_type_template = AccountTypeTemplate {
+            id: new_account_type.id.to_string(),
+            name: new_account_type.title,
+            description: new_account_type.description,
+        };
+        let response_html_result = HtmlTemplate(AccountTypeCreateResponseTemplate {
+            account_type: new_account_type_template,
+        })
+        .0
+        .render();
+        let return_html = response_html_result.unwrap();
+
+        let return_value = CreateNewFinanceAccountTypeResponse {
+            result: create_result,
+            new_id: new_account_type.id.to_string(),
+            subpage: return_html,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (return_status_code, headers, return_value)
     }
 }

@@ -11,7 +11,7 @@ use axum::{
 use log::{debug, trace, warn};
 use mongodb::bson::{uuid, Uuid};
 use secrecy::{ExposeSecret, Secret};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     accounting_config_logic::FinanceAccounttingHandle,
@@ -118,6 +118,7 @@ pub async fn accept_login_form(
                 }
                 _ => {
                     let _result = session.insert("logged_in", true);
+                    let _result2 = session.insert("user_account_id", user_id);
                     let _cookie3 = a_store.store_session(session).await;
 
                     debug!(target: "app::FinanceOverView","user_id is {}",user_id);
@@ -260,7 +261,7 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
 pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResponse {
     let session_data = SessionData::from_session_data_result(session_data);
 
-    let session = session_data.session_option.unwrap();
+    let mut session = session_data.session_option.unwrap();
 
     let session_expire_timestamp = format!(
         "{} UTC",
@@ -272,6 +273,7 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
     );
 
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let _result = session.remove("user_account_id");
 
     let _destroy_result = session_data.session_store.destroy_session(session).await;
 
@@ -474,10 +476,11 @@ pub struct AccountingMainConfigTemplate {
     account_types: Vec<AccountTypeTemplate>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AccountTypeTemplate {
-    id: String,
-    name: String,
-    description: String,
+    pub id: String,
+    pub name: String,
+    pub description: String,
 }
 
 pub async fn display_accounting_config_main_page(
@@ -493,7 +496,7 @@ pub async fn display_accounting_config_main_page(
     let mut headers = HeaderMap::new();
 
     let empty_accountlist: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
-    let mut return_account_type_list: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
+    let mut return_account_type_list: Vec<AccountTypeTemplate> = Vec::new();
 
     if !is_logged_in {
         let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
@@ -520,7 +523,7 @@ pub async fn display_accounting_config_main_page(
     }
 
     let username: String = session.get("user_name").unwrap();
-    let user_id: Uuid = session.get("user_id").unwrap();
+    let user_id: Uuid = session.get("user_account_id").unwrap();
 
     let db_handler = DbHandlerMongoDB {};
     let local_setting: SettingStruct = SettingStruct::global().clone();
@@ -579,7 +582,7 @@ pub async fn display_accounting_config_main_page(
     session.expire_in(std::time::Duration::from_secs(60 * 1));
     let _new_cookie = session_data.session_store.store_session(session).await;
 
-    trace!("Loaded finance accounting types for user id {}", user_id);
+    trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);
 
     HtmlTemplate(return_value)
 }

@@ -50,7 +50,11 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         let accounting_type_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES);
 
-        let filter = doc! {"user_id":&user_id};
+        //get a binary of UUID or it will not work in production
+        let search_value = mongodb::bson::Binary::from_uuid(user_id.clone());
+        let filter = doc! {"user_id":search_value};
+
+        debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
         let projection = doc! {"finance_acount_type_id":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
