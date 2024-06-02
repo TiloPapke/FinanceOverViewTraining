@@ -13,6 +13,7 @@ use crate::{
 };
 
 pub async fn register_user_with_email_verfication(
+    db_connection: &DbConnectionSetting,
     user_name: &String,
     user_password: &Secret<String>,
     user_email: &String,
@@ -29,21 +30,14 @@ pub async fn register_user_with_email_verfication(
         return Err(anyhow::anyhow!("email {} is not valid", user_email));
     }
 
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
     let new_user_credentials = crate::password_handle::UserCredentials {
         username: user_name.to_string(),
         password: user_password.clone(),
     };
 
     //create_credentials checks if user is already there
-    let create_result = crate::password_handle::create_credentials(&new_user_credentials).await;
+    let create_result =
+        crate::password_handle::create_credentials(db_connection, &new_user_credentials).await;
     if create_result.is_err() {
         return Err(anyhow::anyhow!(
             "error creating user: {}",
@@ -139,16 +133,9 @@ async fn send_email_verification_mail(
 }
 
 pub async fn get_general_userdata_fromdatabase(
+    db_connection: &DbConnectionSetting,
     user_name: &String,
 ) -> Result<GenerallUserData, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
     let get_result_async =
         DbHandlerMongoDB::get_user_general_data_by_user_name(&db_connection, user_name);
 
@@ -165,17 +152,10 @@ pub async fn get_general_userdata_fromdatabase(
 }
 
 pub async fn save_general_userdata(
+    db_connection: &DbConnectionSetting,
     user_name: &String,
     general_user_data: &GenerallUserData,
 ) -> Result<String, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
     let save_data_result_async = DbHandlerMongoDB::update_general_user_data_by_name(
         &db_connection,
         user_name,

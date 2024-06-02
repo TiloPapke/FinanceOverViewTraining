@@ -54,28 +54,26 @@ mod test_accounting_handle {
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
-        let account_handle_1 = FinanceAccounttingHandle::new(&user_id_1, &in_memory_db);
-        let mut account_handle_2 = FinanceAccounttingHandle::new(&user_id_2, &in_memory_db);
-        let mut account_handle_3 = FinanceAccounttingHandle::new(&user_id_3, &in_memory_db);
-        let mut account_handle_4 = FinanceAccounttingHandle::new(&user_id_4, &in_memory_db);
+        let account_handle_1 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+        let mut account_handle_2 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
+        let mut account_handle_3 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+        let mut account_handle_4 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_4, &in_memory_db);
 
         //prepare data
         //empty list
-        let list_1_result = account_handle_1
-            .finance_account_type_list(&dummy_connection_settings)
-            .await;
+        let list_1_result = account_handle_1.finance_account_type_list();
         //list with one element
         let finance_account_type_1 = FinanceAccountType {
             description: "SomeTypeDescription".to_string(),
             title: "SomeType".to_string(),
             id: Uuid::new(),
         };
-        let insert_result_1 = account_handle_2
-            .finance_account_type_upsert(
-                &dummy_connection_settings,
-                &mut finance_account_type_1.clone(),
-            )
-            .await;
+        let insert_result_1 =
+            account_handle_2.finance_account_type_upsert(&mut finance_account_type_1.clone());
         //list with two elements where one is updated
         let mut finance_account_type_2 = FinanceAccountType {
             description: "SomeTypeDescription2".to_string(),
@@ -87,35 +85,22 @@ mod test_accounting_handle {
             title: "SomeType3".to_string(),
             id: Uuid::new(),
         };
-        let insert_result_2 = account_handle_3
-            .finance_account_type_upsert(
-                &dummy_connection_settings,
-                &mut finance_account_type_2.clone(),
-            )
-            .await;
-        let insert_result_3 = account_handle_3
-            .finance_account_type_upsert(
-                &dummy_connection_settings,
-                &mut finance_account_type_3.clone(),
-            )
-            .await;
+        let insert_result_2 =
+            account_handle_3.finance_account_type_upsert(&mut finance_account_type_2.clone());
+        let insert_result_3 =
+            account_handle_3.finance_account_type_upsert(&mut finance_account_type_3.clone());
         finance_account_type_2.description = "UpdatedDescription".to_string();
         finance_account_type_2.title = "UpdatedTitle".to_string();
-        let update_result_1 = account_handle_3
-            .finance_account_type_upsert(&dummy_connection_settings, &mut finance_account_type_2)
-            .await;
+        let update_result_1 =
+            account_handle_3.finance_account_type_upsert(&mut finance_account_type_2);
         //listing that returns an error because user not existing
         let finance_account_type_4 = FinanceAccountType {
             description: "SomeTypeDescription4".to_string(),
             title: "SomeType4".to_string(),
             id: Uuid::new(),
         };
-        let insert_result_4 = account_handle_4
-            .finance_account_type_upsert(
-                &dummy_connection_settings,
-                &mut finance_account_type_4.clone(),
-            )
-            .await;
+        let insert_result_4 =
+            account_handle_4.finance_account_type_upsert(&mut finance_account_type_4.clone());
 
         //test data
         if list_1_result.is_ok() {
@@ -125,9 +110,7 @@ mod test_accounting_handle {
         }
 
         assert!(insert_result_1.is_ok());
-        let list_2_result = account_handle_2
-            .finance_account_type_list(&dummy_connection_settings)
-            .await;
+        let list_2_result = account_handle_2.finance_account_type_list();
         if list_2_result.is_ok() {
             let returned_list = list_2_result.unwrap();
             assert_eq!(returned_list.len(), 1);
@@ -139,9 +122,7 @@ mod test_accounting_handle {
         assert!(insert_result_2.is_ok());
         assert!(insert_result_3.is_ok());
         assert!(update_result_1.is_ok());
-        let list_3_result = account_handle_3
-            .finance_account_type_list(&dummy_connection_settings)
-            .await;
+        let list_3_result = account_handle_3.finance_account_type_list();
         if list_3_result.is_ok() {
             let returned_list = list_3_result.unwrap();
             assert_eq!(returned_list.len(), 2);
@@ -177,7 +158,7 @@ mod test_accounting_handle {
             password: test_setting.test_user_account_user_password.into(),
         };
 
-        let validate_result = validate_credentials(&credentials).await;
+        let validate_result = validate_credentials(&db_connection, &credentials).await;
         if validate_result.is_err() {
             panic!(
                 "test user {} not valid: {}",
@@ -189,43 +170,35 @@ mod test_accounting_handle {
         let user_id_1 = validate_result.unwrap();
         let mongo_db = DbHandlerMongoDB {};
 
-        let mut account_handle_1 = FinanceAccounttingHandle::new(&user_id_1, &mongo_db);
+        let mut account_handle_1 =
+            FinanceAccounttingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
         //prepare data
         //First lilst
-        let list_1_result = account_handle_1
-            .finance_account_type_list(&db_connection)
-            .await;
+        let list_1_result = account_handle_1.finance_account_type_list();
         //inserting 2 Elements
         let finance_account_type_1 = FinanceAccountType {
             description: "SomeTypeDescription_".to_string() + &Uuid::new().to_string(),
             title: "SomeType_".to_string() + &Uuid::new().to_string(),
             id: Uuid::new(),
         };
-        let insert_result_1 = account_handle_1
-            .finance_account_type_upsert(&db_connection, &mut finance_account_type_1.clone())
-            .await;
+        let insert_result_1 =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_1.clone());
         let finance_account_type_2 = FinanceAccountType {
             description: "SomeTypeDescription2_".to_string() + &Uuid::new().to_string(),
             title: "SomeType2_".to_string() + &Uuid::new().to_string(),
             id: Uuid::new(),
         };
-        let insert_result_2 = account_handle_1
-            .finance_account_type_upsert(&db_connection, &mut finance_account_type_2.clone())
-            .await;
-        let list_2_result = account_handle_1
-            .finance_account_type_list(&db_connection)
-            .await;
+        let insert_result_2 =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_2.clone());
+        let list_2_result = account_handle_1.finance_account_type_list();
         let mut finance_account_type_3 = finance_account_type_2.clone();
         finance_account_type_3.description =
             "UpdatedDescription_".to_string() + &Uuid::new().to_string();
         finance_account_type_3.title = "UpdatedTitle_".to_string() + &Uuid::new().to_string();
-        let update_result_1 = account_handle_1
-            .finance_account_type_upsert(&db_connection, &mut finance_account_type_3)
-            .await;
-        let list_3_result = account_handle_1
-            .finance_account_type_list(&db_connection)
-            .await;
+        let update_result_1 =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_3);
+        let list_3_result = account_handle_1.finance_account_type_list();
 
         //test data
 

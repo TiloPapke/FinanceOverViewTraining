@@ -34,8 +34,11 @@ pub struct StoredCredentials {
     pub password_hash: Secret<String>,
 }
 
-pub async fn validate_credentials(credentials: &UserCredentials) -> Result<uuid::Uuid, Error> {
-    let get_result = get_stored_credentials(&credentials.username).await;
+pub async fn validate_credentials(
+    db_connection: &DbConnectionSetting,
+    credentials: &UserCredentials,
+) -> Result<uuid::Uuid, Error> {
+    let get_result = get_stored_credentials(db_connection, &credentials.username).await;
     if get_result.is_err() {
         return Err(anyhow::anyhow!("Problem getting credentials"));
     }
@@ -56,17 +59,12 @@ pub async fn validate_credentials(credentials: &UserCredentials) -> Result<uuid:
     Err(anyhow::anyhow!("Unknown username."))
 }
 
-async fn get_stored_credentials(_user_name: &str) -> Result<StoredCredentials, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let _db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
+async fn get_stored_credentials(
+    db_connection: &DbConnectionSetting,
+    _user_name: &str,
+) -> Result<StoredCredentials, Error> {
     let query_credentials =
-        DbHandlerMongoDB::get_stored_credentials_by_name(&_db_connection, &_user_name.to_string())
+        DbHandlerMongoDB::get_stored_credentials_by_name(&db_connection, &_user_name.to_string())
             .await;
 
     if query_credentials.is_err() {
@@ -111,8 +109,11 @@ pub fn compare_password(
     Ok(())
 }
 
-pub async fn create_credentials(credentials: &UserCredentials) -> Result<uuid::Uuid, Error> {
-    let check_result = check_user_exsits(&credentials.username).await;
+pub async fn create_credentials(
+    db_connection: &DbConnectionSetting,
+    credentials: &UserCredentials,
+) -> Result<uuid::Uuid, Error> {
+    let check_result = check_user_exsits(&db_connection, &credentials.username).await;
     if check_result.is_err() {
         return Err(check_result.unwrap_err());
     }
@@ -122,7 +123,7 @@ pub async fn create_credentials(credentials: &UserCredentials) -> Result<uuid::U
         return Err(anyhow::anyhow!("User already exsists, can not recreate"));
     }
 
-    let insert_result = insert_user(&credentials).await;
+    let insert_result = insert_user(&db_connection, &credentials).await;
     if insert_result.is_err() {
         return Err(insert_result.unwrap_err());
     }
@@ -130,15 +131,10 @@ pub async fn create_credentials(credentials: &UserCredentials) -> Result<uuid::U
     return Ok(insert_result.unwrap());
 }
 
-pub(crate) async fn check_user_exsits(user_name: &str) -> Result<bool, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
+pub(crate) async fn check_user_exsits(
+    db_connection: &DbConnectionSetting,
+    user_name: &str,
+) -> Result<bool, Error> {
     let check_result =
         DbHandlerMongoDB::check_user_exsists_by_name(&db_connection, &user_name.to_string()).await;
 
@@ -149,15 +145,10 @@ pub(crate) async fn check_user_exsits(user_name: &str) -> Result<bool, Error> {
     Ok(check_result.unwrap())
 }
 
-pub(crate) async fn insert_user(some_credentials: &UserCredentials) -> Result<uuid::Uuid, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
+pub(crate) async fn insert_user(
+    db_connection: &DbConnectionSetting,
+    some_credentials: &UserCredentials,
+) -> Result<uuid::Uuid, Error> {
     let salt = SaltString::generate(&mut rand::thread_rng());
     let user_password_hashed = Argon2::default()
         .hash_password(some_credentials.password.expose_secret().as_bytes(), &salt)
@@ -179,15 +170,10 @@ pub(crate) async fn insert_user(some_credentials: &UserCredentials) -> Result<uu
     Ok(insert_result.unwrap())
 }
 
-pub async fn update_user_password(some_credentials: &UserCredentials) -> Result<bool, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
+pub async fn update_user_password(
+    db_connection: &DbConnectionSetting,
+    some_credentials: &UserCredentials,
+) -> Result<bool, Error> {
     let salt = SaltString::generate(&mut rand::thread_rng());
     let user_password_hashed = Argon2::default()
         .hash_password(some_credentials.password.expose_secret().as_bytes(), &salt)
@@ -209,15 +195,10 @@ pub async fn update_user_password(some_credentials: &UserCredentials) -> Result<
     Ok(update_result.unwrap())
 }
 
-pub async fn check_email_status_by_name(user_name: &str) -> Result<EmailVerificationStatus, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
+pub async fn check_email_status_by_name(
+    db_connection: &DbConnectionSetting,
+    user_name: &str,
+) -> Result<EmailVerificationStatus, Error> {
     let check_result =
         DbHandlerMongoDB::check_email_verfification_by_name(&db_connection, &user_name.to_string())
             .await;
@@ -229,21 +210,16 @@ pub async fn check_email_status_by_name(user_name: &str) -> Result<EmailVerifica
 }
 
 pub async fn request_password_reset_token(
+    db_connection: &DbConnectionSetting,
     request_data: &PasswordResetTokenRequest,
 ) -> Result<PasswordResetTokenRequestResult, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
+    let local_settings: SettingStruct = SettingStruct::global().clone();
 
     let generate_token_result_async = DbHandlerMongoDB::generate_passwort_reset_token(
         &db_connection,
         request_data.user_name.borrow(),
         request_data.reset_secret.borrow(),
-        &local_setting.frontend_password_reset_token_time_limit_minutes,
+        &local_settings.frontend_password_reset_token_time_limit_minutes,
     );
 
     let generate_token_result = generate_token_result_async.await;
@@ -258,15 +234,10 @@ pub async fn request_password_reset_token(
     return Ok(generate_token_result.unwrap());
 }
 
-pub async fn reset_password_with_token(request_data: &PasswordResetRequest) -> Result<bool, Error> {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-
+pub async fn reset_password_with_token(
+    db_connection: &DbConnectionSetting,
+    request_data: &PasswordResetRequest,
+) -> Result<bool, Error> {
     let salt = SaltString::generate(&mut rand::thread_rng());
     let user_password_hashed = Argon2::default()
         .hash_password(request_data.new_password.expose_secret().as_bytes(), &salt)

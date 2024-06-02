@@ -44,7 +44,8 @@ impl DbHandlerMongoDB {
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
         if client_create_result.is_err() {
             warn!(target:"app::FinanceOverView","{}",client_create_result.unwrap_err());
             return false;
@@ -122,7 +123,8 @@ impl DbHandlerMongoDB {
         table_to_query: &String,
         filter_info: Document,
     ) -> Result<Cursor<Document>, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
         if client_create_result.is_err() {
             return Result::Err(client_create_result.unwrap_err().to_string());
         }
@@ -145,7 +147,8 @@ impl DbHandlerMongoDB {
         table_to_insert: &String,
         new_document: &Document,
     ) -> Result<InsertOneResult, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
         if client_create_result.is_err() {
             return Result::Err(client_create_result.unwrap_err().to_string());
         }
@@ -169,7 +172,8 @@ impl DbHandlerMongoDB {
         query_info: Document,
         update_info: Document,
     ) -> Result<UpdateResult, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
         if client_create_result.is_err() {
             return Result::Err(client_create_result.unwrap_err().to_string());
         }
@@ -188,11 +192,36 @@ impl DbHandlerMongoDB {
     }
 
     //private functions
-    pub fn create_client_connection(
+    pub fn create_client_connection_sync(
         conncetion_settings: &DbConnectionSetting,
     ) -> Result<Client, String> {
         // Parse a connection string into an options struct.
         let v = executor::block_on(ClientOptions::parse(conncetion_settings.url.clone()));
+        if v.is_err() {
+            return Result::Err(v.unwrap_err().to_string());
+        }
+
+        let mut client_options = v.unwrap();
+        //set credentials
+        let co_source = conncetion_settings.instance.to_string();
+        client_options.credential = Some(
+            Credential::builder()
+                .username(conncetion_settings.user.clone())
+                .password(conncetion_settings.password.clone())
+                .source(Some(co_source))
+                .build(),
+        );
+
+        // Get a handle to the deployment.
+        let client = Client::with_options(client_options).unwrap();
+        return Result::Ok(client);
+    }
+
+    pub async fn create_client_connection_async(
+        conncetion_settings: &DbConnectionSetting,
+    ) -> Result<Client, String> {
+        // Parse a connection string into an options struct.
+        let v = ClientOptions::parse(conncetion_settings.url.clone()).await;
         if v.is_err() {
             return Result::Err(v.unwrap_err().to_string());
         }
@@ -218,7 +247,8 @@ impl DbHandlerMongoDB {
         user_name: &String,
     ) -> Result<bool, String> {
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -272,7 +302,8 @@ impl DbHandlerMongoDB {
         some_credentials: &UserCredentialsHashed,
     ) -> Result<uuid::Uuid, String> {
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -306,7 +337,8 @@ impl DbHandlerMongoDB {
         some_credentials: &UserCredentialsHashed,
     ) -> Result<bool, String> {
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -345,7 +377,8 @@ impl DbHandlerMongoDB {
         user_name: &String,
     ) -> Result<StoredCredentials, String> {
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -453,7 +486,8 @@ impl DbHandlerMongoDB {
         let mail_validation_token = mail_validation_token_result.unwrap().to_string();
 
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -494,7 +528,8 @@ impl DbHandlerMongoDB {
         user_name: &String,
     ) -> Result<EmailVerificationStatus, String> {
         // Get a handle to the deployment.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -570,7 +605,8 @@ impl DbHandlerMongoDB {
         user_name: &String,
         email_validation_string: &Secret<String>,
     ) -> Result<EmailVerificationStatus, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -698,7 +734,8 @@ impl DbHandlerMongoDB {
         conncetion_settings: &DbConnectionSetting,
         user_name: &String,
     ) -> Result<GenerallUserData, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -789,7 +826,8 @@ impl DbHandlerMongoDB {
         }
 
         // Get a handle to the database.
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -832,7 +870,8 @@ impl DbHandlerMongoDB {
         reset_secret: &String,
         passwort_reset_time_limit_minutes: &u16,
     ) -> Result<PasswordResetTokenRequestResult, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -939,7 +978,8 @@ impl DbHandlerMongoDB {
         reset_token: &String,
         new_password: &Secret<String>,
     ) -> Result<bool, String> {
-        let client_create_result = DbHandlerMongoDB::create_client_connection(conncetion_settings);
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);

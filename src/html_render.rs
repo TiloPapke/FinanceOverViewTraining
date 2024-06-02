@@ -8,18 +8,20 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
-use log::debug;
-use mongodb::bson::uuid;
+use log::{debug, trace, warn};
+use mongodb::bson::{uuid, Uuid};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 
 use crate::{
-    database_handler_mongodb::EmailVerificationStatus,
+    accounting_config_logic::FinanceAccounttingHandle,
+    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
     frontend_functions::get_general_userdata_fromdatabase,
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
     session_data_handle::{SessionData, SessionDataResult},
+    setting_struct::SettingStruct,
     user_handling::validate_user_email,
 };
 
@@ -83,17 +85,32 @@ pub async fn accept_login_form(
         username: input.username.clone(),
         password: input.password.clone(),
     };
+    let local_settings: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(local_settings.backend_database_url),
+        user: String::from(local_settings.backend_database_user),
+        password: String::from(local_settings.backend_database_password),
+        instance: String::from(local_settings.backend_database_instance),
+    };
 
     let session_data = SessionData::from_session_data_result(session_data);
 
     let mut session = session_data.session_option.unwrap();
     let _result = session.insert("user_name", &credentials.username);
 
-    let a_store = session_data.session_store;
+    let a_store: async_mongodb_session::MongodbSessionStore = session_data.session_store;
 
-    match validate_credentials(&credentials).await {
+    match validate_credentials(&db_connection, &credentials).await {
         Ok(user_id) => {
-            let mail_check_result = check_email_status_by_name(&credentials.username).await;
+            let local_settings: SettingStruct = SettingStruct::global().clone();
+            let db_connection = DbConnectionSetting {
+                url: String::from(local_settings.backend_database_url),
+                user: String::from(local_settings.backend_database_user),
+                password: String::from(local_settings.backend_database_password),
+                instance: String::from(local_settings.backend_database_instance),
+            };
+            let mail_check_result =
+                check_email_status_by_name(&db_connection, &credentials.username).await;
             match mail_check_result.unwrap() {
                 EmailVerificationStatus::NotVerified => {
                     debug!(target: "app::FinanceOverView","email not verified");
@@ -189,7 +206,15 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 .format("%Y-%m-%d %H:%M:%S"))
         );
 
-        let user_data_get_result_async = get_general_userdata_fromdatabase(&username);
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+        let user_data_get_result_async =
+            get_general_userdata_fromdatabase(&db_connection, &username);
 
         let user_data_result = user_data_get_result_async.await;
 
@@ -265,6 +290,7 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
         user_nachname: "".to_string(),
         user_reset_geheimnis: "".to_string(),
     };
+
     HtmlTemplate(template);
     Redirect::to("/").into_response()
 }
@@ -322,7 +348,15 @@ pub async fn create_login_handler(form: Form<LoginFormInput>) -> impl IntoRespon
         password: form.password.clone(),
     };
 
-    let create_result = create_credentials(&new_user_credentials).await;
+    let local_settings: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(local_settings.backend_database_url),
+        user: String::from(local_settings.backend_database_user),
+        password: String::from(local_settings.backend_database_password),
+        instance: String::from(local_settings.backend_database_instance),
+    };
+
+    let create_result = create_credentials(&db_connection, &new_user_credentials).await;
     if create_result.is_err() {
         clt_template.user_name = new_user_credentials.username.to_string();
         clt_template.create_result = create_result.unwrap_err().to_string();
@@ -330,7 +364,6 @@ pub async fn create_login_handler(form: Form<LoginFormInput>) -> impl IntoRespon
         clt_template.user_name = new_user_credentials.username.to_string();
         clt_template.create_result = format!("your user id is {}", create_result.unwrap());
     }
-
     HtmlTemplate(clt_template)
 }
 
@@ -369,7 +402,14 @@ pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> 
         validation_main_result: "Error during validaiton".to_string(),
     };
 
-    let check_result = validate_user_email(&form.user_name, &form.token).await;
+    let local_settings: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(local_settings.backend_database_url),
+        user: String::from(local_settings.backend_database_user),
+        password: String::from(local_settings.backend_database_password),
+        instance: String::from(local_settings.backend_database_instance),
+    };
+    let check_result = validate_user_email(&db_connection, &form.user_name, &form.token).await;
 
     if check_result.is_err() {
         st.validation_detail_result = check_result.unwrap_err();
@@ -453,6 +493,7 @@ pub async fn display_accounting_config_main_page(
     let mut headers = HeaderMap::new();
 
     let empty_accountlist: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
+    let mut return_account_type_list: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
 
     if !is_logged_in {
         let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
@@ -479,8 +520,44 @@ pub async fn display_accounting_config_main_page(
     }
 
     let username: String = session.get("user_name").unwrap();
+    let user_id: Uuid = session.get("user_id").unwrap();
 
-    let dummy_types = vec![
+    let db_handler = DbHandlerMongoDB {};
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+
+    {
+        let accounting_config_handle =
+            FinanceAccounttingHandle::new(&db_connection, &user_id, &db_handler);
+
+        {
+            let account_types_result: Result<Vec<crate::datatypes::FinanceAccountType>, String> =
+                accounting_config_handle.finance_account_type_list();
+
+            if account_types_result.is_err() {
+                warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,account_types_result.unwrap_err());
+                let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+                    username: "Session expired".to_string(),
+                    account_types: empty_accountlist,
+                };
+                return HtmlTemplate(return_value);
+            }
+
+            for some_type in account_types_result.unwrap() {
+                return_account_type_list.push(AccountTypeTemplate {
+                    id: some_type.id.to_string(),
+                    name: some_type.title,
+                    description: some_type.description,
+                });
+            }
+        }
+    }
+    let mut dummy_types = vec![
         AccountTypeTemplate {
             id: uuid::Uuid::new().to_string(),
             name: "Type1".to_string(),
@@ -492,6 +569,7 @@ pub async fn display_accounting_config_main_page(
             description: "Details for another Type".to_string(),
         },
     ];
+    dummy_types.append(&mut return_account_type_list);
 
     let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
         username: username,
@@ -500,6 +578,8 @@ pub async fn display_accounting_config_main_page(
 
     session.expire_in(std::time::Duration::from_secs(60 * 1));
     let _new_cookie = session_data.session_store.store_session(session).await;
+
+    trace!("Loaded finance accounting types for user id {}", user_id);
 
     HtmlTemplate(return_value)
 }

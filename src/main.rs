@@ -164,7 +164,8 @@ async fn https_server() {
     };
 
     // Get a handle to the deployment.
-    let mgdb_client_create_result = DbHandlerMongoDB::create_client_connection(&db_connection);
+    let mgdb_client_create_result =
+        DbHandlerMongoDB::create_client_connection_async(&db_connection).await;
     if mgdb_client_create_result.is_err() {
         warn!(target:"app::FinanceOverView","Could not create mongo DB Client {}",mgdb_client_create_result.unwrap_err());
         return;

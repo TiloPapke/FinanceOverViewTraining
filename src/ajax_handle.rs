@@ -24,10 +24,12 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    database_handler_mongodb::DbConnectionSetting,
     datatypes::{PasswordResetRequest, PasswordResetTokenRequest},
     frontend_functions::send_password_reset_email,
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionData, SessionDataResult},
+    setting_struct::SettingStruct,
 };
 
 //from https://github.com/neilwashere/rust-project-root/blob/main/src/lib.rs
@@ -61,9 +63,7 @@ pub async fn get_js_files(js_uri: Uri) -> impl IntoResponse {
     if project_root_result.is_err() {
         return Response::builder()
             .status(StatusCode::NOT_ACCEPTABLE)
-            .body(Body::from(
-                project_root_result.unwrap_err().to_string(),
-            ))
+            .body(Body::from(project_root_result.unwrap_err().to_string()))
             .unwrap();
     }
 
@@ -172,8 +172,15 @@ pub async fn do_change_passwort(
                 username: username.clone(),
                 password: input.password_old.clone(),
             };
+            let local_settings: SettingStruct = SettingStruct::global().clone();
+            let db_connection = DbConnectionSetting {
+                url: String::from(local_settings.backend_database_url),
+                user: String::from(local_settings.backend_database_user),
+                password: String::from(local_settings.backend_database_password),
+                instance: String::from(local_settings.backend_database_instance),
+            };
 
-            match validate_credentials(&credentials).await {
+            match validate_credentials(&db_connection, &credentials).await {
                 Ok(user_id) => {
                     debug!(target: "app::FinanceOverView","trying to change password for user {}", user_id);
 
@@ -183,7 +190,8 @@ pub async fn do_change_passwort(
                     };
 
                     let update_result =
-                        password_handle::update_user_password(&credentials_new).await;
+                        password_handle::update_user_password(&db_connection, &credentials_new)
+                            .await;
 
                     if update_result.is_err() {
                         change_result = format!(
@@ -291,7 +299,15 @@ pub async fn do_register_user_via_email(
                 .format("%Y-%m-%d %H:%M:%S"))
         );
 
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
         let register_result_2 = crate::frontend_functions::register_user_with_email_verfication(
+            &db_connection,
             _new_user_name,
             _new_password,
             _new_email,
@@ -371,8 +387,16 @@ pub async fn do_request_password_reset(
                 .format("%Y-%m-%d %H:%M:%S"))
         );
 
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
         let password_reset_request_result =
-            crate::password_handle::request_password_reset_token(input.borrow()).await;
+            crate::password_handle::request_password_reset_token(&db_connection, input.borrow())
+                .await;
 
         if password_reset_request_result.is_err() {
             request_result = password_reset_request_result.unwrap_err().to_string();
@@ -458,9 +482,15 @@ pub async fn do_change_password(
                 .naive_local()
                 .format("%Y-%m-%d %H:%M:%S"))
         );
-
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
         let password_change_result =
-            crate::password_handle::reset_password_with_token(input.borrow()).await;
+            crate::password_handle::reset_password_with_token(&db_connection, input.borrow()).await;
 
         if password_change_result.is_err() {
             request_result = password_change_result.unwrap_err().to_string();

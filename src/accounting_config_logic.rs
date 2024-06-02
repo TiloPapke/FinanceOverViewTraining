@@ -1,3 +1,4 @@
+use futures::executor;
 use mongodb::bson::Uuid;
 
 use crate::{
@@ -6,40 +7,43 @@ use crate::{
 };
 
 pub struct FinanceAccounttingHandle<'a> {
+    db_connection_settings: &'a DbConnectionSetting,
     user_id: &'a Uuid,
     db_connector: &'a dyn DBFinanceConfigFunctions,
 }
 
 impl<'a> FinanceAccounttingHandle<'a> {
-    pub fn new(user_id: &'a Uuid, db_connector: &'a dyn DBFinanceConfigFunctions) -> Self {
+    pub fn new(
+        connection_settings: &'a DbConnectionSetting,
+        user_id: &'a Uuid,
+        db_connector: &'a dyn DBFinanceConfigFunctions,
+    ) -> Self {
         Self {
+            db_connection_settings: connection_settings,
             user_id,
             db_connector,
         }
     }
 
-    pub async fn finance_account_type_list(
-        &self,
-        conncetion_settings: &DbConnectionSetting,
-    ) -> Result<Vec<FinanceAccountType>, String> {
-        let temp_var_0 = self
-            .db_connector
-            .finance_account_type_list(conncetion_settings, &self.user_id);
-        let temp_var_1: Result<Vec<FinanceAccountType>, String> = temp_var_0.await;
+    pub fn finance_account_type_list(&self) -> Result<Vec<FinanceAccountType>, String> {
+        let temp_var_1 = executor::block_on(
+            self.db_connector
+                .finance_account_type_list(&self.db_connection_settings, &self.user_id),
+        );
+
         return temp_var_1;
     }
 
-    pub async fn finance_account_type_upsert(
+    pub fn finance_account_type_upsert(
         &mut self,
-        conncetion_settings: &DbConnectionSetting,
         finance_account_type: &mut FinanceAccountType,
     ) -> Result<(), String> {
         let temp_var_0 = self.db_connector.finance_account_type_upsert(
-            conncetion_settings,
+            &self.db_connection_settings,
             &self.user_id,
             finance_account_type,
         );
-        let temp_var_1 = temp_var_0.await;
+        let temp_var_1 = executor::block_on(temp_var_0);
         return temp_var_1;
     }
 }
