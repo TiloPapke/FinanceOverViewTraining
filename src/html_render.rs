@@ -9,7 +9,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
 };
 use log::{debug, trace, warn};
-use mongodb::bson::{uuid, Uuid};
+use mongodb::bson::Uuid;
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 
@@ -560,26 +560,13 @@ pub async fn display_accounting_config_main_page(
             }
         }
     }
-    let mut dummy_types = vec![
-        AccountTypeTemplate {
-            id: uuid::Uuid::new().to_string(),
-            name: "Type1".to_string(),
-            description: "Details for Type 1".to_string(),
-        },
-        AccountTypeTemplate {
-            id: uuid::Uuid::new().to_string(),
-            name: "Type2".to_string(),
-            description: "Details for another Type".to_string(),
-        },
-    ];
-    dummy_types.append(&mut return_account_type_list);
 
     let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
         username: username,
-        account_types: dummy_types,
+        account_types: return_account_type_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 1));
+    session.expire_in(std::time::Duration::from_secs(60 * 10));
     let _new_cookie = session_data.session_store.store_session(session).await;
 
     trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);

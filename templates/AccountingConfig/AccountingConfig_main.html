@@ -12,18 +12,19 @@
 
                 $.post("request_create_new_account_type", formData, function (data, status) { })
                     .done(function (data) {
-                        $("#create_response").prop('style').display = "inline";
-                        $("#create_response").text(data.result);
+                        $("#response_account_type").prop('style').display = "inline";
+                        $("#response_account_type").text(data.result);
 
-                        var xTable = document.getElementById('account_type_table');
-                        var tr = document.createElement('tr');
-                        tr.id = "accountTypeRow_" + data.new_id
-                        tr.innerHTML = data.subpage;
-                        xTable.appendChild(tr);
+                        var node_last = document.getElementById('accountTypeRow_new');
+                        const new_row = fromHTML(data.subpage);
+                        node_last.parentElement.insertBefore(new_row, node_last);
+
+                        document.getElementById('newAccountTypeTitle').value = '';
+                        document.getElementById('newAccountTypeDescription').value = '';
                     })
                     .fail(function (data) {
-                        $("#create_response").prop('style').display = "inline";
-                        $("#create_response").text("Fehler: " + data.responsetext);
+                        $("#response_account_type").prop('style').display = "inline";
+                        $("#response_account_type").text("Fehler: " + data.responsetext);
                     });
             }
             $("#accountTypeCreate").click(function (e) {
@@ -41,14 +42,36 @@
             };
             $.post("request_update_account_type", formData, function (data, status) { })
                 .done(function (data) {
-                    $("#create_response").prop('style').display = "inline";
-                    $("#create_response").text(data.result);
+                    $("#response_account_type").prop('style').display = "inline";
+                    $("#response_account_type").text(data.result);
                 })
                 .fail(function (data) {
-                    $("#create_response").prop('style').display = "inline";
-                    $("#create_response").text("Fehler: " + data.responsetext);
+                    $("#response_account_type").prop('style').display = "inline";
+                    $("#response_account_type").text("Fehler: " + data.responsetext);
                 });
         }
+        //https://stackoverflow.com/questions/494143/creating-a-new-dom-element-from-an-html-string-using-built-in-dom-methods-or-pro/35385518#35385518
+        /**
+         * @param {String} HTML representing a single element.
+         * @param {Boolean} flag representing whether or not to trim input whitespace, defaults to true.
+         * @return {Element | HTMLCollection | null}
+         */
+        function fromHTML(html, trim = true) {
+            // Process the HTML string.
+            html = trim ? html.trim() : html;
+            if (!html) return null;
+
+            // Then set up a new template element.
+            const template = document.createElement('template');
+            template.innerHTML = html;
+            const result = template.content.children;
+
+            // Then return either an HTMLElement or HTMLCollection,
+            // based on whether the input HTML had one or more roots.
+            if (result.length === 1) return result[0];
+            return result;
+        }
+
     </script>
 </head>
 
@@ -64,18 +87,20 @@
             <td></td>
         </tr>
         {% for account_type in account_types %}
-        <tr id="accountTypeRow_{{account_type.id}}">
-            {% include "accountTypeRow.html" %}
-        </tr>
+        {% include "accountTypeRow.html" %}
         {% endfor %}
+        <form>
+            <tr id="accountTypeRow_new">
+                <td id="accountType_id_new" style="display:none;">empty</td>
+                <td id="accountType_title_new"> <input type="text" id="newAccountTypeTitle"
+                        placeholder="title for new account type"></td>
+                <td id="accountType_descrption_new"><input type="text" id="newAccountTypeDescription"
+                        placeholder="description of new account type"></td>
+                <td><button id="accountTypeCreate">Create</button></td>
+            </tr>
+        </form>
     </table>
-    <form id="createNewAccountTypeForm">
-        <input type="text" id="newAccountTypeTitle" placeholder="title for new account type">
-        <input type="text" id="newAccountTypeDescription" placeholder="description of new account type">
-        <button id="accountTypeCreate">Create</button>
-    </form>
-    </table>
-    <div id="create_response" style="display: none;">
+    <div id="response_account_type" style="display: none;">
         nothing to report
     </div>
 </body>

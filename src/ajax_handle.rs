@@ -589,7 +589,7 @@ pub async fn do_create_new_finance_account_type(
             description: new_description.into(),
         };
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        session.expire_in(std::time::Duration::from_secs(60 * 10));
 
         let db_handler = DbHandlerMongoDB {};
         let local_settings: SettingStruct = SettingStruct::global().clone();
@@ -708,7 +708,7 @@ pub async fn do_update_finance_account_type(
             description: new_description.into(),
         };
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        session.expire_in(std::time::Duration::from_secs(60 * 10));
 
         let db_handler = DbHandlerMongoDB {};
         let local_settings: SettingStruct = SettingStruct::global().clone();
