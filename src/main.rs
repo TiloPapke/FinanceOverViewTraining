@@ -235,6 +235,10 @@ async fn https_server() {
             "/request_create_new_account_type",
             post(ajax_handle::do_create_new_finance_account_type),
         )
+        .route(
+            "/request_update_account_type",
+            post(ajax_handle::do_update_finance_account_type),
+        )
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 

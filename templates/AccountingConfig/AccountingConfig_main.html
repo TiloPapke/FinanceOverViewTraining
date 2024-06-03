@@ -10,25 +10,45 @@
                     description: $("#newAccountTypeDescription").val(),
                 };
 
-                $.post("request_create_new_account_type", formData, function (data, status) {})
-                .done (function(data){
-                    $("#create_response").prop('style').display="inline";
-                    $("#create_response").text(data.result);
+                $.post("request_create_new_account_type", formData, function (data, status) { })
+                    .done(function (data) {
+                        $("#create_response").prop('style').display = "inline";
+                        $("#create_response").text(data.result);
 
-                    var xTable = document.getElementById('account_type_table');
-                    var tr = document.createElement('tr');
-                    tr.innerHTML = data.subpage;
-                    xTable.appendChild(tr);
-                })
-                .fail (function(data){
-                    $("#create_response").prop('style').display="inline";
-                    $("#create_response").text("Fehler: "+data.responsetext);
-                });
+                        var xTable = document.getElementById('account_type_table');
+                        var tr = document.createElement('tr');
+                        tr.id = "accountTypeRow_" + data.new_id
+                        tr.innerHTML = data.subpage;
+                        xTable.appendChild(tr);
+                    })
+                    .fail(function (data) {
+                        $("#create_response").prop('style').display = "inline";
+                        $("#create_response").text("Fehler: " + data.responsetext);
+                    });
             }
             $("#accountTypeCreate").click(function (e) {
                 $.fn.createNewAccountType(e);
             });
         });
+        function updateAccountType(accountTypeId) {
+            var val1 = document.getElementById('accountType_title_' + accountTypeId).textContent;
+            var val2 = document.getElementById('accountType_descrption_' + accountTypeId).textContent;
+
+            var formData = {
+                account_type_id: accountTypeId,
+                title: val1,
+                description: val2,
+            };
+            $.post("request_update_account_type", formData, function (data, status) { })
+                .done(function (data) {
+                    $("#create_response").prop('style').display = "inline";
+                    $("#create_response").text(data.result);
+                })
+                .fail(function (data) {
+                    $("#create_response").prop('style').display = "inline";
+                    $("#create_response").text("Fehler: " + data.responsetext);
+                });
+        }
     </script>
 </head>
 
@@ -44,22 +64,16 @@
             <td></td>
         </tr>
         {% for account_type in account_types %}
-        <tr>
-        {% include "accountTypeRow.html" %}
+        <tr id="accountTypeRow_{{account_type.id}}">
+            {% include "accountTypeRow.html" %}
         </tr>
         {% endfor %}
-        <tr id="accountTypeRow_empty" style="display:none";>
-            <td id="accountType_id_empty" style="display:none;"></td>
-            <td id="accountType_title_empty"></td>
-            <td id="accountType_descrption_empty"></td>
-            <td><button id="accountType_Update_empty">Update</button></td>
-        </tr>
     </table>
-        <form id="createNewAccountTypeForm">
-            <input type="text" id="newAccountTypeTitle" placeholder="title for new account type">
-            <input type="text" id="newAccountTypeDescription" placeholder="description of new account type">
-            <button id="accountTypeCreate">Create</button>
-        </form>
+    <form id="createNewAccountTypeForm">
+        <input type="text" id="newAccountTypeTitle" placeholder="title for new account type">
+        <input type="text" id="newAccountTypeDescription" placeholder="description of new account type">
+        <button id="accountTypeCreate">Create</button>
+    </form>
     </table>
     <div id="create_response" style="display: none;">
         nothing to report

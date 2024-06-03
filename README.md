@@ -5,7 +5,7 @@ reached mile stones:
 
 goal points for version 0.0.4
 - [ ] unit tests
-- [ ] hashed session id to ensure a users identity for futres calls so that a user can only change own data
+- [-] hashed session id to ensure a users identity for futres calls so that a user can only change own data, rejected instead user_id stored in server side session data
 - [x] defintion of data structure for storage
 - [ ] hash content of field "reset_secret"
 - [ ] simple finance account management
@@ -37,6 +37,7 @@ open mile stones:
 hint: new miles stones might be added
 
 goal points for version 0.0.5
+- [ ] unit test case: check if UUID of different user account is used when updating or creating elements => reject
 - [ ] correct spellings like display_paswword_reset_with_token_page
 - [ ] code refactoring: centralizse session handle (eg getting session data and setting new expire timestamp)
 - [ ] code refactoring: connection setting handle
