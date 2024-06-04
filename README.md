@@ -45,6 +45,7 @@ goal points for version 0.0.5
 - [ ] export to csv (simple)
 
 goal points for version 0.0.6
+- [ ] check if some mut markings in implementations of trait DBFinanceConfigFunctions can be removed
 - [ ] redesign UI
 - [ ] using a css framework for better styles
 

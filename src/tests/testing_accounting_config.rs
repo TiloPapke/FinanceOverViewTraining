@@ -29,11 +29,6 @@ mod test_accounting_handle {
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
         let user_id_4 = Uuid::new();
-        let mut id_list: Vec<Uuid> = Vec::new();
-
-        id_list.push(user_id_1.clone());
-        id_list.push(user_id_2.clone());
-        id_list.push(user_id_3.clone());
 
         let entry_object1 =
             InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
@@ -288,24 +283,97 @@ mod test_accounting_handle {
         };
 
         /* test preparations:
-           2 users a and b
+           3 users a, b and c
            user a has:
            - Account type a_1
            - Account type a_2
            user b has:
            - Account type b_1
+           user c: not inserted in database
         */
+        let in_memory_db = InMemoryDatabaseHandler {};
         let user_id_1 = Uuid::new();
-        let mut id_list: Vec<Uuid> = Vec::new();
+        let user_id_2 = Uuid::new();
+        let user_id_3 = Uuid::new();
 
-        id_list.push(user_id_1.clone());
-
-        let account_types_user_1: Vec<FinanceAccountType> = Vec::new();
+        let mut account_handle_1 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+        let mut account_handle_2 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
+        let account_handle_3 =
+            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
 
         let entry_object1 =
             InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
-        let insert_result =
-            InMemoryDatabaseData::insert_in_memory_database(Vec::from([entry_object1]));
+        let entry_object2 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_2);
+        let init_db_result = InMemoryDatabaseData::insert_in_memory_database(Vec::from([
+            entry_object1,
+            entry_object2,
+        ]));
+        assert!(
+            init_db_result.is_ok(),
+            "Could not prepare database for test"
+        );
+
+        let finance_account_type_a_1 = FinanceAccountType {
+            description: "SomeTypeDescription_a_1".to_string(),
+            title: "SomeType_a_1".to_string(),
+            id: Uuid::new(),
+        };
+        let finance_account_type_a_2 = FinanceAccountType {
+            description: "SomeTypeDescription_a_2".to_string(),
+            title: "SomeType_a_2".to_string(),
+            id: Uuid::new(),
+        };
+        let finance_account_type_b_1 = FinanceAccountType {
+            description: "SomeTypeDescription_b_1".to_string(),
+            title: "SomeType_b_1".to_string(),
+            id: Uuid::new(),
+        };
+        let insert_result_fat_a1 =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_a_1.clone());
+        let insert_result_fat_a2 =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_a_2.clone());
+        let insert_result_fat_b1 =
+            account_handle_2.finance_account_type_upsert(&mut finance_account_type_b_1.clone());
+        assert!(
+            insert_result_fat_a1.is_ok()
+                && insert_result_fat_a2.is_ok()
+                && insert_result_fat_b1.is_ok(),
+            "Could not prepare database for testing"
+        )
+
+        /* Testcase 1
+           adding 3 new accounts for user a:
+           account 1: type 1
+           account 2: type 2
+           account 3: type 3
+
+           check:
+           # listing size should increase with each insert
+           # each listing should contains the correct accounts
+        */
+
+        /* Testcase 2
+            adding 2 new accounts for user b:
+            account 1: type 1
+            account 2: new account type, not stored in database
+
+            check:
+            adding account 1 ok
+            adding account 2 fails
+        */
+
+        /* Testcase 3
+           rename account 2 from user 1
+
+           check:
+           # new list contains the updated entry
+        */
+
+        /* Testcase 4
+         */
     }
 
     fn account_type_list_contains_element(
