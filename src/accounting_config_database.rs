@@ -10,7 +10,7 @@ use mongodb::{
 use crate::{
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-    datatypes::FinanceAccountType,
+    datatypes::{FinanceAccount, FinanceAccountType},
 };
 
 #[async_trait(?Send)]
@@ -25,6 +25,17 @@ pub trait DBFinanceConfigFunctions {
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
+    ) -> Result<(), String>;
+    async fn finance_account_list(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+    ) -> Result<Vec<FinanceAccount>, String>;
+    async fn finance_account_upsert(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        finance_account: &FinanceAccount,
     ) -> Result<(), String>;
 }
 
@@ -156,5 +167,22 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         debug!(target:"app::FinanceOverView","upserted finance accpunt type for user id {}",&user_id);
 
         Ok(())
+    }
+
+    async fn finance_account_list(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+    ) -> Result<Vec<FinanceAccount>, String> {
+        unimplemented!("finance_account_list for mongodb is not implemented");
+    }
+
+    async fn finance_account_upsert(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        finance_account: &FinanceAccount,
+    ) -> Result<(), String> {
+        unimplemented!("finance_account_upsert for mongodb is not implemented");
     }
 }

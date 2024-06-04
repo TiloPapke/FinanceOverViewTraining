@@ -35,3 +35,11 @@ pub struct FinanceAccountType {
     pub title: String,
     pub description: String,
 }
+
+#[derive(PartialEq, Deserialize, Debug, Clone)]
+pub struct FinanceAccount {
+    pub id: Uuid,
+    pub finance_account_type_id: Uuid,
+    pub title: String,
+    pub description: String,
+}

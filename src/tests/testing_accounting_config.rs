@@ -18,7 +18,7 @@ mod test_accounting_handle {
     };
 
     #[tokio::test]
-    async fn test_acounting_with_mock() {
+    async fn test_acounting_type_config_handling_with_mock() {
         let dummy_connection_settings = DbConnectionSetting {
             instance: "".into(),
             password: "".into(),
@@ -35,22 +35,18 @@ mod test_accounting_handle {
         id_list.push(user_id_2.clone());
         id_list.push(user_id_3.clone());
 
-        let account_types_user_1: Vec<FinanceAccountType> = Vec::new();
-        let account_types_user_2: Vec<FinanceAccountType> = Vec::new();
-        let account_types_user_3: Vec<FinanceAccountType> = Vec::new();
+        let entry_object1 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
+        let entry_object2 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_2);
+        let entry_object3 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_3);
 
-        let mut account_types_all_users = Vec::new();
-        account_types_all_users.push(account_types_user_1);
-        account_types_all_users.push(account_types_user_2);
-        account_types_all_users.push(account_types_user_3);
-
-        let data_obj = InMemoryDatabaseData::create_in_memory_database_data_object(
-            id_list,
-            account_types_all_users,
-        );
-        let mutex_obj = std::sync::Mutex::new(data_obj);
-
-        let _ = crate::tests::mocking_database::GLOBAL_IN_MEMORY_DATA.set(mutex_obj);
+        let _insert_result = InMemoryDatabaseData::insert_in_memory_database(Vec::from([
+            entry_object1,
+            entry_object2,
+            entry_object3,
+        ]));
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
@@ -142,7 +138,7 @@ mod test_accounting_handle {
     }
 
     #[tokio::test]
-    async fn test_acounting_with_mongodb() {
+    async fn test_acounting_type_config_handling_with_mongodb() {
         init();
         //let local_setting: SettingStruct = SettingStruct::global().clone();
         let test_setting = TestSettingStruct::global().clone();
@@ -280,6 +276,36 @@ mod test_accounting_handle {
                 .set(test_setting.clone())
                 .ok();
         });
+    }
+
+    #[tokio::test]
+    async fn test_acounting_config_handle_with_mock() {
+        let dummy_connection_settings = DbConnectionSetting {
+            instance: "".into(),
+            password: "".into(),
+            url: "".into(),
+            user: "".into(),
+        };
+
+        /* test preparations:
+           2 users a and b
+           user a has:
+           - Account type a_1
+           - Account type a_2
+           user b has:
+           - Account type b_1
+        */
+        let user_id_1 = Uuid::new();
+        let mut id_list: Vec<Uuid> = Vec::new();
+
+        id_list.push(user_id_1.clone());
+
+        let account_types_user_1: Vec<FinanceAccountType> = Vec::new();
+
+        let entry_object1 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
+        let insert_result =
+            InMemoryDatabaseData::insert_in_memory_database(Vec::from([entry_object1]));
     }
 
     fn account_type_list_contains_element(

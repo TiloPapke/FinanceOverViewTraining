@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::database_handler_mongodb::DbConnectionSetting;
+use crate::datatypes::FinanceAccount;
 #[cfg(test)]
 use crate::datatypes::FinanceAccountType;
 #[cfg(test)]
@@ -12,9 +13,15 @@ use std::sync::Mutex;
 pub struct InMemoryDatabaseHandler {}
 
 #[cfg(test)]
+pub struct InMemoryDatabaseEntryObj {
+    user_id: Uuid,
+    account_types_per_user: Vec<FinanceAccountType>,
+    accounts_per_user: Vec<FinanceAccount>,
+}
+
+#[cfg(test)]
 pub struct InMemoryDatabaseData {
-    user_ids: Vec<Uuid>,
-    account_types_per_user: Vec<Vec<FinanceAccountType>>,
+    data_per_user: Vec<InMemoryDatabaseEntryObj>,
 }
 
 #[cfg(test)]
@@ -31,10 +38,13 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
         let data_obj = GLOBAL_IN_MEMORY_DATA.get().unwrap();
         let data_obj2 = data_obj.lock().unwrap();
 
-        let position_option = data_obj2.user_ids.iter().position(|elem| elem.eq(&user_id));
+        let position_option = data_obj2
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
             let copy_list = InMemoryDatabaseData::clone_finance_account_type_vector(
-                &data_obj2.account_types_per_user[position],
+                &data_obj2.data_per_user[position].account_types_per_user,
             );
             Ok(copy_list)
         } else {
@@ -51,9 +61,17 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
         let data_obj = GLOBAL_IN_MEMORY_DATA.get();
         let data_obj2 = data_obj.unwrap();
         let mut data_obj3 = data_obj2.lock().unwrap();
-        let position_option = data_obj3.user_ids.iter().position(|elem| elem.eq(&user_id));
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
-            let current_list = &mut data_obj3.account_types_per_user.get_mut(position).unwrap();
+            //let current_list = &mut data_obj3.account_types_per_user.get_mut(position).unwrap();
+            let current_list = &mut data_obj3
+                .data_per_user
+                .get_mut(position)
+                .unwrap()
+                .account_types_per_user;
             let position2_option = current_list
                 .iter()
                 .position(|elem| elem.id.eq(&(*finance_account_type).id));
@@ -74,21 +92,57 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             Err("User not found".to_string())
         }
     }
+    async fn finance_account_list(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+    ) -> Result<Vec<FinanceAccount>, String> {
+        unimplemented!("finance_account_list for ImMemory is not implemented");
+    }
+
+    async fn finance_account_upsert(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        finance_account: &FinanceAccount,
+    ) -> Result<(), String> {
+        unimplemented!("finance_account_upsert for ImMemory is not implemented");
+    }
 }
 
 #[cfg(test)]
 impl InMemoryDatabaseData {
-    pub fn create_in_memory_database_data_object(
-        user_ids: Vec<Uuid>,
-        account_types_per_user: Vec<Vec<FinanceAccountType>>,
-    ) -> InMemoryDatabaseData {
-        let data_obj = InMemoryDatabaseData {
-            account_types_per_user: Vec::from(account_types_per_user),
-            user_ids: Vec::from(user_ids),
-        };
-        return data_obj;
+    pub fn insert_in_memory_database(
+        mut data_per_user: Vec<InMemoryDatabaseEntryObj>,
+    ) -> Result<(), String> {
+        let mut data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        if data_obj.is_none() {
+            let new_data_obj = InMemoryDatabaseData {
+                data_per_user: Vec::new(),
+            };
+            let mutex_obj = Mutex::new(new_data_obj);
+
+            let _ = GLOBAL_IN_MEMORY_DATA.set(mutex_obj);
+            data_obj = GLOBAL_IN_MEMORY_DATA.get();
+            if data_obj.is_none() {
+                return Err("Could not initialise InMemoryDB".into());
+            }
+        }
+        let data_obj2 = data_obj.unwrap();
+        let mut data_obj3 = data_obj2.lock().unwrap();
+
+        data_obj3.data_per_user.append(&mut data_per_user);
+        drop(data_obj3);
+        return Ok(());
     }
 
+    pub fn create_in_memory_database_entry_object(user_id: &Uuid) -> InMemoryDatabaseEntryObj {
+        return InMemoryDatabaseEntryObj {
+            user_id: user_id.clone(),
+            account_types_per_user: Vec::new(),
+            accounts_per_user: Vec::new(),
+        };
+    }
     fn clone_finance_account_type(object_to_clone: &FinanceAccountType) -> FinanceAccountType {
         let return_obj = FinanceAccountType {
             id: object_to_clone.id,
