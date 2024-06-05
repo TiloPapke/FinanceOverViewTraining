@@ -8,7 +8,7 @@ mod test_accounting_handle {
     use crate::{
         accounting_config_logic::FinanceAccounttingHandle,
         database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-        datatypes::FinanceAccountType,
+        datatypes::{FinanceAccount, FinanceAccountType},
         password_handle::{validate_credentials, UserCredentials},
         setting_struct::{self, SettingStruct, TestSettingStruct},
         tests::{
@@ -296,11 +296,11 @@ mod test_accounting_handle {
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
 
-        let mut account_handle_1 =
+        let mut account_handle_1: FinanceAccounttingHandle =
             FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
         let mut account_handle_2 =
             FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
-        let account_handle_3 =
+        let mut account_handle_3 =
             FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
 
         let entry_object1 =
@@ -342,18 +342,68 @@ mod test_accounting_handle {
                 && insert_result_fat_a2.is_ok()
                 && insert_result_fat_b1.is_ok(),
             "Could not prepare database for testing"
-        )
+        );
 
         /* Testcase 1
            adding 3 new accounts for user a:
            account 1: type 1
            account 2: type 2
-           account 3: type 3
+           account 3: type 1
 
            check:
            # listing size should increase with each insert
            # each listing should contains the correct accounts
         */
+        let finance_account_1_1 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_a_1.id,
+            title: "account_1_1".into(),
+            description: "description_1_1".into(),
+        };
+        let finance_account_1_2 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_a_2.id,
+            title: "account_1_2".into(),
+            description: "description_1_2".into(),
+        };
+        let finance_account_1_3 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_a_1.id,
+            title: "account_1_3".into(),
+            description: "description_1_3".into(),
+        };
+        let list_0_result = account_handle_1.finance_account_list();
+        let insert_1_result = account_handle_1.finance_account_upsert(&finance_account_1_1);
+        let list_1_result = account_handle_1.finance_account_list();
+        let insert_2_result = account_handle_1.finance_account_upsert(&finance_account_1_2);
+        let list_2_result = account_handle_1.finance_account_list();
+        let insert_3_result = account_handle_1.finance_account_upsert(&finance_account_1_3);
+        let list_3_result = account_handle_1.finance_account_list();
+
+        assert!(list_0_result.is_ok(), "{}", list_0_result.unwrap_err());
+        assert!(list_1_result.is_ok(), "{}", list_1_result.unwrap_err());
+        assert!(list_2_result.is_ok(), "{}", list_2_result.unwrap_err());
+        assert!(list_3_result.is_ok(), "{}", list_3_result.unwrap_err());
+        assert!(insert_1_result.is_ok(), "{}", insert_1_result.unwrap_err());
+        assert!(insert_2_result.is_ok(), "{}", insert_2_result.unwrap_err());
+        assert!(insert_3_result.is_ok(), "{}", insert_3_result.unwrap_err());
+
+        let list_length_base = list_0_result.unwrap().len();
+        let list1 = list_1_result.unwrap();
+        let list2 = list_2_result.unwrap();
+        let list3 = list_3_result.unwrap();
+        assert!(
+            list1.len().eq(&(list_length_base + 1))
+                && list2.len().eq(&(list_length_base + 2))
+                && list3.len().eq(&(list_length_base + 3)),
+            "returned list length do not match"
+        );
+        assert!(account_list_contains_element(&list1, &finance_account_1_1));
+        assert!(account_list_contains_element(&list2, &finance_account_1_1));
+        assert!(account_list_contains_element(&list2, &finance_account_1_2));
+        assert!(account_list_contains_element(&list3, &finance_account_1_1));
+        assert!(account_list_contains_element(&list3, &finance_account_1_2));
+        assert!(account_list_contains_element(&list3, &finance_account_1_3));
 
         /* Testcase 2
             adding 2 new accounts for user b:
@@ -364,6 +414,48 @@ mod test_accounting_handle {
             adding account 1 ok
             adding account 2 fails
         */
+        let finance_account_2_1 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_b_1.id,
+            title: "account_2_1".into(),
+            description: "description_2_1".into(),
+        };
+        let finance_account_type_b_2 = FinanceAccountType {
+            description: "SomeTypeDescription_b_2".to_string(),
+            title: "SomeType_b_2".to_string(),
+            id: Uuid::new(),
+        };
+        let finance_account_2_2 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_b_2.id,
+            title: "account_2_2".into(),
+            description: "description_2_2".into(),
+        };
+        let list_2_0_result = account_handle_2.finance_account_list();
+        let insert_2_1_result = account_handle_2.finance_account_upsert(&finance_account_2_1);
+        let list_2_1_result = account_handle_2.finance_account_list();
+        let insert_2_2_result = account_handle_2.finance_account_upsert(&finance_account_2_2);
+        assert!(list_2_0_result.is_ok(), "{}", list_2_0_result.unwrap_err());
+        assert!(list_2_1_result.is_ok(), "{}", list_2_1_result.unwrap_err());
+        assert!(
+            insert_2_1_result.is_ok(),
+            "{}",
+            list_2_1_result.unwrap_err()
+        );
+        assert!(
+            insert_2_2_result.is_err(),
+            "inserting with unkown account type did not failed"
+        );
+        let list_length_base_2 = list_2_0_result.unwrap().len();
+        let list_2_1 = list_2_1_result.unwrap();
+        assert!(
+            list_2_1.len().eq(&(list_length_base_2 + 1)),
+            "return list length does not math"
+        );
+        assert!(account_list_contains_element(
+            &list_2_1,
+            &finance_account_2_1
+        ));
 
         /* Testcase 3
            rename account 2 from user 1
@@ -371,14 +463,79 @@ mod test_accounting_handle {
            check:
            # new list contains the updated entry
         */
+        let finance_account_1_2_update = FinanceAccount {
+            id: finance_account_1_2.id,
+            finance_account_type_id: finance_account_1_2.finance_account_type_id,
+            title: "Update_1_2".into(),
+            description: "Another descrption for 1_2".into(),
+        };
+        let upsert_result = account_handle_1.finance_account_upsert(&finance_account_1_2_update);
+        let list_update_result = account_handle_1.finance_account_list();
+        assert!(upsert_result.is_ok(), "{}", upsert_result.unwrap_err());
+        assert!(
+            list_update_result.is_ok(),
+            "{}",
+            list_update_result.unwrap_err()
+        );
+
+        let list_update = list_update_result.unwrap();
+        assert!(
+            list_2_1.len().eq(&list_update.len()),
+            "return list length does not math"
+        );
+
+        assert!(account_list_contains_element(
+            &list_update,
+            &finance_account_1_1
+        ));
+        assert!(account_list_contains_element(
+            &list_update,
+            &finance_account_1_2_update
+        ));
+        assert!(account_list_contains_element(
+            &list_update,
+            &finance_account_1_3
+        ));
+        assert!(!account_list_contains_element(
+            &list_update,
+            &finance_account_1_2
+        ));
 
         /* Testcase 4
+        trying to list and insert value for a new user that does not exist
+
+        Check:
+            all operation have to fail
          */
+
+        let list_e1_result = account_handle_3.finance_account_list();
+        let insert_e1_result = account_handle_3.finance_account_upsert(&finance_account_1_1);
+        assert!(
+            list_e1_result.is_err(),
+            "listing for unknown user has to fail"
+        );
+        assert!(
+            insert_e1_result.is_err(),
+            "inserting for unknown user has to fail"
+        );
     }
 
     fn account_type_list_contains_element(
         list_to_check: &Vec<FinanceAccountType>,
         element_to_check: &FinanceAccountType,
+    ) -> bool {
+        let position_option = list_to_check
+            .iter()
+            .position(|elem| elem.id.eq(&element_to_check.id));
+        if let Some(position) = position_option {
+            return list_to_check[position].eq(element_to_check);
+        }
+        return false;
+    }
+
+    fn account_list_contains_element(
+        list_to_check: &Vec<FinanceAccount>,
+        element_to_check: &FinanceAccount,
     ) -> bool {
         let position_option = list_to_check
             .iter()
