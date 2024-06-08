@@ -472,6 +472,148 @@ mod test_accounting_handle {
         );
     }
 
+    #[tokio::test]
+    async fn test_acounting_config_handling_with_mongodb() {
+        init();
+        //let local_setting: SettingStruct = SettingStruct::global().clone();
+        let test_setting = TestSettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(test_setting.backend_database_url),
+            user: String::from(test_setting.backend_database_user),
+            password: String::from(test_setting.backend_database_password),
+            instance: String::from(test_setting.backend_database_instance),
+        };
+        //
+        let credentials = UserCredentials {
+            username: test_setting.test_user_account_user_login,
+            password: test_setting.test_user_account_user_password.into(),
+        };
+
+        let validate_result = validate_credentials(&db_connection, &credentials).await;
+        if validate_result.is_err() {
+            panic!(
+                "test user {} not valid: {}",
+                credentials.username,
+                validate_result.unwrap_err()
+            );
+        }
+
+        let user_id_1 = validate_result.unwrap();
+        let mongo_db = DbHandlerMongoDB {};
+
+        let mut account_handle_1 =
+            FinanceAccounttingHandle::new(&db_connection, &user_id_1, &mongo_db);
+
+        //check if there are any finance account typse available
+        let list_fat_result = account_handle_1.finance_account_type_list();
+        assert!(
+            list_fat_result.is_ok(),
+            "Could not load finance account type list: {}",
+            list_fat_result.unwrap_err().to_string()
+        );
+        let available_finance_account_type = list_fat_result.unwrap();
+        assert!(
+            available_finance_account_type.len() > 1,
+            "not enough finance account types available"
+        );
+
+        /* Testcase 1
+        insert 2 diffenert finance accounts
+
+        check:
+        * inserts are okay
+        * list of finance accounts increases and contains the newly inserted accounts
+         */
+        let id1 = Uuid::new();
+        let id2 = Uuid::new();
+        let account_1 = FinanceAccount {
+            id: id1,
+            finance_account_type_id: available_finance_account_type[0].id,
+            title: "SomeTitle".to_string() + &id1.to_string(),
+            description: "some Decription for ".to_string() + &id1.to_string(),
+        };
+        let account_2 = FinanceAccount {
+            id: id2,
+            finance_account_type_id: available_finance_account_type[0].id,
+            title: "SomeTitle".to_string() + &id2.to_string(),
+            description: "some Decription for ".to_string() + &id2.to_string(),
+        };
+        let list_accounts_0_result = account_handle_1.finance_account_list();
+        let insert_1_result = account_handle_1.finance_account_upsert(&account_1);
+        let list_accounts_1_result = account_handle_1.finance_account_list();
+        let insert_2_result = account_handle_1.finance_account_upsert(&account_2);
+        let list_accounts_2_result = account_handle_1.finance_account_list();
+
+        assert!(
+            list_accounts_0_result.is_ok(),
+            "{}",
+            list_accounts_0_result.unwrap_err()
+        );
+        assert!(
+            list_accounts_1_result.is_ok(),
+            "{}",
+            list_accounts_1_result.unwrap_err()
+        );
+        assert!(
+            list_accounts_1_result.is_ok(),
+            "{}",
+            list_accounts_2_result.unwrap_err()
+        );
+        assert!(insert_1_result.is_ok(), "{}", insert_1_result.unwrap_err());
+        assert!(insert_2_result.is_ok(), "{}", insert_2_result.unwrap_err());
+        let list0 = list_accounts_0_result.unwrap();
+        let list1 = list_accounts_1_result.unwrap();
+        let list2 = list_accounts_2_result.unwrap();
+        let base_length = list0.len();
+
+        assert!(
+            list1.len().eq(&(base_length + 1)) & list2.len().eq(&(base_length + 2)),
+            "Length of list do not match"
+        );
+        assert!(account_list_contains_element(&list1, &account_1));
+        assert!(account_list_contains_element(&list2, &account_1));
+        assert!(account_list_contains_element(&list2, &account_2));
+
+        /* Testcase 2
+        update an account
+
+        Checks:
+        listing of account has same size
+        old value not in listing anymore, it is replaced by new value
+         */
+        let account_updated = FinanceAccount {
+            id: account_2.id,
+            finance_account_type_id: account_2.finance_account_type_id,
+            title: "Updated".to_string() + &account_2.id.to_string(),
+            description: "changed description".to_string() + &account_2.id.to_string(),
+        };
+        let insert_updated_result = account_handle_1.finance_account_upsert(&account_updated);
+        let list_updated_result = account_handle_1.finance_account_list();
+        assert!(
+            insert_updated_result.is_ok(),
+            "{}",
+            insert_updated_result.unwrap_err()
+        );
+        assert!(
+            list_updated_result.is_ok(),
+            "{}",
+            list_updated_result.unwrap_err()
+        );
+
+        let list_updated = list_updated_result.unwrap();
+
+        assert!(
+            list2.len().eq(&list_updated.len()),
+            "length after updating does not match"
+        );
+        assert!(account_list_contains_element(&list_updated, &account_1));
+        assert!(account_list_contains_element(
+            &list_updated,
+            &account_updated
+        ));
+        assert!(!account_list_contains_element(&list_updated, &account_2));
+    }
+
     //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
     static TEST_INIT: std::sync::Once = std::sync::Once::new();
 
