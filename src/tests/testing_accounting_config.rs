@@ -225,54 +225,6 @@ mod test_accounting_handle {
         ));
     }
 
-    //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-    static TEST_INIT: std::sync::Once = std::sync::Once::new();
-
-    fn init() {
-        TEST_INIT.call_once(|| {
-            //get configuration from ini file
-            let working_dir = std::env::current_dir().unwrap();
-            let config_dir: PathBuf = Path::new(&working_dir).join("config");
-            if !config_dir.exists() {
-                panic!("Testing: Config folder not present, aborting tests");
-            }
-
-            let server_settings_file = Path::new(&config_dir).join("ServerSettings.ini");
-            if !server_settings_file.exists() {
-                panic!("Testing: Server Setting file not present, aborting tests");
-            }
-
-            let test_settings_file = Path::new(&config_dir).join("TestSettings.ini");
-            if !test_settings_file.exists() {
-                panic!("Testing: Test Setting file not present, aborting tests");
-            }
-
-            let dummy_server_settings_file = Path::new(&config_dir).join("DUMMY_ServerSettings.ini");
-            if !dummy_server_settings_file.exists()
-            {
-                log::debug!(target: "app::FinanceOverView","Dummy setting file not found, will be created at {}",dummy_server_settings_file.to_string_lossy());
-                SettingStruct::create_dummy_setting(&dummy_server_settings_file);
-            }
-
-            let dummy_test_settings_file = Path::new(&config_dir).join("DUMMY_TestSettings.ini");
-            if !dummy_test_settings_file.exists()
-            {
-                log::debug!(target: "app::FinanceOverView","Dummy test setting file not found, will be created at {}",dummy_test_settings_file.to_string_lossy());
-                TestSettingStruct::create_dummy_setting(&dummy_test_settings_file);
-            }
-
-            let local_setting = SettingStruct::load_from_file(&server_settings_file);
-            setting_struct::GLOBAL_SETTING
-                .set(local_setting.clone())
-                .ok();
-
-            let test_setting = TestSettingStruct::load_from_file(&test_settings_file);
-            setting_struct::GLOBAL_TEST_SETTING
-                .set(test_setting.clone())
-                .ok();
-        });
-    }
-
     #[tokio::test]
     async fn test_acounting_config_handle_with_mock() {
         let dummy_connection_settings = DbConnectionSetting {
@@ -480,7 +432,7 @@ mod test_accounting_handle {
 
         let list_update = list_update_result.unwrap();
         assert!(
-            list_2_1.len().eq(&list_update.len()),
+            list3.len().eq(&list_update.len()),
             "return list length does not math"
         );
 
@@ -518,6 +470,54 @@ mod test_accounting_handle {
             insert_e1_result.is_err(),
             "inserting for unknown user has to fail"
         );
+    }
+
+    //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+    static TEST_INIT: std::sync::Once = std::sync::Once::new();
+
+    fn init() {
+        TEST_INIT.call_once(|| {
+            //get configuration from ini file
+            let working_dir = std::env::current_dir().unwrap();
+            let config_dir: PathBuf = Path::new(&working_dir).join("config");
+            if !config_dir.exists() {
+                panic!("Testing: Config folder not present, aborting tests");
+            }
+
+            let server_settings_file = Path::new(&config_dir).join("ServerSettings.ini");
+            if !server_settings_file.exists() {
+                panic!("Testing: Server Setting file not present, aborting tests");
+            }
+
+            let test_settings_file = Path::new(&config_dir).join("TestSettings.ini");
+            if !test_settings_file.exists() {
+                panic!("Testing: Test Setting file not present, aborting tests");
+            }
+
+            let dummy_server_settings_file = Path::new(&config_dir).join("DUMMY_ServerSettings.ini");
+            if !dummy_server_settings_file.exists()
+            {
+                log::debug!(target: "app::FinanceOverView","Dummy setting file not found, will be created at {}",dummy_server_settings_file.to_string_lossy());
+                SettingStruct::create_dummy_setting(&dummy_server_settings_file);
+            }
+
+            let dummy_test_settings_file = Path::new(&config_dir).join("DUMMY_TestSettings.ini");
+            if !dummy_test_settings_file.exists()
+            {
+                log::debug!(target: "app::FinanceOverView","Dummy test setting file not found, will be created at {}",dummy_test_settings_file.to_string_lossy());
+                TestSettingStruct::create_dummy_setting(&dummy_test_settings_file);
+            }
+
+            let local_setting = SettingStruct::load_from_file(&server_settings_file);
+            setting_struct::GLOBAL_SETTING
+                .set(local_setting.clone())
+                .ok();
+
+            let test_setting = TestSettingStruct::load_from_file(&test_settings_file);
+            setting_struct::GLOBAL_TEST_SETTING
+                .set(test_setting.clone())
+                .ok();
+        });
     }
 
     fn account_type_list_contains_element(

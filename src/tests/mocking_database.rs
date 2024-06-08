@@ -94,10 +94,26 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
     }
     async fn finance_account_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccount>, String> {
-        unimplemented!("finance_account_list for ImMemory is not implemented");
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get().unwrap();
+        let data_obj2 = data_obj.lock().unwrap();
+
+        let position_option = data_obj2
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            let copy_list = InMemoryDatabaseData::clone_finance_account_vector(
+                &data_obj2.data_per_user[position].accounts_per_user,
+            );
+            drop(data_obj2);
+            Ok(copy_list)
+        } else {
+            drop(data_obj2);
+            Err("User not found".to_string())
+        }
     }
 
     async fn finance_account_upsert(
@@ -106,7 +122,39 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
         user_id: &Uuid,
         finance_account: &FinanceAccount,
     ) -> Result<(), String> {
-        unimplemented!("finance_account_upsert for ImMemory is not implemented");
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let mut data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            //let current_list = &mut data_obj3.account_per_user.get_mut(position).unwrap();
+            let current_list = &mut data_obj3
+                .data_per_user
+                .get_mut(position)
+                .unwrap()
+                .accounts_per_user;
+            let position2_option = current_list
+                .iter()
+                .position(|elem| elem.id.eq(&finance_account.id));
+            if let Some(position2) = position2_option {
+                let temp_var = finance_account;
+                let temp_var2 = temp_var.clone();
+                current_list.push(temp_var2);
+                current_list.remove(position2);
+            } else {
+                let temp_var = finance_account;
+                let temp_var2 = temp_var.clone();
+                current_list.push(temp_var2);
+            }
+            drop(data_obj3);
+            Ok(())
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
+        }
     }
 }
 
@@ -159,6 +207,26 @@ impl InMemoryDatabaseData {
         for some_finance_account_type in vector_in {
             let temp_var =
                 InMemoryDatabaseData::clone_finance_account_type(some_finance_account_type);
+            return_vetor.push(temp_var);
+        }
+
+        return return_vetor;
+    }
+
+    fn clone_finance_account(object_to_clone: &FinanceAccount) -> FinanceAccount {
+        let return_obj = FinanceAccount {
+            id: object_to_clone.id,
+            finance_account_type_id: object_to_clone.finance_account_type_id,
+            title: object_to_clone.title.to_owned(),
+            description: object_to_clone.description.to_owned(),
+        };
+        return return_obj;
+    }
+    fn clone_finance_account_vector(vector_in: &Vec<FinanceAccount>) -> Vec<FinanceAccount> {
+        let mut return_vetor: Vec<FinanceAccount> = Vec::with_capacity(vector_in.len());
+
+        for some_finance_account in vector_in {
+            let temp_var = InMemoryDatabaseData::clone_finance_account(some_finance_account);
             return_vetor.push(temp_var);
         }
 
