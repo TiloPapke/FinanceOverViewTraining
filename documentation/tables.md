@@ -23,7 +23,7 @@
 | :--- | :---: | ---: |
 | finance_account_id | UUID | unique identifier, primary key |
 | user_id | UUID | unique identifier, secondary key |
-| finance_acount_type_id | UUID | unique identifier, secondary key |
+| finance_account_type_id | UUID | unique identifier, secondary key |
 | title | text | name of the finance account type |
 | description | text | additional information |
 

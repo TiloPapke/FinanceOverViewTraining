@@ -41,6 +41,7 @@ impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_SESSION_INFO: &'static str = "SessionInfo";
     pub const COLLECTION_NAME_USER_LIST: &'static str = "UserList";
     pub const COLLECTION_NAME_ACCOUNTING_TYPES: &'static str = "FinanceAccountTypes";
+    pub const COLLECTION_NAME_ACCOUNTS: &'static str = "FinanceAccounts";
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
         // Get a handle to the deployment.
