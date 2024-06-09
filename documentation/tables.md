@@ -13,7 +13,7 @@
 # FinanceAccountTypes - List of finance account type a user has defined
 | column | type | description |
 | :--- | :---: | ---: |
-| finance_acount_type_id | UUID | unique identifier, primary key |
+| finance_account_type_id | UUID | unique identifier, primary key |
 | user_id | UUID | unique identifier, secondary key |
 | title | text | name of the finance account type |
 | description | text | additional information |
@@ -35,7 +35,7 @@
 | is_simple_entry | boolean | if true exavtly two finance accounts are involved, false more than two finance accounts are used, currently always true |
 | debit_finance_account_id | UUID | unique identifier, secondary key, only used when is_simple_entry set to true  |
 | credit_finance_account_id | UUID | unique identifier, secondary key, only used when is_simple_entry set to true |
-| running number | int64 | running number (per user) of entry |
+| running_number | int64 | running number (per user) of entry |
 | booking_time | datetime | date and time when entry was created |
 | amount | real/financial | value of entry |
 | title | text | short desciption of entry |

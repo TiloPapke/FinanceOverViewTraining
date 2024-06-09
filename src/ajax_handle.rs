@@ -26,7 +26,7 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    accounting_config_logic::FinanceAccounttingHandle,
+    accounting_config_logic::FinanceAccountingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     datatypes::{FinanceAccountType, PasswordResetRequest, PasswordResetTokenRequest},
     frontend_functions::send_password_reset_email,
@@ -603,7 +603,7 @@ pub async fn do_create_new_finance_account_type(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccounttingHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
 
             let register_result_2 =
                 accounting_config_handle.finance_account_type_upsert(&mut new_account_type);
@@ -722,7 +722,7 @@ pub async fn do_update_finance_account_type(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccounttingHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
 
             let upsert_result_2 =
                 accounting_config_handle.finance_account_type_upsert(&mut old_account_type);

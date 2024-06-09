@@ -66,7 +66,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         let filter = doc! {"user_id":search_value};
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
-        let projection = doc! {"finance_acount_type_id":<i32>::from(1),
+        let projection = doc! {"finance_account_type_id":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
         let options = FindOptions::builder().projection(projection).build();
@@ -89,7 +89,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
             let inner_doc = data_doc.unwrap();
 
             let some_uuid_parse_result =
-                ConvertTools::get_uuid_from_document(&inner_doc, "finance_acount_type_id");
+                ConvertTools::get_uuid_from_document(&inner_doc, "finance_account_type_id");
             if some_uuid_parse_result.is_err() {
                 return Err(some_uuid_parse_result.unwrap_err().to_string());
             }
@@ -137,9 +137,9 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         let accounting_type_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES);
 
-        let filter = doc! {"finance_acount_type_id":&finance_account_type.id};
+        let filter = doc! {"finance_account_type_id":&finance_account_type.id};
         let inner_doc = doc! {
-            "finance_acount_type_id":&finance_account_type.id,
+            "finance_account_type_id":&finance_account_type.id,
             "user_id": &user_id,
             "title": &finance_account_type.title,
             "description": &finance_account_type.description,

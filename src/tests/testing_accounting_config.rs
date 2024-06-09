@@ -6,7 +6,7 @@ mod test_accounting_handle {
     use mongodb::bson::Uuid;
 
     use crate::{
-        accounting_config_logic::FinanceAccounttingHandle,
+        accounting_config_logic::FinanceAccountingHandle,
         database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
         datatypes::{FinanceAccount, FinanceAccountType},
         password_handle::{validate_credentials, UserCredentials},
@@ -18,7 +18,7 @@ mod test_accounting_handle {
     };
 
     #[tokio::test]
-    async fn test_acounting_type_config_handling_with_mock() {
+    async fn test_accounting_type_config_handling_with_mock() {
         let dummy_connection_settings = DbConnectionSetting {
             instance: "".into(),
             password: "".into(),
@@ -46,13 +46,13 @@ mod test_accounting_handle {
         let in_memory_db = InMemoryDatabaseHandler {};
 
         let account_handle_1 =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
         let mut account_handle_2 =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
         let mut account_handle_3 =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
         let mut account_handle_4 =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_4, &in_memory_db);
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_4, &in_memory_db);
 
         //prepare data
         //empty list
@@ -133,7 +133,7 @@ mod test_accounting_handle {
     }
 
     #[tokio::test]
-    async fn test_acounting_type_config_handling_with_mongodb() {
+    async fn test_accounting_type_config_handling_with_mongodb() {
         init();
         //let local_setting: SettingStruct = SettingStruct::global().clone();
         let test_setting = TestSettingStruct::global().clone();
@@ -162,7 +162,7 @@ mod test_accounting_handle {
         let mongo_db = DbHandlerMongoDB {};
 
         let mut account_handle_1 =
-            FinanceAccounttingHandle::new(&db_connection, &user_id_1, &mongo_db);
+            FinanceAccountingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
         //prepare data
         //First lilst
@@ -226,7 +226,7 @@ mod test_accounting_handle {
     }
 
     #[tokio::test]
-    async fn test_acounting_config_handle_with_mock() {
+    async fn test_accounting_config_handle_with_mock() {
         let dummy_connection_settings = DbConnectionSetting {
             instance: "".into(),
             password: "".into(),
@@ -248,12 +248,12 @@ mod test_accounting_handle {
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
 
-        let mut account_handle_1: FinanceAccounttingHandle =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+        let mut account_handle_1: FinanceAccountingHandle =
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
         let mut account_handle_2 =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
         let mut account_handle_3 =
-            FinanceAccounttingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
 
         let entry_object1 =
             InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
@@ -473,7 +473,7 @@ mod test_accounting_handle {
     }
 
     #[tokio::test]
-    async fn test_acounting_config_handling_with_mongodb() {
+    async fn test_accounting_config_handling_with_mongodb() {
         init();
         //let local_setting: SettingStruct = SettingStruct::global().clone();
         let test_setting = TestSettingStruct::global().clone();
@@ -502,7 +502,7 @@ mod test_accounting_handle {
         let mongo_db = DbHandlerMongoDB {};
 
         let mut account_handle_1 =
-            FinanceAccounttingHandle::new(&db_connection, &user_id_1, &mongo_db);
+            FinanceAccountingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
         //check if there are any finance account typse available
         let list_fat_result = account_handle_1.finance_account_type_list();

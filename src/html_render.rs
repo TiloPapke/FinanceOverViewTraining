@@ -14,7 +14,7 @@ use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    accounting_config_logic::FinanceAccounttingHandle,
+    accounting_config_logic::FinanceAccountingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
     frontend_functions::get_general_userdata_fromdatabase,
     password_handle::{
@@ -536,7 +536,7 @@ pub async fn display_accounting_config_main_page(
 
     {
         let accounting_config_handle =
-            FinanceAccounttingHandle::new(&db_connection, &user_id, &db_handler);
+            FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
 
         {
             let account_types_result: Result<Vec<crate::datatypes::FinanceAccountType>, String> =
