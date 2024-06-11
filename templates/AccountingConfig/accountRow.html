@@ -1,0 +1,7 @@
+<tr id="accountRow_{{account.id}}">
+    <td id="account_id_{{account.id}}" style="display:none;">{{account.id}}</td>
+    <td id="account_title_{{account.id}}" contentEditable="true">{{account.name}}</td>
+    <td id="account_description_{{account.id}}" contentEditable="true">{{account.description}}</td>
+    <td id="account_description_{{account.id}}">{{account.type_title}}</td>
+    <td><button id="account_Update_{{account.id}}" onclick="updateAccount('{{account.id}}')">Update</button></td>
+</tr>

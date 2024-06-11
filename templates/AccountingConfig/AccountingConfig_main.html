@@ -27,13 +27,42 @@
                         $("#response_account_type").text("Fehler: " + data.responsetext);
                     });
             }
+            $.fn.createNewAccount = function (e) {
+                // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
+                e.preventDefault();
+                var formData = {
+                    title: $("#newAccountTitle").val(),
+                    description: $("#newAccountDescription").val(),
+                    account_type_id: $("#newAccountType").val(),
+                };
+
+                $.post("request_create_new_account", formData, function (data, status) { })
+                    .done(function (data) {
+                        $("#response_account").prop('style').display = "inline";
+                        $("#response_account").text(data.result);
+
+                        var node_last = document.getElementById('accountRow_new');
+                        const new_row = fromHTML(data.subpage);
+                        node_last.parentElement.insertBefore(new_row, node_last);
+
+                        document.getElementById('newAccountTitle').value = '';
+                        document.getElementById('newAccountDescription').value = '';
+                    })
+                    .fail(function (data) {
+                        $("#response_account").prop('style').display = "inline";
+                        $("#response_account").text("Fehler: " + data.responsetext);
+                    });
+            }
             $("#accountTypeCreate").click(function (e) {
                 $.fn.createNewAccountType(e);
+            });
+            $("#accountCreate").click(function (e) {
+                $.fn.createNewAccount(e);
             });
         });
         function updateAccountType(accountTypeId) {
             var val1 = document.getElementById('accountType_title_' + accountTypeId).textContent;
-            var val2 = document.getElementById('accountType_descrption_' + accountTypeId).textContent;
+            var val2 = document.getElementById('accountType_description_' + accountTypeId).textContent;
 
             var formData = {
                 account_type_id: accountTypeId,
@@ -50,6 +79,26 @@
                     $("#response_account_type").text("Fehler: " + data.responsetext);
                 });
         }
+        function updateAccount(accountId) {
+            var val1 = document.getElementById('account_title_' + accountId).textContent;
+            var val2 = document.getElementById('account_description_' + accountId).textContent;
+
+            var formData = {
+                account_id: accountId,
+                title: val1,
+                description: val2,
+            };
+            $.post("request_update_account", formData, function (data, status) { })
+                .done(function (data) {
+                    $("#response_account").prop('style').display = "inline";
+                    $("#response_account").text(data.result);
+                })
+                .fail(function (data) {
+                    $("#response_account").prop('style').display = "inline";
+                    $("#response_account").text("Fehler: " + data.responsetext);
+                });
+        }
+
         //https://stackoverflow.com/questions/494143/creating-a-new-dom-element-from-an-html-string-using-built-in-dom-methods-or-pro/35385518#35385518
         /**
          * @param {String} HTML representing a single element.
@@ -94,13 +143,48 @@
                 <td id="accountType_id_new" style="display:none;">empty</td>
                 <td id="accountType_title_new"> <input type="text" id="newAccountTypeTitle"
                         placeholder="title for new account type"></td>
-                <td id="accountType_descrption_new"><input type="text" id="newAccountTypeDescription"
+                <td id="accountType_description_new"><input type="text" id="newAccountTypeDescription"
                         placeholder="description of new account type"></td>
                 <td><button id="accountTypeCreate">Create</button></td>
             </tr>
         </form>
     </table>
     <div id="response_account_type" style="display: none;">
+        nothing to report
+    </div>
+    <br>
+    <h3>Finance Acconts</h3>
+    <table id="account__table">
+        <tr>
+            <td style="display:none;">IDs</td>
+            <td>Name</td>
+            <td>Description</td>
+            <td>Type</td>
+            <td></td>
+        </tr>
+        {% for account in accounts %}
+        {% include "accountRow.html" %}
+        {% endfor %}
+        <form>
+            <tr id="accountRow_new">
+                <td id="account_id_new" style="display:none;">empty</td>
+                <td id="account_title_new"> <input type="text" id="newAccountTitle" placeholder="title for new account">
+                </td>
+                <td id="account_description_new"><input type="text" id="newAccountDescription"
+                        placeholder="desciption of new account">
+                </td>
+                <td id="account_type_new">
+                    <select id="newAccountType" name="newAccountType">
+                        {% for account_type in account_types %}
+                        <option value="{{account_type.id}}">{{account_type.name}}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td><button id="accountCreate">Create</button></td>
+            </tr>
+        </form>
+    </table>
+    <div id="response_account" style="display: none;">
         nothing to report
     </div>
 </body>

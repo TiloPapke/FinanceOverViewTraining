@@ -419,7 +419,7 @@ mod test_accounting_handle {
             id: finance_account_1_2.id,
             finance_account_type_id: finance_account_1_2.finance_account_type_id,
             title: "Update_1_2".into(),
-            description: "Another descrption for 1_2".into(),
+            description: "Another description for 1_2".into(),
         };
         let upsert_result = account_handle_1.finance_account_upsert(&finance_account_1_2_update);
         let list_update_result = account_handle_1.finance_account_list();

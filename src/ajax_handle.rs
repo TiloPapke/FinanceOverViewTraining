@@ -28,9 +28,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     accounting_config_logic::FinanceAccountingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-    datatypes::{FinanceAccountType, PasswordResetRequest, PasswordResetTokenRequest},
+    datatypes::{
+        FinanceAccount, FinanceAccountType, PasswordResetRequest, PasswordResetTokenRequest,
+    },
     frontend_functions::send_password_reset_email,
-    html_render::{AccountTypeTemplate, HtmlTemplate},
+    html_render::{AccountTemplate, AccountTypeTemplate, HtmlTemplate},
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionData, SessionDataResult},
     setting_struct::SettingStruct,
@@ -737,6 +739,290 @@ pub async fn do_update_finance_account_type(
         }
 
         let return_value = UpdateFinanceAccountTypeResponse {
+            result: upsert_result,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (return_status_code, headers, return_value)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateNewFinanceAccountFormInput {
+    pub title: String,
+    pub description: String,
+    pub account_type_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct CreateNewFinanceAccountResponse {
+    pub result: String,
+    pub new_id: String,
+    pub subpage: String,
+}
+
+#[derive(Template)]
+#[template(path = "AccountingConfig/accountRow.html")]
+pub struct AccountCreateResponseTemplate {
+    account: AccountTemplate,
+}
+
+impl IntoResponse for CreateNewFinanceAccountResponse {
+    fn into_response(self) -> Response {
+        return Json(json!(self)).into_response();
+    }
+}
+
+pub async fn do_create_new_finance_account(
+    session_data: SessionDataResult,
+    Form(input): Form<CreateNewFinanceAccountFormInput>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    if !is_logged_in {
+        let return_value = CreateNewFinanceAccountResponse {
+            result: "not logged in".to_string(),
+            new_id: "".into(),
+            subpage: "".into(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = CreateNewFinanceAccountResponse {
+            result: "Session expired, please try again".to_string(),
+            new_id: "".into(),
+            subpage: "".into(),
+        };
+
+        (StatusCode::BAD_REQUEST, headers, return_value)
+    } else {
+        let mut create_result: String;
+        let new_title = &input.title;
+        let new_description = &input.description;
+        let new_uuid = Uuid::new();
+        let new_finance_account_type_id_result = Uuid::parse_str(&input.account_type_id);
+        if new_finance_account_type_id_result.is_err() {
+            let return_value = CreateNewFinanceAccountResponse {
+                result: new_finance_account_type_id_result.unwrap_err().to_string(),
+                new_id: "".into(),
+                subpage: "".into(),
+            };
+            headers.insert(
+                axum::http::header::REFRESH,
+                axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+            );
+            return (StatusCode::BAD_REQUEST, headers, return_value);
+        }
+        let mut new_account = FinanceAccount {
+            id: new_uuid,
+            title: new_title.into(),
+            description: new_description.into(),
+            finance_account_type_id: new_finance_account_type_id_result.unwrap(),
+        };
+        let mut available_types = Vec::new();
+
+        session.expire_in(std::time::Duration::from_secs(60 * 10));
+
+        let db_handler = DbHandlerMongoDB {};
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let mut return_status_code = StatusCode::OK;
+        {
+            let mut accounting_config_handle =
+                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
+
+            let register_result_2 =
+                accounting_config_handle.finance_account_upsert(&mut new_account);
+            {
+                if register_result_2.is_err() {
+                    return_status_code = StatusCode::BAD_REQUEST;
+                    create_result = register_result_2.unwrap_err().to_string()
+                } else {
+                    create_result = "OK, created".to_string();
+                };
+            }
+
+            let list_types_result = accounting_config_handle.finance_account_type_list();
+            if list_types_result.is_err() {
+                return_status_code = StatusCode::BAD_REQUEST;
+                create_result = list_types_result.unwrap_err().to_string()
+            } else {
+                available_types = list_types_result.unwrap();
+            };
+        }
+
+        let type_position_result = available_types
+            .iter()
+            .position(|elem| elem.id.eq(&new_account.finance_account_type_id));
+        let type_title = match type_position_result {
+            Some(position) => &available_types[position].title,
+            _ => "Type not found",
+        };
+
+        let new_account_template = AccountTemplate {
+            id: new_account.id.to_string(),
+            name: new_account.title,
+            description: new_account.description,
+            type_title: type_title.into(),
+        };
+        let response_html_result = HtmlTemplate(AccountCreateResponseTemplate {
+            account: new_account_template,
+        })
+        .0
+        .render();
+        let return_html = response_html_result.unwrap();
+
+        let return_value = CreateNewFinanceAccountResponse {
+            result: create_result,
+            new_id: new_account.id.to_string(),
+            subpage: return_html,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (return_status_code, headers, return_value)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateFinanceAccountFormInput {
+    pub account_id: String,
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct UpdateFinanceAccountResponse {
+    pub result: String,
+}
+
+impl IntoResponse for UpdateFinanceAccountResponse {
+    fn into_response(self) -> Response {
+        return Json(json!(self)).into_response();
+    }
+}
+
+pub async fn do_update_finance_account(
+    session_data: SessionDataResult,
+    Form(input): Form<UpdateFinanceAccountFormInput>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    if !is_logged_in {
+        let return_value = UpdateFinanceAccountResponse {
+            result: "not logged in".to_string(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = UpdateFinanceAccountResponse {
+            result: "Session expired, please try again".to_string(),
+        };
+
+        (StatusCode::BAD_REQUEST, headers, return_value)
+    } else {
+        let upsert_result: String;
+        let new_title = &input.title;
+        let new_description = &input.description;
+        let old_uuid_result = Uuid::parse_str(&input.account_id);
+        if old_uuid_result.is_err() {
+            debug!(target: "app::FinanceOverView","error in function do_update_finance_account, could not parse UUID from input: {}",&input.account_id);
+            let return_value = UpdateFinanceAccountResponse {
+                result: "Error reading data".to_string(),
+            };
+
+            return (StatusCode::BAD_REQUEST, headers, return_value);
+        }
+
+        session.expire_in(std::time::Duration::from_secs(60 * 10));
+
+        let db_handler = DbHandlerMongoDB {};
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let mut return_status_code = StatusCode::OK;
+        {
+            let mut accounting_config_handle =
+                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
+
+            let available_accounts_result = accounting_config_handle.finance_account_list();
+            if available_accounts_result.is_err() {
+                debug!(target: "app::FinanceOverView","error in function do_update_finance_account, could not load available accounts for user {}",&user_id);
+                let return_value = UpdateFinanceAccountResponse {
+                    result: "Error reading database".to_string(),
+                };
+
+                return (StatusCode::BAD_REQUEST, headers, return_value);
+            }
+            let old_uuid = old_uuid_result.unwrap();
+            let available_accounts = available_accounts_result.unwrap();
+            let position_result = available_accounts
+                .iter()
+                .position(|elem| elem.id.eq(&old_uuid));
+            if position_result.is_none() {
+                debug!(target: "app::FinanceOverView","error in function do_update_finance_account, could not load find account {} for user {}",&old_uuid, &user_id);
+                let return_value = UpdateFinanceAccountResponse {
+                    result: "Error reading database".to_string(),
+                };
+
+                return (StatusCode::BAD_REQUEST, headers, return_value);
+            }
+
+            let mut old_account_type = FinanceAccount {
+                id: old_uuid,
+                finance_account_type_id: available_accounts[position_result.unwrap()]
+                    .finance_account_type_id,
+                title: new_title.into(),
+                description: new_description.into(),
+            };
+
+            let upsert_result_2 =
+                accounting_config_handle.finance_account_upsert(&mut old_account_type);
+            {
+                if upsert_result_2.is_err() {
+                    return_status_code = StatusCode::BAD_REQUEST;
+                    upsert_result = upsert_result_2.unwrap_err().to_string()
+                } else {
+                    upsert_result = "OK, aktualisiert".to_string();
+                };
+            }
+        }
+
+        let return_value = UpdateFinanceAccountResponse {
             result: upsert_result,
         };
 

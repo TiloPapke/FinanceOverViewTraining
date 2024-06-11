@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::database_handler_mongodb::DbConnectionSetting;
+#[cfg(test)]
 use crate::datatypes::FinanceAccount;
 #[cfg(test)]
 use crate::datatypes::FinanceAccountType;
@@ -118,7 +119,7 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 
     async fn finance_account_upsert(
         &self,
-        conncetion_settings: &DbConnectionSetting,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account: &FinanceAccount,
     ) -> Result<(), String> {

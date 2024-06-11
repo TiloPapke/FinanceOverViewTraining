@@ -474,6 +474,7 @@ pub async fn display_paswword_reset_with_token_page(
 pub struct AccountingMainConfigTemplate {
     username: String,
     account_types: Vec<AccountTypeTemplate>,
+    accounts: Vec<AccountTemplate>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -481,6 +482,14 @@ pub struct AccountTypeTemplate {
     pub id: String,
     pub name: String,
     pub description: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AccountTemplate {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub type_title: String,
 }
 
 pub async fn display_accounting_config_main_page(
@@ -495,13 +504,16 @@ pub async fn display_accounting_config_main_page(
 
     let mut headers = HeaderMap::new();
 
-    let empty_accountlist: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
+    let empty_account_type_list: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
+    let empty_account_list: Vec<AccountTemplate> = Vec::with_capacity(0);
     let mut return_account_type_list: Vec<AccountTypeTemplate> = Vec::new();
+    let mut return_account_list: Vec<AccountTemplate> = Vec::new();
 
     if !is_logged_in {
         let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
             username: "not logged in".to_string(),
-            account_types: empty_accountlist,
+            account_types: empty_account_type_list,
+            accounts: empty_account_list,
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -513,7 +525,8 @@ pub async fn display_accounting_config_main_page(
     if session.is_expired() {
         let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
             username: "Session expired".to_string(),
-            account_types: empty_accountlist,
+            account_types: empty_account_type_list,
+            accounts: empty_account_list,
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -546,16 +559,48 @@ pub async fn display_accounting_config_main_page(
                 warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,account_types_result.unwrap_err());
                 let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
                     username: "Session expired".to_string(),
-                    account_types: empty_accountlist,
+                    account_types: empty_account_type_list,
+                    accounts: empty_account_list,
                 };
                 return HtmlTemplate(return_value);
             }
 
-            for some_type in account_types_result.unwrap() {
+            //let available_account_types = account_types_result.unwrap();
+            for some_type in account_types_result.as_ref().unwrap() {
                 return_account_type_list.push(AccountTypeTemplate {
                     id: some_type.id.to_string(),
-                    name: some_type.title,
-                    description: some_type.description,
+                    name: some_type.title.clone(),
+                    description: some_type.description.clone(),
+                });
+            }
+
+            let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
+                accounting_config_handle.finance_account_list();
+
+            if accounts_result.is_err() {
+                warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,accounts_result.unwrap_err());
+                let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+                    username: "Session expired".to_string(),
+                    account_types: empty_account_type_list,
+                    accounts: empty_account_list,
+                };
+                return HtmlTemplate(return_value);
+            }
+
+            let available_account_types = &account_types_result.unwrap();
+            let mut available_account_types_iter = available_account_types.into_iter();
+            for some_account in accounts_result.unwrap() {
+                let type_position_result = available_account_types_iter
+                    .position(|elem| elem.id.eq(&some_account.finance_account_type_id));
+                let type_title = match type_position_result {
+                    Some(position) => &available_account_types[position].title,
+                    _ => "no title found",
+                };
+                return_account_list.push(AccountTemplate {
+                    id: some_account.id.to_string(),
+                    name: some_account.title,
+                    description: some_account.description,
+                    type_title: type_title.into(),
                 });
             }
         }
@@ -564,6 +609,7 @@ pub async fn display_accounting_config_main_page(
     let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
         username: username,
         account_types: return_account_type_list,
+        accounts: return_account_list,
     };
 
     session.expire_in(std::time::Duration::from_secs(60 * 10));
