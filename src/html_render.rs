@@ -588,9 +588,9 @@ pub async fn display_accounting_config_main_page(
             }
 
             let available_account_types = &account_types_result.unwrap();
-            let mut available_account_types_iter = available_account_types.into_iter();
             for some_account in accounts_result.unwrap() {
-                let type_position_result = available_account_types_iter
+                let type_position_result = available_account_types
+                    .iter()
                     .position(|elem| elem.id.eq(&some_account.finance_account_type_id));
                 let type_title = match type_position_result {
                     Some(position) => &available_account_types[position].title,
