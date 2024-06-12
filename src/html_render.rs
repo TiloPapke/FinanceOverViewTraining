@@ -110,18 +110,23 @@ pub async fn accept_login_form(
             };
             let mail_check_result =
                 check_email_status_by_name(&db_connection, &credentials.username).await;
-            match mail_check_result.unwrap() {
-                EmailVerificationStatus::NotVerified => {
-                    debug!(target: "app::FinanceOverView","email not verified");
-                    Redirect::to("/registration_incomplete").into_response()
-                }
-                _ => {
-                    let _result = session.insert("logged_in", true);
-                    let _result2 = session.insert("user_account_id", user_id);
-                    let _cookie3 = a_store.store_session(session).await;
+            if mail_check_result.is_err() {
+                debug!(target: "app::FinanceOverView","error with email: {}",&mail_check_result.unwrap_err());
+                Redirect::to("/invalid").into_response()
+            } else {
+                match mail_check_result.unwrap() {
+                    EmailVerificationStatus::NotVerified => {
+                        debug!(target: "app::FinanceOverView","email not verified");
+                        Redirect::to("/registration_incomplete").into_response()
+                    }
+                    _ => {
+                        let _result = session.insert("logged_in", true);
+                        let _result2 = session.insert("user_account_id", user_id);
+                        let _cookie3 = a_store.store_session(session).await;
 
-                    debug!(target: "app::FinanceOverView","user_id is {}",user_id);
-                    Redirect::to("/user_home").into_response()
+                        debug!(target: "app::FinanceOverView","user_id is {}",user_id);
+                        Redirect::to("/user_home").into_response()
+                    }
                 }
             }
         }
