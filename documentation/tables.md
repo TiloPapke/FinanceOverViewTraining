@@ -33,23 +33,31 @@
 | finance_journal_diary_id | UUID | unique identifier, primary key |
 | user_id | UUID | unique identifier, secondary key |
 | is_simple_entry | boolean | if true exavtly two finance accounts are involved, false more than two finance accounts are used, currently always true |
+| is_saldo | boolean | if true this Entry closes accounts |
 | debit_finance_account_id | UUID | unique identifier, secondary key, only used when is_simple_entry set to true  |
 | credit_finance_account_id | UUID | unique identifier, secondary key, only used when is_simple_entry set to true |
-| running_number | int64 | running number (per user) of entry |
+| running_number | usigned int64 | running number (per user) of entry |
 | booking_time | datetime | date and time when entry was created |
-| amount | real/financial | value of entry |
+| amount | unsigned int128 | value of entry in cents |
 | title | text | short desciption of entry |
 | description | text | additional informaion |
 
-# BookingEntries
+# BookingEntries - list of financial bookings of an user for open accounts
 | column | type | description |
 | :--- | :---: | ---: |
 | booking_entry_id | UUID | unique identifier, primary key |
 | user_id | UUID | unique identifier, secondary key |
 | finance_account_id | UUID | unique identifier, secondary key |
 | finance_journal_diary_id | UUID | unique identifier, secondary key |
-| booking_type | string | kind of booking entry, 3 possible values: credit, debit or saldo |
+| booking_type | int8 | kind of booking entry, 4 possible values: credit (0), debit (1), saldo_credit (2) or saldo_debit (3) |
 | booking_time | datetime | date and time when entry was created |
-| amount | real/financial | value of entry |
+| amount | unsigned int128 | value of entry in cents|
 | title | text | short desciption of entry |
 | description | text | additional informaion |
+
+# CounterCollection - needed to implement autoincrement function
+| column | type | description |
+| :--- | :---: | ---: |
+| counter_entry_id | UUID | unique identifier, primary key |
+| user_id | UUID | unique identifier, secondary key |
+| booking_journal_max_number | unsigned int64 | current max counter for FinanceJournalDiary
