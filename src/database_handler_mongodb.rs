@@ -923,7 +923,7 @@ impl DbHandlerMongoDB {
         let projection = doc! {
             "user_name":<i32>::from(1),
             "user_email":<i32>::from(1),
-            "reset_secret":<i32>::from(1),
+            "reset_secret_hash":<i32>::from(1),
         };
         let options = FindOptions::builder().projection(projection).build();
 
