@@ -13,9 +13,9 @@
                 };
 
                 $.post("do_changePasswort", formData, function (data, status) {
-                    $("#expire_information").text("Your session expires at "+data.new_expire_timestamp);
+                    $("#expire_information").text("Your session expires at " + data.new_expire_timestamp);
                     $("#js_response").text(data.result);
-                    $("#js_response").prop('style').display="inline";
+                    $("#js_response").prop('style').display = "inline";
                     $("#password_new_1").val('');
                     $("#password_new_2").val('');
                     $("#password_old").val('');
@@ -25,6 +25,24 @@
                 $.fn.changePasswordRequest(e);
             });
 
+            $.fn.changeResetSecretRequest = function (e) {
+                // using this page stop being refreshing 
+                // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
+                e.preventDefault();
+                var formData = {
+                    new_reset_secret: $("#new_reset_secret").val(),
+                };
+
+                $.post("do_changeResetSecret", formData, function (data, status) {
+                    $("#js_response").text(data.result);
+                    $("#js_response").prop('style').display = "inline";
+                    $("#new_reset_secret").val('*****');
+                });
+            }
+            $("#changeResetSecretButton").click(function (e) {
+                $.fn.changeResetSecretRequest(e);
+            });
+
             $.fn.changeUPdateGeneralUserData = function (e) {
                 // using this page stop being refreshing 
                 // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
@@ -32,13 +50,12 @@
                 var formData = {
                     first_name: $("#User_Vorname").val(),
                     last_name: $("#User_Nachname").val(),
-                    reset_secret: $("#User_ResetGeheimnis").val(),
                 };
 
                 $.post("do_changeUserInfo", formData, function (data, status) {
-                    $("#expire_information").text("Your session expires at "+data.new_expire_timestamp);
+                    $("#expire_information").text("Your session expires at " + data.new_expire_timestamp);
                     $("#js_response").text(data.result);
-                    $("#js_response").prop('style').display="inline";
+                    $("#js_response").prop('style').display = "inline";
                 });
             }
             $("#changeUserInfo").click(function (e) {
@@ -64,17 +81,12 @@
     </div>
     <form id="UserInfo" action="/do_changeUserInfo">
         <label>Vorname
-            <input type="text" placeholder="" name="User_Vorname" id="User_Vorname" value ="{{user_vorname}}">
+            <input type="text" placeholder="" name="User_Vorname" id="User_Vorname" value="{{user_vorname}}">
         </label>
         <br>
         <label>Nachname
             <input type="text" placeholder="" name="User_Nachname" id="User_Nachname" value="{{user_nachname}}">
         </label>
-        <br>
-        <label>Reset Geheimnis
-            <input type="text" placeholder="" name="User_ResetGeheimnis" id="User_ResetGeheimnis" value ="{{user_reset_geheimnis}}">
-        </label>
-        <br>
         <button id="changeUserInfo">Update Daten</button>
     </form>
     <form id="ChangePasswordForm">
@@ -90,6 +102,12 @@
             <input type="password" placeholder="" name="password_old" id="password_old">
         </label>
         <button id="changePasswordButton">change password</button>
+    </form>
+    <form id="changeResetSecretForm">
+        <label>reset secret, required to request a password reset request
+            <input type="password" placeholder="*****" name="new_reset_secret" id="new_reset_secret">
+        </label>
+        <button id="changeResetSecretButton">change reset secret</button>
     </form>
     <br>
     <h2>Configuration Pages</h2>

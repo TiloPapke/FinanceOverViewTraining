@@ -238,6 +238,98 @@ pub async fn do_change_passwort(
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct ChangeResetSecretFormInput {
+    pub new_reset_secret: Secret<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ChangeResetSecretResponse {
+    pub result: String,
+}
+
+impl IntoResponse for ChangeResetSecretResponse {
+    fn into_response(self) -> Response {
+        return Json(json!(self)).into_response();
+    }
+}
+
+pub async fn do_change_reset_secret(
+    session_data: SessionDataResult,
+    Form(input): Form<ChangeResetSecretFormInput>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    if !is_logged_in {
+        let return_value = ChangeResetSecretResponse {
+            result: "not logged in".to_string(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (headers, return_value);
+    }
+
+    let user_id: Uuid = session.get("user_account_id").unwrap();
+
+    if session.is_expired() {
+        let return_value = ChangeResetSecretResponse {
+            result: "Session expired".to_string(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        (headers, return_value)
+    } else {
+        let change_result: String;
+
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+
+        debug!(target: "app::FinanceOverView","trying to change reset secret for user {}", user_id);
+
+        let update_result = password_handle::update_user_reset_secret(
+            &db_connection,
+            &user_id,
+            &input.new_reset_secret,
+        )
+        .await;
+
+        if update_result.is_err() {
+            change_result = format!(
+                "error updating reset secret: {}",
+                update_result.unwrap_err().to_string()
+            );
+        } else {
+            change_result = "reset secret change successfull".to_string();
+        }
+
+        session.expire_in(std::time::Duration::from_secs(60 * 1));
+
+        let return_value = ChangeResetSecretResponse {
+            result: change_result,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (headers, return_value)
+    }
+}
+
+#[derive(Deserialize, Debug)]
 pub struct RegisterUserViaEmailFormInput {
     pub username: String,
     pub password: Secret<String>,

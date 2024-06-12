@@ -13,6 +13,7 @@ use secrecy::{ExposeSecret, Secret};
 
 use crate::{
     convert_tools::ConvertTools, datatypes::GenerallUserData, mail_handle::validate_email_format,
+    password_handle::verify_password_hash,
 };
 use crate::{
     datatypes::PasswordResetTokenRequestResult,
@@ -752,7 +753,6 @@ impl DbHandlerMongoDB {
         let projection = doc! {"user_name":<i32>::from(1),
             "first_name":<i32>::from(1),
             "last_name":<i32>::from(1),
-            "reset_secret":<i32>::from(1),
         };
         let options = FindOptions::builder().projection(projection).build();
 
@@ -784,7 +784,6 @@ impl DbHandlerMongoDB {
                 let mut return_data: GenerallUserData = GenerallUserData {
                     first_name: "".to_string(),
                     last_name: "".to_string(),
-                    reset_secret: "".to_string(),
                 };
                 let stored_first_name = inner_doc.get_str("first_name");
                 if stored_first_name.is_ok() {
@@ -793,10 +792,6 @@ impl DbHandlerMongoDB {
                 let stored_last_name = inner_doc.get_str("last_name");
                 if stored_last_name.is_ok() {
                     return_data.last_name = stored_last_name.unwrap().to_string();
-                }
-                let stored_reset_secret = inner_doc.get_str("reset_secret");
-                if stored_reset_secret.is_ok() {
-                    return_data.reset_secret = stored_reset_secret.unwrap().to_string();
                 }
 
                 return Ok(return_data);
@@ -845,7 +840,6 @@ impl DbHandlerMongoDB {
         let inner_update_doc = doc! {
         "first_name": general_user_data.first_name.clone(),
         "last_name": general_user_data.last_name.clone(),
-        "reset_secret": general_user_data.reset_secret.clone()
         };
         //otherwise we get "update document must have first key starting with '$"
         let update_doc = doc! {"$set": inner_update_doc};
@@ -865,10 +859,51 @@ impl DbHandlerMongoDB {
         return Ok("updated".to_string());
     }
 
+    pub async fn update_user_reset_secret(
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        reset_secret_hash: &Secret<String>,
+    ) -> Result<bool, String> {
+        // Get a handle to the deployment.
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+        let user_collcetion: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
+
+        let filter_doc = doc! {
+        "user_id":user_id};
+        let inner_update_doc = doc! {
+        "reset_secret_hash": reset_secret_hash.expose_secret()};
+        //otherwise we get "update document must have first key starting with '$"
+        let update_doc = doc! {"$set": inner_update_doc};
+
+        let update_result = user_collcetion
+            .update_one(filter_doc, update_doc, None)
+            .await;
+        if update_result.is_err() {
+            let update_err = &update_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",update_err);
+            return Err(update_err.to_string());
+        }
+        let unwrapped_result = update_result.unwrap();
+
+        debug!(target:"app::FinanceOverView","count of updated objects: {}",unwrapped_result.modified_count);
+
+        return Ok(true);
+    }
+
     pub async fn generate_passwort_reset_token(
         conncetion_settings: &DbConnectionSetting,
         user_name: &String,
-        reset_secret: &String,
+        reset_secret: &Secret<String>,
         passwort_reset_time_limit_minutes: &u16,
     ) -> Result<PasswordResetTokenRequestResult, String> {
         let client_create_result =
@@ -919,9 +954,14 @@ impl DbHandlerMongoDB {
             let stored_user_email = stored_email.unwrap();
 
             if stored_name.unwrap().eq(user_name) {
-                let stored_reset_secret = inner_doc.get_str("reset_secret");
-                if stored_reset_secret.is_ok() {
-                    if stored_reset_secret.unwrap().eq(reset_secret) {
+                let stored_reset_secret_raw = inner_doc.get_str("reset_secret_hash");
+                if stored_reset_secret_raw.is_ok() {
+                    let transformed_stored_serect = secrecy::Secret::<String>::new(
+                        stored_reset_secret_raw.unwrap().to_string(),
+                    );
+                    let verify_serect_result =
+                        verify_password_hash(&transformed_stored_serect, &reset_secret);
+                    if verify_serect_result.is_ok() {
                         let email_validation_result =
                             validate_email_format(&stored_user_email.to_string());
                         if email_validation_result.is_err() {
@@ -964,6 +1004,7 @@ impl DbHandlerMongoDB {
 
                         return Ok(return_value);
                     }
+                    return Err("error in token generation".to_string());
                 }
                 return Err("error generating token".to_string());
             }

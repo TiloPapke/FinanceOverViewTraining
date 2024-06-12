@@ -6,7 +6,7 @@
 | password_hash | text | with argon2 hashed password, salt is used |
 | first_name | text | first name of user |
 | last_name | text | last name of user |
-| reset_secret | text | clear reset secret, only with correct secret a password reset can be requested |
+| reset_secret_hash | text | with argon2 hashed reset secret, salt is used, only with correct secret a password reset can be requested |
 | password_reset_token_timestamp | UTC timestamp text | time when a password reset was requested |
 | password_reset_token_value | text | random token, used during password reset to secure reset urls |
 

@@ -6,13 +6,12 @@ use serde::Deserialize;
 pub struct GenerallUserData {
     pub first_name: String,
     pub last_name: String,
-    pub reset_secret: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct PasswordResetTokenRequest {
     pub user_name: String,
-    pub reset_secret: String,
+    pub reset_secret: secrecy::Secret<String>,
 }
 
 #[derive(Debug)]

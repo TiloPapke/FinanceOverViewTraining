@@ -202,6 +202,10 @@ async fn https_server() {
         .route("/do_logout", post(html_render::do_logout_handler))
         .route("/do_changePasswort", post(ajax_handle::do_change_passwort))
         .route(
+            "/do_changeResetSecret",
+            post(ajax_handle::do_change_reset_secret),
+        )
+        .route(
             "/do_changeUserInfo",
             post(user_handling::do_update_general_user_data),
         )

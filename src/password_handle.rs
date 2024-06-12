@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use anyhow::Error;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use mongodb::bson::uuid;
+use mongodb::bson::Uuid;
 use secrecy::{ExposeSecret, Secret};
 
 use crate::database_handler_mongodb::EmailVerificationStatus;
@@ -30,14 +30,14 @@ pub struct UserCredentialsHashed {
 #[derive(Debug)]
 pub struct StoredCredentials {
     // These two fields were not marked as `pub` before!
-    pub user_id: uuid::Uuid,
+    pub user_id: Uuid,
     pub password_hash: Secret<String>,
 }
 
 pub async fn validate_credentials(
     db_connection: &DbConnectionSetting,
     credentials: &UserCredentials,
-) -> Result<uuid::Uuid, Error> {
+) -> Result<Uuid, Error> {
     let get_result = get_stored_credentials(db_connection, &credentials.username).await;
     if get_result.is_err() {
         return Err(anyhow::anyhow!("Problem getting credentials"));
@@ -112,7 +112,7 @@ pub fn compare_password(
 pub async fn create_credentials(
     db_connection: &DbConnectionSetting,
     credentials: &UserCredentials,
-) -> Result<uuid::Uuid, Error> {
+) -> Result<Uuid, Error> {
     let check_result = check_user_exsits(&db_connection, &credentials.username).await;
     if check_result.is_err() {
         return Err(check_result.unwrap_err());
@@ -148,7 +148,7 @@ pub(crate) async fn check_user_exsits(
 pub(crate) async fn insert_user(
     db_connection: &DbConnectionSetting,
     some_credentials: &UserCredentials,
-) -> Result<uuid::Uuid, Error> {
+) -> Result<Uuid, Error> {
     let salt = SaltString::generate(&mut rand::thread_rng());
     let user_password_hashed = Argon2::default()
         .hash_password(some_credentials.password.expose_secret().as_bytes(), &salt)
@@ -187,6 +187,30 @@ pub async fn update_user_password(
 
     let update_result =
         DbHandlerMongoDB::update_user_password(&db_connection, &some_credentials_hashed).await;
+
+    if update_result.is_err() {
+        return Err(anyhow::anyhow!(update_result.unwrap_err()));
+    }
+
+    Ok(update_result.unwrap())
+}
+
+pub async fn update_user_reset_secret(
+    db_connection: &DbConnectionSetting,
+    user_id: &Uuid,
+    reset_secret: &Secret<String>,
+) -> Result<bool, Error> {
+    let salt = SaltString::generate(&mut rand::thread_rng());
+    let reset_secret_hashed = Secret::new(
+        Argon2::default()
+            .hash_password(reset_secret.expose_secret().as_bytes(), &salt)
+            .unwrap()
+            .to_string(),
+    );
+
+    let update_result =
+        DbHandlerMongoDB::update_user_reset_secret(&db_connection, user_id, &reset_secret_hashed)
+            .await;
 
     if update_result.is_err() {
         return Err(anyhow::anyhow!(update_result.unwrap_err()));

@@ -51,7 +51,6 @@ pub struct UserHomeTemplate {
     information_text: String,
     user_vorname: String,
     user_nachname: String,
-    user_reset_geheimnis: String,
 }
 
 pub struct HtmlTemplate<T>(pub T);
@@ -160,7 +159,6 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             information_text: "".to_string(),
             user_vorname: "".to_string(),
             user_nachname: "".to_string(),
-            user_reset_geheimnis: "".to_string(),
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -189,7 +187,6 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
             information_text: "".to_string(),
             user_vorname: "".to_string(),
             user_nachname: "".to_string(),
-            user_reset_geheimnis: "".to_string(),
         };
         headers.insert(
             axum::http::header::REFRESH,
@@ -229,7 +226,6 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 information_text: "".to_string(),
                 user_vorname: "".to_string(),
                 user_nachname: "".to_string(),
-                user_reset_geheimnis: "".to_string(),
             };
             headers.insert(
                 axum::http::header::REFRESH,
@@ -248,7 +244,6 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 information_text: "".to_string(),
                 user_vorname: user_data.first_name,
                 user_nachname: user_data.last_name,
-                user_reset_geheimnis: user_data.reset_secret,
             };
 
             let _new_cookie = session_data.session_store.store_session(session).await;
@@ -290,7 +285,6 @@ pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResp
         information_text: "".to_string(),
         user_vorname: "".to_string(),
         user_nachname: "".to_string(),
-        user_reset_geheimnis: "".to_string(),
     };
 
     HtmlTemplate(template);
