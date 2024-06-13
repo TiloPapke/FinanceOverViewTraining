@@ -65,7 +65,7 @@ pub enum BookingEntryType {
 }
 
 #[derive(PartialEq, Deserialize, Debug, Clone)]
-pub struct FinanceBookingEntry {
+pub struct FinanceAccountBookingEntry {
     pub id: Uuid,
     pub finance_account_id: Uuid,
     pub finance_journal_diary_id: Uuid,
@@ -74,4 +74,23 @@ pub struct FinanceBookingEntry {
     pub amount: u128,
     pub title: String,
     pub description: String,
+}
+
+#[derive(PartialEq, Deserialize, Debug, Clone)]
+pub struct FinanceBookingRequest {
+    pub is_simple_entry: bool,
+    pub is_saldo: bool,
+    pub debit_finance_account_id: Uuid,
+    pub credit_finance_account_id: Uuid,
+    pub booking_time: DateTime<Utc>,
+    pub amount: u128,
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(PartialEq, Deserialize, Debug, Clone)]
+pub struct FinanceBookingResult {
+    pub journal_entry:FinanceJournalEntry,
+    pub debit_account_entry:FinanceAccountBookingEntry,
+    pub credit_account_entry:FinanceAccountBookingEntry,
 }
