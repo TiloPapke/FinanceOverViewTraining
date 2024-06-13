@@ -7,13 +7,13 @@ use crate::{
     datatypes::{FinanceAccount, FinanceAccountType},
 };
 
-pub struct FinanceAccountingHandle<'a> {
+pub struct FinanceAccountingConfigHandle<'a> {
     db_connection_settings: &'a DbConnectionSetting,
     user_id: &'a Uuid,
     db_connector: &'a dyn DBFinanceConfigFunctions,
 }
 
-impl<'a> FinanceAccountingHandle<'a> {
+impl<'a> FinanceAccountingConfigHandle<'a> {
     pub fn new(
         connection_settings: &'a DbConnectionSetting,
         user_id: &'a Uuid,

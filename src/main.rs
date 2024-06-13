@@ -1,3 +1,4 @@
+mod accounting_logic;
 mod accounting_config_database;
 mod accounting_config_logic;
 mod ajax_handle;

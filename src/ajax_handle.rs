@@ -26,7 +26,7 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    accounting_config_logic::FinanceAccountingHandle,
+    accounting_config_logic::FinanceAccountingConfigHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     datatypes::{
         FinanceAccount, FinanceAccountType, PasswordResetRequest, PasswordResetTokenRequest,
@@ -697,7 +697,7 @@ pub async fn do_create_new_finance_account_type(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
             let register_result_2 =
                 accounting_config_handle.finance_account_type_upsert(&mut new_account_type);
@@ -816,7 +816,7 @@ pub async fn do_update_finance_account_type(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
             let upsert_result_2 =
                 accounting_config_handle.finance_account_type_upsert(&mut old_account_type);
@@ -939,7 +939,7 @@ pub async fn do_create_new_finance_account(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
             let register_result_2 =
                 accounting_config_handle.finance_account_upsert(&mut new_account);
@@ -1069,7 +1069,7 @@ pub async fn do_update_finance_account(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
             let available_accounts_result = accounting_config_handle.finance_account_list();
             if available_accounts_result.is_err() {

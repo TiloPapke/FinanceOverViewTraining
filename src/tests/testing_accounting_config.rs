@@ -6,7 +6,7 @@ mod test_accounting_handle {
     use mongodb::bson::Uuid;
 
     use crate::{
-        accounting_config_logic::FinanceAccountingHandle,
+        accounting_config_logic::FinanceAccountingConfigHandle,
         database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
         datatypes::{FinanceAccount, FinanceAccountType},
         password_handle::{validate_credentials, UserCredentials},
@@ -46,13 +46,13 @@ mod test_accounting_handle {
         let in_memory_db = InMemoryDatabaseHandler {};
 
         let account_handle_1 =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
         let mut account_handle_2 =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
         let mut account_handle_3 =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
         let mut account_handle_4 =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_4, &in_memory_db);
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_4, &in_memory_db);
 
         //prepare data
         //empty list
@@ -162,7 +162,7 @@ mod test_accounting_handle {
         let mongo_db = DbHandlerMongoDB {};
 
         let mut account_handle_1 =
-            FinanceAccountingHandle::new(&db_connection, &user_id_1, &mongo_db);
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
 
         //prepare data
         //First lilst
@@ -248,12 +248,12 @@ mod test_accounting_handle {
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
 
-        let mut account_handle_1: FinanceAccountingHandle =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+        let mut account_handle_1: FinanceAccountingConfigHandle =
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
         let mut account_handle_2 =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
         let mut account_handle_3 =
-            FinanceAccountingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
 
         let entry_object1 =
             InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
@@ -502,7 +502,7 @@ mod test_accounting_handle {
         let mongo_db = DbHandlerMongoDB {};
 
         let mut account_handle_1 =
-            FinanceAccountingHandle::new(&db_connection, &user_id_1, &mongo_db);
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
 
         //check if there are any finance account typse available
         let list_fat_result = account_handle_1.finance_account_type_list();
