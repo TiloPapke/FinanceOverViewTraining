@@ -5,9 +5,17 @@ use crate::datatypes::FinanceAccount;
 #[cfg(test)]
 use crate::datatypes::FinanceAccountType;
 #[cfg(test)]
+use crate::datatypes::{
+    FinanceAccountBookingEntry, FinanceBookingRequest, FinanceBookingResult, FinanceJournalEntry,
+};
+#[cfg(test)]
+use async_session::chrono::{DateTime, Utc};
+#[cfg(test)]
 use mongodb::bson::Uuid;
 #[cfg(test)]
 use once_cell::sync::OnceCell;
+#[cfg(test)]
+use std::collections::HashMap;
 #[cfg(test)]
 use std::sync::Mutex;
 #[cfg(test)]
@@ -156,6 +164,49 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             drop(data_obj3);
             Err("User not found".to_string())
         }
+    }
+}
+
+#[cfg(test)]
+#[axum::async_trait(?Send)]
+impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDatabaseHandler {
+    async fn finance_journal_entry_list(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        from: Option<DateTime<Utc>>,
+        till: Option<DateTime<Utc>>,
+    ) -> Result<Vec<FinanceJournalEntry>, String> {
+        unimplemented!("trait is not implemented");
+    }
+
+    async fn finance_account_booking_entry_list(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        finance_account_id: &Uuid,
+        from: Option<DateTime<Utc>>,
+        till: Option<DateTime<Utc>>,
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        unimplemented!("trait is not implemented");
+    }
+
+    async fn finance_insert_booking_entry(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        action_to_insert: FinanceBookingRequest,
+    ) -> Result<FinanceBookingResult, String> {
+        unimplemented!("trait is not implemented");
+    }
+
+    async fn finance_get_last_saldo_account_entries(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        list_account_ids: Option<&Vec<Uuid>>,
+    ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
+        unimplemented!("trait is not implemented");
     }
 }
 

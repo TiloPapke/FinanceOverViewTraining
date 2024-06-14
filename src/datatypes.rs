@@ -90,7 +90,18 @@ pub struct FinanceBookingRequest {
 
 #[derive(PartialEq, Deserialize, Debug, Clone)]
 pub struct FinanceBookingResult {
-    pub journal_entry:FinanceJournalEntry,
-    pub debit_account_entry:FinanceAccountBookingEntry,
-    pub credit_account_entry:FinanceAccountBookingEntry,
+    pub journal_entry: FinanceJournalEntry,
+    pub debit_account_entry: FinanceAccountBookingEntry,
+    pub credit_account_entry: FinanceAccountBookingEntry,
+}
+
+pub enum AccountBalanceType {
+    Credit,
+    Debit,
+}
+
+pub struct AccountBalanceInfo {
+    pub account_id: Uuid,
+    pub balance_type: AccountBalanceType,
+    pub amount: u128,
 }
