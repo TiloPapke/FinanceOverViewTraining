@@ -1,7 +1,7 @@
-mod accounting_logic;
 mod accounting_config_database;
 mod accounting_config_logic;
 mod accounting_database;
+mod accounting_logic;
 mod ajax_handle;
 mod convert_tools;
 mod database_handler_mongodb;
@@ -16,6 +16,7 @@ pub mod setting_struct;
 mod user_handling;
 mod tests {
     mod mocking_database;
+    mod testing_accounting_booking;
     mod testing_accounting_config;
     mod testing_convert_tools;
     mod testing_email_smtp;

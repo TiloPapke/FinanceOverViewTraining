@@ -45,9 +45,11 @@ goal points for version 0.0.5
 - [ ] export to csv (simple)
 
 goal points for version 0.0.6
+- [ ] documentation for interface functions
 - [ ] check if some mut markings in implementations of trait DBFinanceConfigFunctions can be removed
 - [ ] redesign UI
 - [ ] using a css framework for better styles
 
 goal points for version 0.0.7
+- [ ] refactoring unit tests that uses mocking database, use an init method that prepares a datastruture for alls mocking test
 - [ ] better way for validating database structure, when each new trait could have new tables

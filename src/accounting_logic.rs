@@ -10,13 +10,13 @@ use crate::{
     },
 };
 
-pub struct FinanceBookinggHandle<'a> {
+pub struct FinanceBookingHandle<'a> {
     db_connection_settings: &'a DbConnectionSetting,
     user_id: &'a Uuid,
     db_connector: &'a dyn DBFinanceAccountingFunctions,
 }
 
-impl<'a> FinanceBookinggHandle<'a> {
+impl<'a> FinanceBookingHandle<'a> {
     pub fn new(
         connection_settings: &'a DbConnectionSetting,
         user_id: &'a Uuid,
