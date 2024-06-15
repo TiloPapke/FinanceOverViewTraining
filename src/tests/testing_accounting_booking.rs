@@ -1,11 +1,14 @@
 #[cfg(test)]
 
 mod test_accounting_handle {
+    use async_session::chrono::{Datelike, Duration, TimeZone, Utc};
     use mongodb::bson::Uuid;
 
     use crate::{
+        accounting_config_logic::FinanceAccountingConfigHandle,
         accounting_logic::FinanceBookingHandle,
         database_handler_mongodb::DbConnectionSetting,
+        datatypes::{FinanceAccount, FinanceAccountType, FinanceBookingRequest},
         tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
     };
 
@@ -34,12 +37,177 @@ mod test_accounting_handle {
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_1,
+            &in_memory_db,
+        );
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_2,
+            &in_memory_db,
+        );
+        let mut account_handle_3 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_3,
+            &in_memory_db,
+        );
+
         let booking_handle_1 =
             FinanceBookingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
         let booking_handle_2 =
             FinanceBookingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
         let booking_handle_3 =
             FinanceBookingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+
+        let mut finance_account_type_1_1 = FinanceAccountType {
+            description: "SomeTypeDescription_1_1".to_string(),
+            title: "SomeType_1_1".to_string(),
+            id: Uuid::new(),
+        };
+        let mut finance_account_type_1_2 = FinanceAccountType {
+            description: "SomeTypeDescription_1_1".to_string(),
+            title: "SomeType_1_2".to_string(),
+            id: Uuid::new(),
+        };
+        let mut finance_account_type_2_1 = FinanceAccountType {
+            description: "SomeTypeDescription_1_1".to_string(),
+            title: "SomeType_1_1".to_string(),
+            id: Uuid::new(),
+        };
+        let mut finance_account_type_2_2 = FinanceAccountType {
+            description: "SomeTypeDescription_1_1".to_string(),
+            title: "SomeType_1_2".to_string(),
+            id: Uuid::new(),
+        };
+        let mut finance_account_type_3_1 = FinanceAccountType {
+            description: "SomeTypeDescription_3_1".to_string(),
+            title: "SomeType_3_1".to_string(),
+            id: Uuid::new(),
+        };
+        let finance_account_1_1 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_1_1.id,
+            title: "account_1_1".into(),
+            description: "description_1_1".into(),
+        };
+        let finance_account_1_2 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_1_2.id,
+            title: "account_1_2".into(),
+            description: "description_1_2".into(),
+        };
+        let finance_account_2_1 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_2_1.id,
+            title: "account_2_1".into(),
+            description: "description_2_1".into(),
+        };
+        let finance_account_2_2 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_2_2.id,
+            title: "account_2_2".into(),
+            description: "description_2_2".into(),
+        };
+        let finance_account_2_3 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_2_2.id,
+            title: "account_2_3".into(),
+            description: "description_2_1".into(),
+        };
+        let finance_account_3_1 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_3_1.id,
+            title: "account_3_1".into(),
+            description: "description_3_1".into(),
+        };
+        let finance_account_3_2 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_3_1.id,
+            title: "account_3_2".into(),
+            description: "description_3_2".into(),
+        };
+        let insert_finance_account_type_1_1_result =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_1_1);
+        let insert_finance_account_type_1_2_result =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_1_2);
+        let insert_finance_account_type_2_1_result =
+            account_handle_2.finance_account_type_upsert(&mut finance_account_type_2_1);
+        let insert_finance_account_type_2_2_result =
+            account_handle_2.finance_account_type_upsert(&mut finance_account_type_2_2);
+        let insert_finance_account_type_3_1_result =
+            account_handle_3.finance_account_type_upsert(&mut finance_account_type_3_1);
+        let insert_finance_account_1_1_result =
+            account_handle_1.finance_account_upsert(&finance_account_1_1);
+        let insert_finance_account_1_2_result =
+            account_handle_1.finance_account_upsert(&finance_account_1_2);
+        let insert_finance_account_2_1_result =
+            account_handle_2.finance_account_upsert(&finance_account_2_1);
+        let insert_finance_account_2_2_result =
+            account_handle_2.finance_account_upsert(&finance_account_2_2);
+        let insert_finance_account_2_3_result =
+            account_handle_2.finance_account_upsert(&finance_account_3_2);
+        let insert_finance_account_3_1_result =
+            account_handle_3.finance_account_upsert(&finance_account_3_1);
+        let insert_finance_account_3_2_result =
+            account_handle_3.finance_account_upsert(&finance_account_3_2);
+        assert!(
+            insert_finance_account_type_1_1_result.is_ok(),
+            "{}",
+            insert_finance_account_type_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_type_1_2_result.is_ok(),
+            "{}",
+            insert_finance_account_type_1_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_type_2_1_result.is_ok(),
+            "{}",
+            insert_finance_account_type_2_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_type_2_2_result.is_ok(),
+            "{}",
+            insert_finance_account_type_2_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_1_1_result.is_ok(),
+            "{}",
+            insert_finance_account_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_1_2_result.is_ok(),
+            "{}",
+            insert_finance_account_1_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_2_1_result.is_ok(),
+            "{}",
+            insert_finance_account_2_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_2_2_result.is_ok(),
+            "{}",
+            insert_finance_account_2_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_2_3_result.is_ok(),
+            "{}",
+            insert_finance_account_2_3_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_type_3_1_result.is_err(),
+            "command should have failed"
+        );
+        assert!(
+            insert_finance_account_3_1_result.is_err(),
+            "command should have failed"
+        );
+        assert!(
+            insert_finance_account_3_2_result.is_err(),
+            "command should have failed"
+        );
 
         /* Test 1 create booking entries for 3 users:
         user 1: 2 entires for two account => a to b and b to a with different amounts
@@ -52,6 +220,117 @@ mod test_accounting_handle {
         * full listings for user 1 gets the data created for user 1 but not data created for user 2
         * full listings for user 2 gets the data created for user 2 but not data created for user 1
          */
+
+        let booking_time_1 = Utc
+            .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
+            .unwrap();
+        let booking_time_2 = booking_time_1 + Duration::days(1);
+        let booking_time_3 = booking_time_2 + Duration::days(1);
+        let booking_time_4 = booking_time_3 + Duration::days(1);
+        let booking_time_5 = booking_time_4 + Duration::days(1);
+        let booking_time_6 = booking_time_5 + Duration::days(1);
+        let finance_booking_request_1_1 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_1_1.id,
+            credit_finance_account_id: finance_account_1_2.id,
+            booking_time: booking_time_1,
+            amount: 100,
+            title: "f_b_r_1_1".into(),
+            description: "description_f_b_r_1_1".into(),
+        };
+        let finance_booking_request_1_2 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_booking_request_1_1.credit_finance_account_id,
+            credit_finance_account_id: finance_booking_request_1_1.debit_finance_account_id,
+            booking_time: booking_time_2,
+            amount: finance_booking_request_1_1.amount + 1,
+            title: "f_b_r_1_2".into(),
+            description: "description_f_b_r_1_2".into(),
+        };
+        let finance_booking_request_2_1 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_1.id,
+            credit_finance_account_id: finance_account_2_2.id,
+            booking_time: booking_time_3,
+            amount: 100,
+            title: "f_b_r_2_1".into(),
+            description: "description_f_b_r_2_1".into(),
+        };
+        let finance_booking_request_2_2 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_booking_request_2_1.credit_finance_account_id,
+            credit_finance_account_id: finance_account_2_2.id,
+            booking_time: booking_time_4,
+            amount: finance_booking_request_2_1.amount + 1,
+            title: "f_b_r_2_2".into(),
+            description: "description_f_b_r_2_2".into(),
+        };
+        let finance_booking_request_2_3 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_booking_request_2_2.credit_finance_account_id,
+            credit_finance_account_id: finance_booking_request_2_1.credit_finance_account_id,
+            booking_time: booking_time_2,
+            amount: finance_booking_request_2_2.amount + 1,
+            title: "f_b_r_2_3".into(),
+            description: "description_f_b_r_2_3".into(),
+        };
+        let finance_booking_request_3_1 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_3_1.id,
+            credit_finance_account_id: finance_account_3_2.id,
+            booking_time: booking_time_6,
+            amount: 100,
+            title: "f_b_r_3_1".into(),
+            description: "description_f_b_r_3_1".into(),
+        };
+        let insert_finance_booking_request_1_1_result =
+            booking_handle_1.finance_insert_booking_entry(finance_booking_request_1_1);
+        let insert_finance_booking_request_1_2_result =
+            booking_handle_1.finance_insert_booking_entry(finance_booking_request_1_2);
+        let insert_finance_booking_request_2_1_result =
+            booking_handle_2.finance_insert_booking_entry(finance_booking_request_2_1);
+        let insert_finance_booking_request_2_2_result =
+            booking_handle_2.finance_insert_booking_entry(finance_booking_request_2_2);
+        let insert_finance_booking_request_2_3_result =
+            booking_handle_2.finance_insert_booking_entry(finance_booking_request_2_3);
+        let insert_finance_booking_request_3_1_result =
+            booking_handle_3.finance_insert_booking_entry(finance_booking_request_3_1);
+
+        assert!(
+            insert_finance_booking_request_1_1_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_1_2_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_1_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_2_1_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_2_2_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_2_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_2_3_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_2_3_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_3_1_result.is_err(),
+            "inserting booking request for unkown userdid not fail"
+        );
 
         /* Test 2 increasing running number
         insert another entry for user 1
@@ -75,6 +354,12 @@ mod test_accounting_handle {
         b) insert a bookking entry with a booking time already presents
             b1) for credit account
             b2) for debit account
+        c) using a account from another user
+            c1) for credit
+            c2) for debit
+        d) using a account tyoe from another user
+            d1) for credit
+            d2) for debit
         */
     }
 }
