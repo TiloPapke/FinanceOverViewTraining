@@ -31,8 +31,6 @@ impl<'a> FinanceBookingHandle<'a> {
 
     pub fn list_journal_entries(
         &self,
-        conncetion_settings: &DbConnectionSetting,
-        user_id: &Uuid,
         from: Option<DateTime<Utc>>,
         till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
@@ -50,7 +48,7 @@ impl<'a> FinanceBookingHandle<'a> {
 
     pub fn finance_insert_booking_entry(
         &self,
-        action_to_insert: FinanceBookingRequest,
+        action_to_insert: &FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
         unimplemented!("logic for finance_insert_booking_entry is not implemented");
     }
