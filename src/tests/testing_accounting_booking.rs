@@ -416,7 +416,7 @@ mod test_accounting_handle {
         assert!(
             running_number_2 < running_number_1,
             "new running is not greater than old running number"
-        )
+        );
 
         /* Test 3 Filtering options
         using datetime filters to limit results using
@@ -426,11 +426,60 @@ mod test_accounting_handle {
 
         checks: listings only have the limited results
         */
+        let check_date_time_1 = booking_time_2 - Duration::seconds(1);
+        let check_date_time_2 = booking_time_7 - Duration::seconds(1);
+        let full_listing_user_1_3_result =
+            booking_handle_1.list_journal_entries(Some(check_date_time_1), None);
+        let full_listing_user_1_4_result =
+            booking_handle_1.list_journal_entries(None, Some(check_date_time_2));
+        let full_listing_user_1_5_result =
+            booking_handle_1.list_journal_entries(Some(check_date_time_1), Some(check_date_time_2));
+        assert!(
+            full_listing_user_1_3_result.is_ok(),
+            "{}",
+            full_listing_user_1_3_result.unwrap_err()
+        );
+        assert!(
+            full_listing_user_1_4_result.is_ok(),
+            "{}",
+            full_listing_user_1_4_result.unwrap_err()
+        );
+        assert!(
+            full_listing_user_1_5_result.is_ok(),
+            "{}",
+            full_listing_user_1_5_result.unwrap_err()
+        );
+        let full_listing_user_1_3 = full_listing_user_1_3_result.unwrap();
+        let full_listing_user_1_4 = full_listing_user_1_4_result.unwrap();
+        let full_listing_user_1_5 = full_listing_user_1_5_result.unwrap();
+        assert_eq!(full_listing_user_1_3.len(), 2);
+        assert_eq!(full_listing_user_1_4.len(), 2);
+        assert_eq!(full_listing_user_1_5.len(), 1);
+        assert!(check_journal_listing_contains_booking_request(
+            &full_listing_user_1_3,
+            &finance_booking_request_1_2
+        ));
+        assert!(check_journal_listing_contains_booking_request(
+            &full_listing_user_1_3,
+            &finance_booking_request_1_3
+        ));
+        assert!(check_journal_listing_contains_booking_request(
+            &full_listing_user_1_4,
+            &finance_booking_request_1_1
+        ));
+        assert!(check_journal_listing_contains_booking_request(
+            &full_listing_user_1_4,
+            &finance_booking_request_1_2
+        ));
+        assert!(check_journal_listing_contains_booking_request(
+            &full_listing_user_1_5,
+            &finance_booking_request_1_1
+        ));
 
         /* Test 4 further invalid operations
         trying to perform invalid operations
         a) using datetime filtering where till datetime is before from datetime
-        b) insert a bookking entry with a booking time already presents
+        b) insert a booking entry with a booking time already presents
             b1) for credit account
             b2) for debit account
         c) using a account from another user
