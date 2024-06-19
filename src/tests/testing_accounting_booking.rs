@@ -9,7 +9,8 @@ mod test_accounting_handle {
         accounting_logic::FinanceBookingHandle,
         database_handler_mongodb::DbConnectionSetting,
         datatypes::{
-            FinanceAccount, FinanceAccountType, FinanceBookingRequest, FinanceJournalEntry,
+            AccountBalanceType, FinanceAccount, FinanceAccountType, FinanceBookingRequest,
+            FinanceJournalEntry,
         },
         tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
     };
@@ -597,7 +598,7 @@ mod test_accounting_handle {
             booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_8);
         assert!(
             insert_finance_booking_request_2_8_result.is_ok(),
-            "could not prepare saldo check: 0{}",
+            "could not prepare saldo check: {}",
             insert_finance_booking_request_2_8_result.unwrap_err()
         );
 
@@ -614,10 +615,8 @@ mod test_accounting_handle {
             title: "f_b_r_2_9".into(),
             description: "description_f_b_r_2_9".into(),
         };
-        let insert_finance_booking_request_2_9_result: Result<
-            crate::datatypes::FinanceBookingResult,
-            String,
-        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_9);
+        let insert_finance_booking_request_2_9_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_9);
         assert!(
             insert_finance_booking_request_2_9_result.is_err(),
             "operation should have failed"
@@ -637,10 +636,8 @@ mod test_accounting_handle {
             title: "f_b_r_2_10".into(),
             description: "description_f_b_r_2_10".into(),
         };
-        let insert_finance_booking_request_2_10_result: Result<
-            crate::datatypes::FinanceBookingResult,
-            String,
-        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_10);
+        let insert_finance_booking_request_2_10_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_10);
         assert!(
             insert_finance_booking_request_2_10_result.is_err(),
             "operation should have failed"
@@ -660,10 +657,8 @@ mod test_accounting_handle {
             title: "f_b_r_2_11".into(),
             description: "description_f_b_r_2_11".into(),
         };
-        let insert_finance_booking_request_2_11_result: Result<
-            crate::datatypes::FinanceBookingResult,
-            String,
-        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_11);
+        let insert_finance_booking_request_2_11_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_11);
         assert!(
             insert_finance_booking_request_2_11_result.is_err(),
             "operation should have failed"
@@ -683,10 +678,8 @@ mod test_accounting_handle {
             title: "f_b_r_2_12".into(),
             description: "description_f_b_r_2_12".into(),
         };
-        let insert_finance_booking_request_2_12_result: Result<
-            crate::datatypes::FinanceBookingResult,
-            String,
-        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_12);
+        let insert_finance_booking_request_2_12_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_12);
         assert!(
             insert_finance_booking_request_2_12_result.is_err(),
             "operation should have failed"
@@ -793,6 +786,99 @@ mod test_accounting_handle {
             "{}",
             insert_finance_account_1_3_result.unwrap_err()
         );
+
+        let amount_1 = 17;
+        let amount_2 = 23;
+        let amount_3 = 41;
+
+        let booking_time_1 = Utc
+            .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
+            .unwrap();
+        let booking_time_2 = booking_time_1 + Duration::days(1);
+        let booking_time_3 = booking_time_2 + Duration::days(1);
+        let booking_time_4 = booking_time_3 + Duration::days(1);
+        let booking_time_5 = booking_time_4 + Duration::days(1);
+        let booking_time_6 = booking_time_5 + Duration::days(1);
+        let finance_booking_request_1_1 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_1_1.id,
+            credit_finance_account_id: finance_account_1_2.id,
+            booking_time: booking_time_1,
+            amount: amount_1,
+            title: "f_b_r_1_1".into(),
+            description: "description_f_b_r_1_1".into(),
+        };
+        let finance_booking_request_1_2 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_1_1.id,
+            credit_finance_account_id: finance_account_1_3.id,
+            booking_time: booking_time_2,
+            amount: amount_2,
+            title: "f_b_r_1_2".into(),
+            description: "description_f_b_r_1_2".into(),
+        };
+        let finance_booking_request_1_3 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_1_2.id,
+            credit_finance_account_id: finance_account_1_3.id,
+            booking_time: booking_time_3,
+            amount: amount_3,
+            title: "f_b_r_1_3".into(),
+            description: "description_f_b_r_1_3".into(),
+        };
+        let account_1_running_saldo_amount = amount_1 - amount_2;
+        let account_1_running_saldo_amount = AccountBalanceType::Credit;
+        let account_2_running_saldo_amount = amount_1.abs_diff(amount_3);
+        let account_2_running_saldo_amount = AccountBalanceType::Debit;
+        let account_3_running_saldo_amount = amount_2 + amount_3;
+        let account_3_running_saldo_amount = AccountBalanceType::Debit;
+
+        let insert_finance_booking_request_1_1_result =
+            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_1);
+        let insert_finance_booking_request_1_2_result =
+            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_2);
+        let insert_finance_booking_request_1_3_result =
+            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_3);
+        assert!(
+            insert_finance_booking_request_1_1_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_1_2_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_1_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_booking_request_1_3_result.is_ok(),
+            "{}",
+            insert_finance_booking_request_1_3_result.unwrap_err()
+        );
+
+        let balance_account_1_result =
+            booking_handle_1.calculate_balance_info(&vec![finance_account_1_1.id]);
+        let balance_account_2_result =
+            booking_handle_1.calculate_balance_info(&vec![finance_account_1_2.id]);
+        let balance_account_3_result =
+            booking_handle_1.calculate_balance_info(&vec![finance_account_1_3.id]);
+        assert!(
+            balance_account_1_result.is_ok(),
+            "{}",
+            balance_account_1_result.unwrap_err()
+        );
+        assert!(
+            balance_account_2_result.is_ok(),
+            "{}",
+            balance_account_2_result.unwrap_err()
+        );
+        assert!(
+            balance_account_3_result.is_ok(),
+            "{}",
+            balance_account_3_result.unwrap_err()
+        );
     }
 
     fn check_journal_listing_contains_booking_request(
@@ -833,6 +919,12 @@ mod test_accounting_handle {
         return false;
     }
 
+    fn check_entry_response_match_entry_request(
+        entry_request: &FinanceBookingRequest,
+        entry_response: &FinanceBookingResult,
+    ) -> bool {
+        return false;
+    }
     fn get_max_running_number_from_journal_list(journal_list: &Vec<FinanceJournalEntry>) -> u64 {
         let max_option = journal_list.iter().max_by_key(|elem| elem.running_number);
         if max_option.is_none() {
