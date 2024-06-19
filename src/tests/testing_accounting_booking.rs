@@ -115,7 +115,7 @@ mod test_accounting_handle {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_2_2.id,
             title: "account_2_3".into(),
-            description: "description_2_1".into(),
+            description: "description_2_3".into(),
         };
         let finance_account_3_1 = FinanceAccount {
             id: Uuid::new(),
@@ -485,11 +485,98 @@ mod test_accounting_handle {
         c) using a account from another user
             c1) for credit
             c2) for debit
-        d) using a account tyoe from another user
-            d1) for credit
-            d2) for debit
         */
+        let full_listing_user_1_6_result =
+            booking_handle_1.list_journal_entries(Some(check_date_time_2), Some(check_date_time_1));
+        assert!(
+            full_listing_user_1_6_result.is_err(),
+            "filtering with date till before date from must fail"
+        );
+
+        let finance_account_2_4 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_2_2.id,
+            title: "account_2_4".into(),
+            description: "description_2_4".into(),
+        };
+        let insert_finance_account_2_4_result =
+            account_handle_2.finance_account_upsert(&finance_account_2_4);
+        assert!(
+            insert_finance_account_2_4_result.is_ok(),
+            "{}",
+            insert_finance_account_2_4_result.unwrap_err()
+        );
+        let finance_booking_request_2_4 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_4.id,
+            credit_finance_account_id: finance_account_2_2.id,
+            booking_time: booking_time_3,
+            amount: 117,
+            title: "f_b_r_2_4".into(),
+            description: "description_f_b_r_2_4".into(),
+        };
+        let insert_finance_booking_request_2_4_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_4);
+        assert!(
+            insert_finance_booking_request_2_4_result.is_err(),
+            "inserting booking request for credit account with same booking time twice must fail"
+        );
+
+        let finance_booking_request_2_5 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_1.id,
+            credit_finance_account_id: finance_account_2_4.id,
+            booking_time: booking_time_3,
+            amount: 119,
+            title: "f_b_r_2_5".into(),
+            description: "description_f_b_r_2_5".into(),
+        };
+        let insert_finance_booking_request_2_5_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_5);
+        assert!(
+            insert_finance_booking_request_2_5_result.is_err(),
+            "inserting booking request for debit account with same booking time twice must fail"
+        );
+
+        let booking_time_8: async_session::chrono::DateTime<Utc> =
+            booking_time_7 + Duration::days(1);
+        let finance_booking_request_2_6 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_4.id,
+            credit_finance_account_id: finance_account_1_1.id,
+            booking_time: booking_time_8,
+            amount: 127,
+            title: "f_b_r_2_6".into(),
+            description: "description_f_b_r_2_6".into(),
+        };
+        let insert_finance_booking_request_2_6_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_6);
+        assert!(
+            insert_finance_booking_request_2_6_result.is_err(),
+            "inserting booking request for credit account from another user must fail"
+        );
+
+        let finance_booking_request_2_7 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_1_1.id,
+            credit_finance_account_id: finance_account_2_4.id,
+            booking_time: booking_time_8,
+            amount: 127,
+            title: "f_b_r_2_6".into(),
+            description: "description_f_b_r_2_7".into(),
+        };
+        let insert_finance_booking_request_2_7_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_7);
+        assert!(
+            insert_finance_booking_request_2_7_result.is_err(),
+            "inserting booking request for debit account from another user must fail"
+        );
     }
+
     fn check_journal_listing_contains_booking_request(
         list_to_check: &Vec<FinanceJournalEntry>,
         element_to_check: &FinanceBookingRequest,
