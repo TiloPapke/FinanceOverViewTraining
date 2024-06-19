@@ -15,8 +15,8 @@ mod test_accounting_handle {
     };
 
     #[tokio::test]
-    async fn test_accounting_booking_with_mock() {
-        /* this test is "just" for testing the creation of entries, for validation please see other tests */
+    async fn test_accounting_booking_creating_with_mock() {
+        /* this test is "just" for testing the creation of entries, for validation of calculation please see other tests */
         let dummy_connection_settings = DbConnectionSetting {
             instance: "".into(),
             password: "".into(),
@@ -74,7 +74,7 @@ mod test_accounting_handle {
         };
         let mut finance_account_type_2_1 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
-            title: "SomeType_1_1".to_string(),
+            title: "SomeType_2_1".to_string(),
             id: Uuid::new(),
         };
         let mut finance_account_type_2_2 = FinanceAccountType {
@@ -485,6 +485,11 @@ mod test_accounting_handle {
         c) using a account from another user
             c1) for credit
             c2) for debit
+        d) inserting a booking request before latest saldo entry
+            d1) using debit account before debit saldo
+            d2) using debit account before credit saldo
+            d3) using credit account before debit saldo
+            d4) using debit account before credit saldo
         */
         let full_listing_user_1_6_result =
             booking_handle_1.list_journal_entries(Some(check_date_time_2), Some(check_date_time_1));
@@ -566,7 +571,7 @@ mod test_accounting_handle {
             credit_finance_account_id: finance_account_2_4.id,
             booking_time: booking_time_8,
             amount: 127,
-            title: "f_b_r_2_6".into(),
+            title: "f_b_r_2_7".into(),
             description: "description_f_b_r_2_7".into(),
         };
         let insert_finance_booking_request_2_7_result =
@@ -574,6 +579,219 @@ mod test_accounting_handle {
         assert!(
             insert_finance_booking_request_2_7_result.is_err(),
             "inserting booking request for debit account from another user must fail"
+        );
+
+        let booking_time_9: async_session::chrono::DateTime<Utc> =
+            booking_time_8 + Duration::days(1);
+        let finance_booking_request_2_8 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: true,
+            debit_finance_account_id: finance_account_2_1.id,
+            credit_finance_account_id: finance_account_2_2.id,
+            booking_time: booking_time_9,
+            amount: 127,
+            title: "f_b_r_2_8".into(),
+            description: "description_f_b_r_2_8".into(),
+        };
+        let insert_finance_booking_request_2_8_result =
+            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_8);
+        assert!(
+            insert_finance_booking_request_2_8_result.is_ok(),
+            "could not prepare saldo check: 0{}",
+            insert_finance_booking_request_2_8_result.unwrap_err()
+        );
+
+        let saldo_error_text = "Can not insert before saldo";
+        let booking_time_10: async_session::chrono::DateTime<Utc> =
+            booking_time_9 - Duration::hours(1);
+        let finance_booking_request_2_9 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_1.id,
+            credit_finance_account_id: finance_account_2_3.id,
+            booking_time: booking_time_10,
+            amount: 127,
+            title: "f_b_r_2_9".into(),
+            description: "description_f_b_r_2_9".into(),
+        };
+        let insert_finance_booking_request_2_9_result: Result<
+            crate::datatypes::FinanceBookingResult,
+            String,
+        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_9);
+        assert!(
+            insert_finance_booking_request_2_9_result.is_err(),
+            "operation should have failed"
+        );
+        assert!(insert_finance_booking_request_2_9_result
+            .unwrap_err()
+            .to_string()
+            .contains(saldo_error_text));
+
+        let finance_booking_request_2_10 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_3.id,
+            credit_finance_account_id: finance_account_2_1.id,
+            booking_time: booking_time_10,
+            amount: 127,
+            title: "f_b_r_2_10".into(),
+            description: "description_f_b_r_2_10".into(),
+        };
+        let insert_finance_booking_request_2_10_result: Result<
+            crate::datatypes::FinanceBookingResult,
+            String,
+        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_10);
+        assert!(
+            insert_finance_booking_request_2_10_result.is_err(),
+            "operation should have failed"
+        );
+        assert!(insert_finance_booking_request_2_10_result
+            .unwrap_err()
+            .to_string()
+            .contains(saldo_error_text));
+
+        let finance_booking_request_2_11 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_2.id,
+            credit_finance_account_id: finance_account_2_3.id,
+            booking_time: booking_time_10,
+            amount: 127,
+            title: "f_b_r_2_11".into(),
+            description: "description_f_b_r_2_11".into(),
+        };
+        let insert_finance_booking_request_2_11_result: Result<
+            crate::datatypes::FinanceBookingResult,
+            String,
+        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_11);
+        assert!(
+            insert_finance_booking_request_2_11_result.is_err(),
+            "operation should have failed"
+        );
+        assert!(insert_finance_booking_request_2_11_result
+            .unwrap_err()
+            .to_string()
+            .contains(saldo_error_text));
+
+        let finance_booking_request_2_12 = FinanceBookingRequest {
+            is_simple_entry: true,
+            is_saldo: false,
+            debit_finance_account_id: finance_account_2_3.id,
+            credit_finance_account_id: finance_account_2_2.id,
+            booking_time: booking_time_10,
+            amount: 127,
+            title: "f_b_r_2_12".into(),
+            description: "description_f_b_r_2_12".into(),
+        };
+        let insert_finance_booking_request_2_12_result: Result<
+            crate::datatypes::FinanceBookingResult,
+            String,
+        > = booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_12);
+        assert!(
+            insert_finance_booking_request_2_12_result.is_err(),
+            "operation should have failed"
+        );
+        assert!(insert_finance_booking_request_2_12_result
+            .unwrap_err()
+            .to_string()
+            .contains(saldo_error_text));
+    }
+
+    #[tokio::test]
+    async fn test_accounting_booking_calculate_with_mock() {
+        /* this test is "just" for testing the creation of entries, for validation of calculation please see other tests */
+        let dummy_connection_settings = DbConnectionSetting {
+            instance: "".into(),
+            password: "".into(),
+            url: "".into(),
+            user: "".into(),
+        };
+        let user_id_1 = Uuid::new();
+
+        let entry_object1 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
+
+        let _insert_result =
+            InMemoryDatabaseData::insert_in_memory_database(Vec::from([entry_object1]));
+
+        let in_memory_db = InMemoryDatabaseHandler {};
+
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_1,
+            &in_memory_db,
+        );
+
+        let booking_handle_1 =
+            FinanceBookingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+
+        let mut finance_account_type_1_1 = FinanceAccountType {
+            description: "SomeTypeDescription_1_1".to_string(),
+            title: "SomeType_1_1".to_string(),
+            id: Uuid::new(),
+        };
+        let mut finance_account_type_1_2 = FinanceAccountType {
+            description: "SomeTypeDescription_1_1".to_string(),
+            title: "SomeType_1_2".to_string(),
+            id: Uuid::new(),
+        };
+
+        let insert_finance_account_type_1_1_result =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_1_1);
+        let insert_finance_account_type_1_2_result =
+            account_handle_1.finance_account_type_upsert(&mut finance_account_type_1_2);
+
+        let finance_account_1_1 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_1_1.id,
+            title: "account_1_1".into(),
+            description: "description_1_1".into(),
+        };
+        let finance_account_1_2 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_1_2.id,
+            title: "account_1_2".into(),
+            description: "description_1_2".into(),
+        };
+        let finance_account_1_3 = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: finance_account_type_1_2.id,
+            title: "account_1_3".into(),
+            description: "description_1_3".into(),
+        };
+
+        let insert_finance_account_1_1_result =
+            account_handle_1.finance_account_upsert(&finance_account_1_1);
+        let insert_finance_account_1_2_result =
+            account_handle_1.finance_account_upsert(&finance_account_1_2);
+        let insert_finance_account_1_3_result =
+            account_handle_1.finance_account_upsert(&finance_account_1_3);
+
+        assert!(
+            insert_finance_account_type_1_1_result.is_ok(),
+            "{}",
+            insert_finance_account_type_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_type_1_2_result.is_ok(),
+            "{}",
+            insert_finance_account_type_1_2_result.unwrap_err()
+        );
+
+        assert!(
+            insert_finance_account_1_1_result.is_ok(),
+            "{}",
+            insert_finance_account_1_1_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_1_2_result.is_ok(),
+            "{}",
+            insert_finance_account_1_2_result.unwrap_err()
+        );
+        assert!(
+            insert_finance_account_1_3_result.is_ok(),
+            "{}",
+            insert_finance_account_1_3_result.unwrap_err()
         );
     }
 
