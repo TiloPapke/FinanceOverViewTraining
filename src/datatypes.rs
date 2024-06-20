@@ -57,6 +57,7 @@ pub struct FinanceJournalEntry {
     pub description: String,
 }
 
+#[derive(PartialEq, Deserialize, Debug, Clone)]
 pub enum BookingEntryType {
     Credit,
     Debit,
@@ -69,7 +70,7 @@ pub struct FinanceAccountBookingEntry {
     pub id: Uuid,
     pub finance_account_id: Uuid,
     pub finance_journal_diary_id: Uuid,
-    pub booking_type: i8,
+    pub booking_type: BookingEntryType,
     pub booking_time: DateTime<Utc>,
     pub amount: u128,
     pub title: String,
@@ -95,11 +96,13 @@ pub struct FinanceBookingResult {
     pub credit_account_entry: FinanceAccountBookingEntry,
 }
 
+#[derive(PartialEq, Debug)]
 pub enum AccountBalanceType {
     Credit,
     Debit,
 }
 
+#[derive(Debug)]
 pub struct AccountBalanceInfo {
     pub account_id: Uuid,
     pub balance_type: AccountBalanceType,

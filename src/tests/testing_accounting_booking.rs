@@ -9,8 +9,8 @@ mod test_accounting_handle {
         accounting_logic::FinanceBookingHandle,
         database_handler_mongodb::DbConnectionSetting,
         datatypes::{
-            AccountBalanceType, FinanceAccount, FinanceAccountType, FinanceBookingRequest,
-            FinanceJournalEntry,
+            AccountBalanceInfo, AccountBalanceType, BookingEntryType, FinanceAccount,
+            FinanceAccountType, FinanceBookingRequest, FinanceBookingResult, FinanceJournalEntry,
         },
         tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
     };
@@ -335,6 +335,27 @@ mod test_accounting_handle {
             "inserting booking request for unkown userdid not fail"
         );
 
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_1_1,
+            &insert_finance_booking_request_1_1_result.unwrap()
+        ));
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_1_2,
+            &insert_finance_booking_request_1_2_result.unwrap()
+        ));
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_2_1,
+            &insert_finance_booking_request_2_1_result.unwrap()
+        ));
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_2_2,
+            &insert_finance_booking_request_2_2_result.unwrap()
+        ));
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_2_3,
+            &insert_finance_booking_request_2_3_result.unwrap()
+        ));
+
         let full_listing_user_1_result = booking_handle_1.list_journal_entries(None, None);
         let full_listing_user_2_result = booking_handle_2.list_journal_entries(None, None);
         assert!(
@@ -396,6 +417,10 @@ mod test_accounting_handle {
             "{}",
             insert_finance_booking_request_1_3_result.unwrap_err()
         );
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_1_3,
+            &insert_finance_booking_request_1_3_result.unwrap()
+        ));
         let full_listing_user_1_2_result = booking_handle_1.list_journal_entries(None, None);
         let full_listing_user_1_2 = full_listing_user_1_2_result.unwrap();
         assert_eq!(full_listing_user_1_2.len(), 3);
@@ -601,6 +626,10 @@ mod test_accounting_handle {
             "could not prepare saldo check: {}",
             insert_finance_booking_request_2_8_result.unwrap_err()
         );
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_2_8,
+            &insert_finance_booking_request_2_8_result.unwrap()
+        ));
 
         let saldo_error_text = "Can not insert before saldo";
         let booking_time_10: async_session::chrono::DateTime<Utc> =
@@ -830,11 +859,11 @@ mod test_accounting_handle {
             description: "description_f_b_r_1_3".into(),
         };
         let account_1_running_saldo_amount = amount_1 - amount_2;
-        let account_1_running_saldo_amount = AccountBalanceType::Credit;
+        let account_1_running_saldo_type = AccountBalanceType::Credit;
         let account_2_running_saldo_amount = amount_1.abs_diff(amount_3);
-        let account_2_running_saldo_amount = AccountBalanceType::Debit;
+        let account_2_running_saldo_type = AccountBalanceType::Debit;
         let account_3_running_saldo_amount = amount_2 + amount_3;
-        let account_3_running_saldo_amount = AccountBalanceType::Debit;
+        let account_3_running_saldo_type = AccountBalanceType::Debit;
 
         let insert_finance_booking_request_1_1_result =
             booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_1);
@@ -864,6 +893,7 @@ mod test_accounting_handle {
             booking_handle_1.calculate_balance_info(&vec![finance_account_1_2.id]);
         let balance_account_3_result =
             booking_handle_1.calculate_balance_info(&vec![finance_account_1_3.id]);
+
         assert!(
             balance_account_1_result.is_ok(),
             "{}",
@@ -879,6 +909,44 @@ mod test_accounting_handle {
             "{}",
             balance_account_3_result.unwrap_err()
         );
+
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_1_1,
+            &insert_finance_booking_request_1_1_result.unwrap()
+        ));
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_1_2,
+            &insert_finance_booking_request_1_2_result.unwrap()
+        ));
+        assert!(check_entry_response_match_entry_request(
+            &finance_booking_request_1_3,
+            &insert_finance_booking_request_1_3_result.unwrap()
+        ));
+
+        let balance_account_1_info = balance_account_1_result.unwrap();
+        let balance_account_2_info = balance_account_2_result.unwrap();
+        let balance_account_3_info = balance_account_3_result.unwrap();
+        assert_eq!(balance_account_1_info.len(), 1);
+        assert_eq!(balance_account_2_info.len(), 1);
+        assert_eq!(balance_account_3_info.len(), 1);
+        assert!(check_balance_account_info(
+            &balance_account_1_info[0],
+            &finance_account_1_1.id,
+            &account_1_running_saldo_amount,
+            &account_1_running_saldo_type
+        ));
+        assert!(check_balance_account_info(
+            &balance_account_2_info[0],
+            &finance_account_1_2.id,
+            &account_2_running_saldo_amount,
+            &account_2_running_saldo_type
+        ));
+        assert!(check_balance_account_info(
+            &balance_account_3_info[0],
+            &finance_account_1_3.id,
+            &account_3_running_saldo_amount,
+            &account_3_running_saldo_type
+        ));
     }
 
     fn check_journal_listing_contains_booking_request(
@@ -923,7 +991,103 @@ mod test_accounting_handle {
         entry_request: &FinanceBookingRequest,
         entry_response: &FinanceBookingResult,
     ) -> bool {
+        let credit_booking_type = if entry_request.is_saldo {
+            BookingEntryType::SaldoCredit
+        } else {
+            BookingEntryType::Credit
+        };
+        let debit_booking_type = if entry_request.is_saldo {
+            BookingEntryType::SaldoDebit
+        } else {
+            BookingEntryType::Debit
+        };
+
+        if entry_request
+            .is_saldo
+            .eq(&entry_response.journal_entry.is_saldo)
+            && entry_request
+                .is_simple_entry
+                .eq(&entry_response.journal_entry.is_saldo)
+            && entry_request
+                .amount
+                .eq(&entry_response.journal_entry.amount)
+            && entry_request
+                .booking_time
+                .eq(&entry_response.journal_entry.booking_time)
+            && entry_request
+                .credit_finance_account_id
+                .eq(&entry_response.journal_entry.credit_finance_account_id)
+            && entry_request
+                .debit_finance_account_id
+                .eq(&entry_response.journal_entry.debit_finance_account_id)
+            && entry_request
+                .description
+                .eq(&entry_response.journal_entry.description)
+            && entry_request.title.eq(&entry_response.journal_entry.title)
+        {
+            if credit_booking_type.eq(&entry_response.credit_account_entry.booking_type)
+                && entry_request
+                    .amount
+                    .eq(&entry_response.credit_account_entry.amount)
+                && entry_request
+                    .booking_time
+                    .eq(&entry_response.credit_account_entry.booking_time)
+                && entry_request
+                    .credit_finance_account_id
+                    .eq(&entry_response.credit_account_entry.finance_account_id)
+                && entry_request
+                    .description
+                    .eq(&entry_response.credit_account_entry.description)
+                && entry_request
+                    .title
+                    .eq(&entry_response.credit_account_entry.title)
+                && entry_response
+                    .journal_entry
+                    .id
+                    .eq(&entry_response.credit_account_entry.finance_journal_diary_id)
+            {
+                if debit_booking_type.eq(&entry_response.debit_account_entry.booking_type)
+                    && entry_request
+                        .amount
+                        .eq(&entry_response.debit_account_entry.amount)
+                    && entry_request
+                        .booking_time
+                        .eq(&entry_response.debit_account_entry.booking_time)
+                    && entry_request
+                        .credit_finance_account_id
+                        .eq(&entry_response.debit_account_entry.finance_account_id)
+                    && entry_request
+                        .description
+                        .eq(&entry_response.debit_account_entry.description)
+                    && entry_request
+                        .title
+                        .eq(&entry_response.debit_account_entry.title)
+                    && entry_response
+                        .journal_entry
+                        .id
+                        .eq(&entry_response.debit_account_entry.finance_journal_diary_id)
+                {
+                    return true;
+                }
+            }
+        }
         return false;
+    }
+
+    fn check_balance_account_info(
+        info_to_check: &AccountBalanceInfo,
+        account_id: &Uuid,
+        amount: &u128,
+        balance_type: &AccountBalanceType,
+    ) -> bool {
+        if account_id.eq(&info_to_check.account_id)
+            && amount.eq(&info_to_check.amount)
+            && balance_type.eq(&info_to_check.balance_type)
+        {
+            return true;
+        } else {
+            return false;
+        }
     }
     fn get_max_running_number_from_journal_list(journal_list: &Vec<FinanceJournalEntry>) -> u64 {
         let max_option = journal_list.iter().max_by_key(|elem| elem.running_number);
