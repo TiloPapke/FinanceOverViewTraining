@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::database_handler_mongodb::DbConnectionSetting;
+use crate::datatypes::BookingEntryType;
 #[cfg(test)]
 use crate::datatypes::FinanceAccount;
 #[cfg(test)]
@@ -26,6 +27,8 @@ pub struct InMemoryDatabaseEntryObj {
     user_id: Uuid,
     account_types_per_user: Vec<FinanceAccountType>,
     accounts_per_user: Vec<FinanceAccount>,
+    booking_entries_per_user: Vec<FinanceAccountBookingEntry>,
+    journal_entries_per_user: Vec<FinanceJournalEntry>,
 }
 
 #[cfg(test)]
@@ -177,7 +180,27 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
         from: Option<DateTime<Utc>>,
         till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
-        unimplemented!("trait is not implemented");
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            let journal_entries_list = &data_obj3
+                .data_per_user
+                .get(position)
+                .unwrap()
+                .journal_entries_per_user;
+
+            let return_object = journal_entries_list.clone();
+            drop(data_obj3);
+            Ok(return_object)
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
+        }
     }
 
     async fn finance_account_booking_entry_list(
@@ -193,11 +216,86 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
 
     async fn finance_insert_booking_entry(
         &self,
-        conncetion_settings: &DbConnectionSetting,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
-        unimplemented!("trait is not implemented");
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let mut data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            //let current_list = &mut data_obj3.account_per_user.get_mut(position).unwrap();
+            let booking_entries_list = &mut data_obj3
+                .data_per_user
+                .get_mut(position)
+                .unwrap()
+                .booking_entries_per_user;
+            let journal_entries_list = &mut data_obj3
+                .data_per_user
+                .get_mut(position)
+                .unwrap()
+                .journal_entries_per_user;
+            let new_running_number = 1;
+            let new_journal_entry = FinanceJournalEntry {
+                id: Uuid::new(),
+                is_simple_entry: action_to_insert.is_simple_entry,
+                is_saldo: action_to_insert.is_saldo,
+                debit_finance_account_id: action_to_insert.debit_finance_account_id,
+                credit_finance_account_id: action_to_insert.credit_finance_account_id,
+                running_number: new_running_number,
+                booking_time: action_to_insert.booking_time,
+                amount: action_to_insert.amount,
+                title: action_to_insert.title.clone(),
+                description: action_to_insert.description.clone(),
+            };
+            let credit_booking_type = if action_to_insert.is_saldo {
+                BookingEntryType::SaldoCredit
+            } else {
+                BookingEntryType::Credit
+            };
+            let new_credit_account_entry = FinanceAccountBookingEntry {
+                id: Uuid::new(),
+                finance_account_id: action_to_insert.credit_finance_account_id,
+                finance_journal_diary_id: new_journal_entry.id.clone(),
+                booking_type: credit_booking_type,
+                booking_time: action_to_insert.booking_time,
+                amount: action_to_insert.amount,
+                title: action_to_insert.title.clone(),
+                description: action_to_insert.description.clone(),
+            };
+            let debit_booking_type = if action_to_insert.is_saldo {
+                BookingEntryType::SaldoDebit
+            } else {
+                BookingEntryType::Debit
+            };
+            let new_debit_account_entry = FinanceAccountBookingEntry {
+                id: Uuid::new(),
+                finance_account_id: action_to_insert.debit_finance_account_id,
+                finance_journal_diary_id: new_journal_entry.id.clone(),
+                booking_type: debit_booking_type,
+                booking_time: action_to_insert.booking_time,
+                amount: action_to_insert.amount,
+                title: action_to_insert.title.clone(),
+                description: action_to_insert.description.clone(),
+            };
+
+            journal_entries_list.push(new_journal_entry.clone());
+
+            let return_object = FinanceBookingResult {
+                journal_entry: new_journal_entry,
+                debit_account_entry: new_debit_account_entry,
+                credit_account_entry: new_credit_account_entry,
+            };
+            drop(data_obj3);
+            Ok(return_object)
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
+        }
     }
 
     async fn finance_get_last_saldo_account_entries(
@@ -241,6 +339,8 @@ impl InMemoryDatabaseData {
             user_id: user_id.clone(),
             account_types_per_user: Vec::new(),
             accounts_per_user: Vec::new(),
+            booking_entries_per_user: Vec::new(),
+            journal_entries_per_user: Vec::new(),
         };
     }
     fn clone_finance_account_type(object_to_clone: &FinanceAccountType) -> FinanceAccountType {

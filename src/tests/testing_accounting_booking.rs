@@ -335,26 +335,41 @@ mod test_accounting_handle {
             "inserting booking request for unkown userdid not fail"
         );
 
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_1_1,
-            &insert_finance_booking_request_1_1_result.unwrap()
-        ));
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_1_2,
-            &insert_finance_booking_request_1_2_result.unwrap()
-        ));
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_2_1,
-            &insert_finance_booking_request_2_1_result.unwrap()
-        ));
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_2_2,
-            &insert_finance_booking_request_2_2_result.unwrap()
-        ));
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_2_3,
-            &insert_finance_booking_request_2_3_result.unwrap()
-        ));
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_1_1,
+                &insert_finance_booking_request_1_1_result.unwrap()
+            ),
+            ""
+        );
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_1_2,
+                &insert_finance_booking_request_1_2_result.unwrap()
+            ),
+            ""
+        );
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_2_1,
+                &insert_finance_booking_request_2_1_result.unwrap()
+            ),
+            ""
+        );
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_2_2,
+                &insert_finance_booking_request_2_2_result.unwrap()
+            ),
+            ""
+        );
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_2_3,
+                &insert_finance_booking_request_2_3_result.unwrap()
+            ),
+            ""
+        );
 
         let full_listing_user_1_result = booking_handle_1.list_journal_entries(None, None);
         let full_listing_user_2_result = booking_handle_2.list_journal_entries(None, None);
@@ -417,10 +432,13 @@ mod test_accounting_handle {
             "{}",
             insert_finance_booking_request_1_3_result.unwrap_err()
         );
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_1_3,
-            &insert_finance_booking_request_1_3_result.unwrap()
-        ));
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_1_3,
+                &insert_finance_booking_request_1_3_result.unwrap()
+            ),
+            ""
+        );
         let full_listing_user_1_2_result = booking_handle_1.list_journal_entries(None, None);
         let full_listing_user_1_2 = full_listing_user_1_2_result.unwrap();
         assert_eq!(full_listing_user_1_2.len(), 3);
@@ -626,10 +644,13 @@ mod test_accounting_handle {
             "could not prepare saldo check: {}",
             insert_finance_booking_request_2_8_result.unwrap_err()
         );
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_2_8,
-            &insert_finance_booking_request_2_8_result.unwrap()
-        ));
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_2_8,
+                &insert_finance_booking_request_2_8_result.unwrap()
+            ),
+            ""
+        );
 
         let saldo_error_text = "Can not insert before saldo";
         let booking_time_10: async_session::chrono::DateTime<Utc> =
@@ -858,7 +879,7 @@ mod test_accounting_handle {
             title: "f_b_r_1_3".into(),
             description: "description_f_b_r_1_3".into(),
         };
-        let account_1_running_saldo_amount = amount_1 - amount_2;
+        let account_1_running_saldo_amount = amount_1.abs_diff(amount_2);
         let account_1_running_saldo_type = AccountBalanceType::Credit;
         let account_2_running_saldo_amount = amount_1.abs_diff(amount_3);
         let account_2_running_saldo_type = AccountBalanceType::Debit;
@@ -910,18 +931,27 @@ mod test_accounting_handle {
             balance_account_3_result.unwrap_err()
         );
 
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_1_1,
-            &insert_finance_booking_request_1_1_result.unwrap()
-        ));
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_1_2,
-            &insert_finance_booking_request_1_2_result.unwrap()
-        ));
-        assert!(check_entry_response_match_entry_request(
-            &finance_booking_request_1_3,
-            &insert_finance_booking_request_1_3_result.unwrap()
-        ));
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_1_1,
+                &insert_finance_booking_request_1_1_result.unwrap()
+            ),
+            ""
+        );
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_1_2,
+                &insert_finance_booking_request_1_2_result.unwrap()
+            ),
+            ""
+        );
+        assert_eq!(
+            check_entry_response_match_entry_request(
+                &finance_booking_request_1_3,
+                &insert_finance_booking_request_1_3_result.unwrap()
+            ),
+            ""
+        );
 
         let balance_account_1_info = balance_account_1_result.unwrap();
         let balance_account_2_info = balance_account_2_result.unwrap();
@@ -987,10 +1017,11 @@ mod test_accounting_handle {
         return false;
     }
 
+    /* return empty string if all is fine, if not describe watch did not match (detailed messaged only added if required during debugging) */
     fn check_entry_response_match_entry_request(
         entry_request: &FinanceBookingRequest,
         entry_response: &FinanceBookingResult,
-    ) -> bool {
+    ) -> String {
         let credit_booking_type = if entry_request.is_saldo {
             BookingEntryType::SaldoCredit
         } else {
@@ -1004,16 +1035,26 @@ mod test_accounting_handle {
 
         if entry_request
             .is_saldo
-            .eq(&entry_response.journal_entry.is_saldo)
-            && entry_request
-                .is_simple_entry
-                .eq(&entry_response.journal_entry.is_saldo)
-            && entry_request
-                .amount
-                .eq(&entry_response.journal_entry.amount)
-            && entry_request
-                .booking_time
-                .eq(&entry_response.journal_entry.booking_time)
+            .ne(&entry_response.journal_entry.is_saldo)
+        {
+            return "is_saldo does not match".into();
+        }
+        if entry_request
+            .is_simple_entry
+            .ne(&entry_response.journal_entry.is_simple_entry)
+        {
+            return "is_simple_entry does not match".into();
+        }
+        if entry_request
+            .amount
+            .ne(&entry_response.journal_entry.amount)
+        {
+            return "amount does not match".into();
+        }
+
+        if entry_request
+            .booking_time
+            .eq(&entry_response.journal_entry.booking_time)
             && entry_request
                 .credit_finance_account_id
                 .eq(&entry_response.journal_entry.credit_finance_account_id)
@@ -1054,7 +1095,7 @@ mod test_accounting_handle {
                         .booking_time
                         .eq(&entry_response.debit_account_entry.booking_time)
                     && entry_request
-                        .credit_finance_account_id
+                        .debit_finance_account_id
                         .eq(&entry_response.debit_account_entry.finance_account_id)
                     && entry_request
                         .description
@@ -1067,11 +1108,11 @@ mod test_accounting_handle {
                         .id
                         .eq(&entry_response.debit_account_entry.finance_journal_diary_id)
                 {
-                    return true;
+                    return "".into();
                 }
             }
         }
-        return false;
+        return "does not match".into();
     }
 
     fn check_balance_account_info(

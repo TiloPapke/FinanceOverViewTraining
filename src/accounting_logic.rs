@@ -1,4 +1,5 @@
 use async_session::chrono::{DateTime, Utc};
+use futures::executor;
 use mongodb::bson::Uuid;
 
 use crate::{
@@ -34,7 +35,14 @@ impl<'a> FinanceBookingHandle<'a> {
         from: Option<DateTime<Utc>>,
         till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
-        unimplemented!("logic for finance_account_booking_entry_list is not implemented");
+        let temp_var_1 = executor::block_on(self.db_connector.finance_journal_entry_list(
+            &self.db_connection_settings,
+            &self.user_id,
+            from,
+            till,
+        ));
+
+        return temp_var_1;
     }
 
     pub fn list_account_booking_entries(
@@ -50,7 +58,13 @@ impl<'a> FinanceBookingHandle<'a> {
         &self,
         action_to_insert: &FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
-        unimplemented!("logic for finance_insert_booking_entry is not implemented");
+        let temp_var_0 = self.db_connector.finance_insert_booking_entry(
+            &self.db_connection_settings,
+            &self.user_id,
+            action_to_insert.clone(),
+        );
+        let temp_var_1 = executor::block_on(temp_var_0);
+        return temp_var_1;
     }
 
     pub fn calculate_balance_info(
