@@ -458,8 +458,8 @@ mod test_accounting_handle {
         let running_number_1 = get_max_running_number_from_journal_list(&full_listing_user_1);
         let running_number_2 = get_max_running_number_from_journal_list(&full_listing_user_1_2);
         assert!(
-            running_number_2 < running_number_1,
-            "new running is not greater than old running number"
+            running_number_2 > running_number_1,
+            "new running must be greater than old running number"
         );
 
         /* Test 3 Filtering options

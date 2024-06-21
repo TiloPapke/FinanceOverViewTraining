@@ -229,17 +229,20 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
             //let current_list = &mut data_obj3.account_per_user.get_mut(position).unwrap();
-            let booking_entries_list = &mut data_obj3
-                .data_per_user
-                .get_mut(position)
-                .unwrap()
-                .booking_entries_per_user;
-            let journal_entries_list = &mut data_obj3
-                .data_per_user
-                .get_mut(position)
-                .unwrap()
-                .journal_entries_per_user;
-            let new_running_number = 1;
+            let user_object = &mut data_obj3.data_per_user.get_mut(position).unwrap();
+            let booking_entries_list = &mut user_object.booking_entries_per_user;
+            let journal_entries_list = &mut user_object.journal_entries_per_user;
+
+            let max_current_running_number_option = journal_entries_list
+                .iter()
+                .max_by_key(|elem| elem.running_number);
+            let max_current_running_number = if max_current_running_number_option.is_some() {
+                max_current_running_number_option.unwrap().running_number
+            } else {
+                0
+            };
+            let new_running_number = max_current_running_number + 1;
+
             let new_journal_entry = FinanceJournalEntry {
                 id: Uuid::new(),
                 is_simple_entry: action_to_insert.is_simple_entry,
@@ -284,6 +287,8 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
             };
 
             journal_entries_list.push(new_journal_entry.clone());
+            booking_entries_list.push(new_credit_account_entry.clone());
+            booking_entries_list.push(new_debit_account_entry.clone());
 
             let return_object = FinanceBookingResult {
                 journal_entry: new_journal_entry,
