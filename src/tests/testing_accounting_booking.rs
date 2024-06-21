@@ -10,7 +10,8 @@ mod test_accounting_handle {
         database_handler_mongodb::DbConnectionSetting,
         datatypes::{
             AccountBalanceInfo, AccountBalanceType, BookingEntryType, FinanceAccount,
-            FinanceAccountType, FinanceBookingRequest, FinanceBookingResult, FinanceJournalEntry,
+            FinanceAccountBookingEntry, FinanceAccountType, FinanceBookingRequest,
+            FinanceBookingResult, FinanceJournalEntry,
         },
         tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
     };
@@ -520,7 +521,22 @@ mod test_accounting_handle {
             &finance_booking_request_1_1
         ));
 
-        /* Test 4 further invalid operations
+        /* Test 4 testing filtering for account listing
+         a) no filtering
+         b) just from
+         c) just till
+         d) using from and till
+        */
+        let finance_account_1_1_listing_1_result =
+            booking_handle_1.list_account_booking_entries(&finance_account_1_1.id, None, None);
+        assert!(
+            finance_account_1_1_listing_1_result.is_ok(),
+            "{}",
+            finance_account_1_1_listing_1_result.unwrap_err()
+        );
+        let finance_account_1_1_listing_1 = finance_account_1_1_listing_1_result.unwrap();
+
+        /* Test 5 further invalid operations
         trying to perform invalid operations
         a) using datetime filtering where till datetime is before from datetime
         b) insert a booking entry with a booking time already presents
@@ -1015,6 +1031,66 @@ mod test_accounting_handle {
                 && (list_to_check[position].title.eq(&element_to_check.title));
         }
         return false;
+    }
+
+    /* return empty string if all is fine, if not describe watch did not match (detailed messaged only added if required during debugging) */
+    fn check_account_listing_contains_booking_request(
+        list_to_check: &Vec<FinanceAccountBookingEntry>,
+        element_to_check: &FinanceBookingRequest,
+    ) -> String {
+        let position_option = list_to_check
+            .iter()
+            .position(|elem: &FinanceAccountBookingEntry| {
+                elem.booking_time.eq(&element_to_check.booking_time)
+                    && (elem.id.eq(&element_to_check.credit_finance_account_id)
+                        || elem.id.eq(&element_to_check.debit_finance_account_id))
+            });
+        if let Some(position) = position_option {
+            let booking_type_required = if list_to_check[position]
+                .id
+                .eq(&element_to_check.credit_finance_account_id)
+            {
+                if element_to_check.is_saldo {
+                    BookingEntryType::SaldoCredit
+                } else {
+                    BookingEntryType::Credit
+                }
+            } else {
+                if element_to_check.is_saldo {
+                    BookingEntryType::SaldoDebit
+                } else {
+                    BookingEntryType::Debit
+                }
+            };
+
+            if list_to_check[position].amount.ne(&element_to_check.amount) {
+                return "amount does not match".into();
+            }
+            if list_to_check[position]
+                .booking_time
+                .ne(&element_to_check.booking_time)
+            {
+                return "booking_time does not match".into();
+            }
+            if list_to_check[position]
+                .booking_type
+                .ne(&booking_type_required)
+            {
+                return "booking_type does not match".into();
+            }
+            if list_to_check[position]
+                .description
+                .ne(&element_to_check.description)
+            {
+                return "description does not match".into();
+            }
+            if list_to_check[position].title.ne(&element_to_check.title) {
+                return "title does not match".into();
+            }
+
+            return "".into();
+        }
+        return "no entry for booking time found".into();
     }
 
     /* return empty string if all is fine, if not describe watch did not match (detailed messaged only added if required during debugging) */
