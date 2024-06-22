@@ -18,8 +18,8 @@ pub trait DBFinanceAccountingFunctions {
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        from: Option<DateTime<Utc>>,
-        till: Option<DateTime<Utc>>,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String>;
 
     async fn finance_account_booking_entry_list(
@@ -27,8 +27,8 @@ pub trait DBFinanceAccountingFunctions {
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_id: &Uuid,
-        from: Option<DateTime<Utc>>,
-        till: Option<DateTime<Utc>>,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String>;
 
     async fn finance_insert_booking_entry(

@@ -518,7 +518,7 @@ mod test_accounting_handle {
         ));
         assert!(check_journal_listing_contains_booking_request(
             &full_listing_user_1_5,
-            &finance_booking_request_1_1
+            &finance_booking_request_1_2
         ));
 
         /* Test 4 testing filtering for account listing
@@ -859,14 +859,12 @@ mod test_accounting_handle {
             .to_string()
             .contains(saldo_error_text));
 
-            let finance_account_1_1_listing_6_result = booking_handle_1.list_account_booking_entries(
-                &finance_account_2_1.id,
-                None, None
-            );
-            assert!(
-                finance_account_1_1_listing_6_result.is_err(),
-                "operation should have failed"
-            );
+        let finance_account_1_1_listing_6_result =
+            booking_handle_1.list_account_booking_entries(&finance_account_2_1.id, None, None);
+        assert!(
+            finance_account_1_1_listing_6_result.is_err(),
+            "operation should have failed"
+        );
     }
 
     #[tokio::test]
@@ -1155,12 +1153,16 @@ mod test_accounting_handle {
             .iter()
             .position(|elem: &FinanceAccountBookingEntry| {
                 elem.booking_time.eq(&element_to_check.booking_time)
-                    && (elem.id.eq(&element_to_check.credit_finance_account_id)
-                        || elem.id.eq(&element_to_check.debit_finance_account_id))
+                    && (elem
+                        .finance_account_id
+                        .eq(&element_to_check.credit_finance_account_id)
+                        || elem
+                            .finance_account_id
+                            .eq(&element_to_check.debit_finance_account_id))
             });
         if let Some(position) = position_option {
             let booking_type_required = if list_to_check[position]
-                .id
+                .finance_account_id
                 .eq(&element_to_check.credit_finance_account_id)
             {
                 if element_to_check.is_saldo {

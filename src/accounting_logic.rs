@@ -32,14 +32,14 @@ impl<'a> FinanceBookingHandle<'a> {
 
     pub fn list_journal_entries(
         &self,
-        from: Option<DateTime<Utc>>,
-        till: Option<DateTime<Utc>>,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
         let temp_var_1 = executor::block_on(self.db_connector.finance_journal_entry_list(
             &self.db_connection_settings,
             &self.user_id,
-            from,
-            till,
+            booking_time_from,
+            booking_time_till,
         ));
 
         return temp_var_1;
@@ -48,10 +48,18 @@ impl<'a> FinanceBookingHandle<'a> {
     pub fn list_account_booking_entries(
         &self,
         finance_account_id: &Uuid,
-        from: Option<DateTime<Utc>>,
-        till: Option<DateTime<Utc>>,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        unimplemented!("logic for finance_account_booking_entry_list is not implemented");
+        let temp_var_1 = executor::block_on(self.db_connector.finance_account_booking_entry_list(
+            &self.db_connection_settings,
+            &self.user_id,
+            finance_account_id,
+            booking_time_from,
+            booking_time_till,
+        ));
+
+        return temp_var_1;
     }
 
     pub fn finance_insert_booking_entry(

@@ -175,10 +175,10 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDatabaseHandler {
     async fn finance_journal_entry_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        from: Option<DateTime<Utc>>,
-        till: Option<DateTime<Utc>>,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
         let data_obj = GLOBAL_IN_MEMORY_DATA.get();
         let data_obj2 = data_obj.unwrap();
@@ -194,7 +194,13 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
                 .unwrap()
                 .journal_entries_per_user;
 
-            let return_object = journal_entries_list.clone();
+            let mut return_object = journal_entries_list.clone();
+            if booking_time_from.is_some() {
+                return_object.retain(|elem| elem.booking_time.ge(&booking_time_from.unwrap()))
+            }
+            if booking_time_till.is_some() {
+                return_object.retain(|elem| elem.booking_time.le(&booking_time_till.unwrap()))
+            }
             drop(data_obj3);
             Ok(return_object)
         } else {
@@ -205,13 +211,40 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
 
     async fn finance_account_booking_entry_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_id: &Uuid,
-        from: Option<DateTime<Utc>>,
-        till: Option<DateTime<Utc>>,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        unimplemented!("trait is not implemented");
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            let booking_entries_list = &data_obj3
+                .data_per_user
+                .get(position)
+                .unwrap()
+                .booking_entries_per_user;
+
+            let mut return_object = booking_entries_list.clone();
+            return_object.retain(|elem| elem.finance_account_id.eq(&finance_account_id));
+            if booking_time_from.is_some() {
+                return_object.retain(|elem| elem.booking_time.ge(&booking_time_from.unwrap()))
+            }
+            if booking_time_till.is_some() {
+                return_object.retain(|elem| elem.booking_time.le(&booking_time_till.unwrap()))
+            }
+            drop(data_obj3);
+            Ok(return_object)
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
+        }
     }
 
     async fn finance_insert_booking_entry(
