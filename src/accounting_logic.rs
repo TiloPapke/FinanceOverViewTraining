@@ -114,6 +114,51 @@ impl<'a> FinanceBookingHandle<'a> {
             }
         }
 
+        let saldo_information_result =
+            executor::block_on(self.db_connector.finance_get_last_saldo_account_entries(
+                &self.db_connection_settings,
+                &self.user_id,
+                Some(vec![
+                    action_to_insert.credit_finance_account_id,
+                    action_to_insert.debit_finance_account_id,
+                ]),
+            ));
+        if saldo_information_result.is_err() {
+            return Err(format!(
+                "Error checking already existing entries: {}",
+                saldo_information_result.unwrap_err()
+            ));
+        }
+        let saldo_information = saldo_information_result.unwrap();
+        if saldo_information.contains_key(&action_to_insert.credit_finance_account_id) {
+            let credit_account_saldo_entry =
+                saldo_information.get(&action_to_insert.credit_finance_account_id);
+            if credit_account_saldo_entry.is_some() {
+                if action_to_insert
+                    .booking_time
+                    .le(&credit_account_saldo_entry.unwrap().booking_time)
+                {
+                    return Err(
+                        "trying to insert booking entry before last saldo of credit account".into(),
+                    );
+                }
+            }
+        }
+        if saldo_information.contains_key(&action_to_insert.debit_finance_account_id) {
+            let debit_account_saldo_entry =
+                saldo_information.get(&action_to_insert.debit_finance_account_id);
+            if debit_account_saldo_entry.is_some() {
+                if action_to_insert
+                    .booking_time
+                    .le(&debit_account_saldo_entry.unwrap().booking_time)
+                {
+                    return Err(
+                        "trying to insert booking entry before last saldo of debit account".into(),
+                    );
+                }
+            }
+        }
+
         let temp_var_0 = self.db_connector.finance_insert_booking_entry(
             &self.db_connection_settings,
             &self.user_id,

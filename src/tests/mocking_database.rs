@@ -266,6 +266,20 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
             let booking_entries_list = &mut user_object.booking_entries_per_user;
             let journal_entries_list = &mut user_object.journal_entries_per_user;
 
+            let account_list = &user_object.accounts_per_user;
+            let check_credit_account_check_option = account_list
+                .iter()
+                .position(|elem| elem.id.eq(&action_to_insert.credit_finance_account_id));
+            if check_credit_account_check_option.is_none() {
+                return Err("credit account type is not available".into());
+            }
+            let check_debit_account_check_option = account_list
+                .iter()
+                .position(|elem| elem.id.eq(&action_to_insert.debit_finance_account_id));
+            if check_debit_account_check_option.is_none() {
+                return Err("debit account type is not available".into());
+            }
+
             let max_current_running_number_option = journal_entries_list
                 .iter()
                 .max_by_key(|elem| elem.running_number);
@@ -340,7 +354,7 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        list_account_ids: Option<&Vec<Uuid>>,
+        list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
         unimplemented!("trait is not implemented");
     }

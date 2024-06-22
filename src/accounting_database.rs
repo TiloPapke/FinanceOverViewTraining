@@ -42,6 +42,6 @@ pub trait DBFinanceAccountingFunctions {
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        list_account_ids: Option<&Vec<Uuid>>,
+        list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String>;
 }
