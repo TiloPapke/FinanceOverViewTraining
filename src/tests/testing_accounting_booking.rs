@@ -529,16 +529,111 @@ mod test_accounting_handle {
         */
         let finance_account_1_1_listing_1_result =
             booking_handle_1.list_account_booking_entries(&finance_account_1_1.id, None, None);
+        let finance_account_1_1_listing_2_result = booking_handle_1.list_account_booking_entries(
+            &finance_account_1_1.id,
+            Some(check_date_time_1),
+            None,
+        );
+        let finance_account_1_1_listing_3_result = booking_handle_1.list_account_booking_entries(
+            &finance_account_1_1.id,
+            None,
+            Some(check_date_time_2),
+        );
+        let finance_account_1_1_listing_4_result = booking_handle_1.list_account_booking_entries(
+            &finance_account_1_1.id,
+            Some(check_date_time_1),
+            Some(check_date_time_2),
+        );
         assert!(
             finance_account_1_1_listing_1_result.is_ok(),
             "{}",
             finance_account_1_1_listing_1_result.unwrap_err()
         );
+        assert!(
+            finance_account_1_1_listing_2_result.is_ok(),
+            "{}",
+            finance_account_1_1_listing_2_result.unwrap_err()
+        );
+        assert!(
+            finance_account_1_1_listing_3_result.is_ok(),
+            "{}",
+            finance_account_1_1_listing_3_result.unwrap_err()
+        );
+        assert!(
+            finance_account_1_1_listing_4_result.is_ok(),
+            "{}",
+            finance_account_1_1_listing_4_result.unwrap_err()
+        );
         let finance_account_1_1_listing_1 = finance_account_1_1_listing_1_result.unwrap();
+        let finance_account_1_1_listing_2 = finance_account_1_1_listing_2_result.unwrap();
+        let finance_account_1_1_listing_3 = finance_account_1_1_listing_3_result.unwrap();
+        let finance_account_1_1_listing_4 = finance_account_1_1_listing_4_result.unwrap();
+        assert_eq!(finance_account_1_1_listing_1.len(), 3);
+        assert_eq!(finance_account_1_1_listing_2.len(), 2);
+        assert_eq!(finance_account_1_1_listing_3.len(), 2);
+        assert_eq!(finance_account_1_1_listing_4.len(), 1);
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_1,
+                &finance_booking_request_1_1
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_1,
+                &finance_booking_request_1_2
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_1,
+                &finance_booking_request_1_3
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_2,
+                &finance_booking_request_1_2
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_2,
+                &finance_booking_request_1_3
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_3,
+                &finance_booking_request_1_1
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_3,
+                &finance_booking_request_1_2
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &finance_account_1_1_listing_4,
+                &finance_booking_request_1_2
+            ),
+            ""
+        );
 
         /* Test 5 further invalid operations
         trying to perform invalid operations
         a) using datetime filtering where till datetime is before from datetime
+            a1) for journal entries
+            a2) for account entries
         b) insert a booking entry with a booking time already presents
             b1) for credit account
             b2) for debit account
@@ -550,6 +645,7 @@ mod test_accounting_handle {
             d2) using debit account before credit saldo
             d3) using credit account before debit saldo
             d4) using debit account before credit saldo
+        e) listing account entries from a different user
         */
         let full_listing_user_1_6_result =
             booking_handle_1.list_journal_entries(Some(check_date_time_2), Some(check_date_time_1));
@@ -557,7 +653,15 @@ mod test_accounting_handle {
             full_listing_user_1_6_result.is_err(),
             "filtering with date till before date from must fail"
         );
-
+        let finance_account_1_1_listing_5_result = booking_handle_1.list_account_booking_entries(
+            &finance_account_1_1.id,
+            Some(check_date_time_2),
+            Some(check_date_time_1),
+        );
+        assert!(
+            finance_account_1_1_listing_5_result.is_err(),
+            "filtering with date till before date from must fail"
+        );
         let finance_account_2_4 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_2_2.id,
@@ -754,6 +858,15 @@ mod test_accounting_handle {
             .unwrap_err()
             .to_string()
             .contains(saldo_error_text));
+
+            let finance_account_1_1_listing_6_result = booking_handle_1.list_account_booking_entries(
+                &finance_account_2_1.id,
+                None, None
+            );
+            assert!(
+                finance_account_1_1_listing_6_result.is_err(),
+                "operation should have failed"
+            );
     }
 
     #[tokio::test]
