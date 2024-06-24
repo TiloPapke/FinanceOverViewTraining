@@ -138,9 +138,7 @@ impl<'a> FinanceBookingHandle<'a> {
                     .booking_time
                     .le(&credit_account_saldo_entry.unwrap().booking_time)
                 {
-                    return Err(
-                        "trying to insert booking entry before last saldo of credit account".into(),
-                    );
+                    return Err("Can not insert before saldo of credit account".into());
                 }
             }
         }
@@ -152,9 +150,7 @@ impl<'a> FinanceBookingHandle<'a> {
                     .booking_time
                     .le(&debit_account_saldo_entry.unwrap().booking_time)
                 {
-                    return Err(
-                        "trying to insert booking entry before last saldo of debit account".into(),
-                    );
+                    return Err("Can not insert before saldo of debit account".into());
                 }
             }
         }

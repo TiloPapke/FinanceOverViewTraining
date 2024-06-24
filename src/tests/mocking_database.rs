@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::database_handler_mongodb::DbConnectionSetting;
+#[cfg(test)]
 use crate::datatypes::BookingEntryType;
 #[cfg(test)]
 use crate::datatypes::FinanceAccount;
@@ -225,11 +226,16 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
             .iter()
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
-            let booking_entries_list = &data_obj3
-                .data_per_user
-                .get(position)
-                .unwrap()
-                .booking_entries_per_user;
+            let user_object = &data_obj3.data_per_user.get(position).unwrap();
+            let booking_entries_list = &user_object.booking_entries_per_user;
+
+            let account_list = &user_object.accounts_per_user;
+            let account_position_option = account_list
+                .iter()
+                .position(|elem| elem.id.eq(&finance_account_id));
+            if account_position_option.is_none() {
+                return Err("account not avaiable".to_string());
+            }
 
             let mut return_object = booking_entries_list.clone();
             return_object.retain(|elem| elem.finance_account_id.eq(&finance_account_id));
@@ -352,11 +358,62 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
 
     async fn finance_get_last_saldo_account_entries(
         &self,
-        conncetion_settings: &DbConnectionSetting,
+        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
-        unimplemented!("trait is not implemented");
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            let booking_entries_list = &data_obj3
+                .data_per_user
+                .get(position)
+                .unwrap()
+                .booking_entries_per_user;
+
+            let mut return_object = HashMap::new();
+
+            let account_ids_to_check = match list_account_ids {
+                Some(id_list) => id_list,
+                None => booking_entries_list
+                    .iter()
+                    .map(|elem| elem.finance_account_id)
+                    .collect::<Vec<Uuid>>(),
+            };
+
+            for account_id_to_check in account_ids_to_check {
+                let saldo_entries_per_account: Vec<&FinanceAccountBookingEntry> =
+                    booking_entries_list
+                        .iter()
+                        .filter(|elem| {
+                            elem.finance_account_id.eq(&account_id_to_check)
+                                && (elem.booking_type.eq(&BookingEntryType::SaldoCredit)
+                                    || elem.booking_type.eq(&BookingEntryType::SaldoDebit))
+                        })
+                        .collect();
+
+                let oldest_saldo_entry_option = saldo_entries_per_account
+                    .iter()
+                    .max_by_key(|elem| elem.booking_time);
+                if oldest_saldo_entry_option.is_some() {
+                    return_object.insert(
+                        account_id_to_check,
+                        oldest_saldo_entry_option.unwrap().to_owned().clone(),
+                    );
+                }
+            }
+
+            drop(data_obj3);
+            Ok(return_object)
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
+        }
     }
 }
 
