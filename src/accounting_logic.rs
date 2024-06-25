@@ -6,8 +6,8 @@ use crate::{
     accounting_database::DBFinanceAccountingFunctions,
     database_handler_mongodb::DbConnectionSetting,
     datatypes::{
-        AccountBalanceInfo, FinanceAccountBookingEntry, FinanceBookingRequest,
-        FinanceBookingResult, FinanceJournalEntry,
+        AccountBalanceInfo, AccountBalanceType, BookingEntryType, FinanceAccountBookingEntry,
+        FinanceBookingRequest, FinanceBookingResult, FinanceJournalEntry,
     },
 };
 
@@ -168,6 +168,75 @@ impl<'a> FinanceBookingHandle<'a> {
         &self,
         accounts_to_calculate: &Vec<Uuid>,
     ) -> Result<Vec<AccountBalanceInfo>, String> {
-        unimplemented!("logic for calculate_balance_info is not implemented");
+        let mut return_object: Vec<AccountBalanceInfo> = Vec::new();
+        // at first get last saldo information per account
+
+        let saldo_information_list_result =
+            executor::block_on(self.db_connector.finance_get_last_saldo_account_entries(
+                &self.db_connection_settings,
+                &self.user_id,
+                Some(accounts_to_calculate.clone()),
+            ));
+
+        if saldo_information_list_result.is_err() {
+            return Err(format!(
+                "Error getting saldo information: {}",
+                saldo_information_list_result.unwrap_err()
+            ));
+        }
+
+        let saldo_information_list = saldo_information_list_result.unwrap();
+
+        // per account get entries since last saldo
+        for account_id in accounts_to_calculate {
+            let time_start_option;
+            if saldo_information_list.contains_key(account_id) {
+                let saldo_datetime = saldo_information_list.get(account_id).unwrap().booking_time;
+                time_start_option = Some(saldo_datetime);
+            } else {
+                time_start_option = None;
+            }
+            let booking_entries_result =
+                self.list_account_booking_entries(account_id, time_start_option, None);
+            if booking_entries_result.is_err() {
+                return Err(format!(
+                    "Error getting booking entries for account {}: {}",
+                    account_id,
+                    booking_entries_result.unwrap_err()
+                ));
+            }
+
+            let mut sum_credit_amount = 0;
+            let mut sum_debit_amount = 0;
+            let booking_entries = booking_entries_result.unwrap();
+            for booking_entry in booking_entries {
+                if booking_entry.booking_type.eq(&BookingEntryType::Credit)
+                    || booking_entry
+                        .booking_type
+                        .eq(&BookingEntryType::SaldoCredit)
+                {
+                    sum_credit_amount += booking_entry.amount;
+                } else {
+                    sum_debit_amount += booking_entry.amount;
+                }
+            }
+
+            let balance_amount = sum_credit_amount.abs_diff(sum_debit_amount);
+            let balance_type = if sum_credit_amount.gt(&sum_debit_amount) {
+                AccountBalanceType::Credit
+            } else {
+                AccountBalanceType::Debit
+            };
+            let balance_info = AccountBalanceInfo {
+                account_id: account_id.clone(),
+                amount: balance_amount,
+                balance_type,
+            };
+
+            return_object.push(balance_info);
+        }
+
+        let temp_var0 = Result::Ok(return_object);
+        return temp_var0;
     }
 }

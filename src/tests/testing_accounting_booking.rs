@@ -869,7 +869,6 @@ mod test_accounting_handle {
 
     #[tokio::test]
     async fn test_accounting_booking_calculate_with_mock() {
-        /* this test is "just" for testing the creation of entries, for validation of calculation please see other tests */
         let dummy_connection_settings = DbConnectionSetting {
             instance: "".into(),
             password: "".into(),
@@ -973,9 +972,7 @@ mod test_accounting_handle {
             .unwrap();
         let booking_time_2 = booking_time_1 + Duration::days(1);
         let booking_time_3 = booking_time_2 + Duration::days(1);
-        let booking_time_4 = booking_time_3 + Duration::days(1);
-        let booking_time_5 = booking_time_4 + Duration::days(1);
-        let booking_time_6 = booking_time_5 + Duration::days(1);
+
         let finance_booking_request_1_1 = FinanceBookingRequest {
             is_simple_entry: true,
             is_saldo: false,
@@ -1006,12 +1003,12 @@ mod test_accounting_handle {
             title: "f_b_r_1_3".into(),
             description: "description_f_b_r_1_3".into(),
         };
-        let account_1_running_saldo_amount = amount_1.abs_diff(amount_2);
-        let account_1_running_saldo_type = AccountBalanceType::Credit;
+        let account_1_running_saldo_amount = amount_1 + amount_2;
+        let account_1_running_saldo_type = AccountBalanceType::Debit;
         let account_2_running_saldo_amount = amount_1.abs_diff(amount_3);
         let account_2_running_saldo_type = AccountBalanceType::Debit;
         let account_3_running_saldo_amount = amount_2 + amount_3;
-        let account_3_running_saldo_type = AccountBalanceType::Debit;
+        let account_3_running_saldo_type = AccountBalanceType::Credit;
 
         let insert_finance_booking_request_1_1_result =
             booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_1);
@@ -1035,9 +1032,9 @@ mod test_accounting_handle {
             insert_finance_booking_request_1_3_result.unwrap_err()
         );
 
-        let balance_account_1_result =
+        let balance_account_1_result: Result<Vec<AccountBalanceInfo>, String> =
             booking_handle_1.calculate_balance_info(&vec![finance_account_1_1.id]);
-        let balance_account_2_result =
+        let balance_account_2_result: Result<Vec<AccountBalanceInfo>, String> =
             booking_handle_1.calculate_balance_info(&vec![finance_account_1_2.id]);
         let balance_account_3_result =
             booking_handle_1.calculate_balance_info(&vec![finance_account_1_3.id]);
@@ -1086,24 +1083,33 @@ mod test_accounting_handle {
         assert_eq!(balance_account_1_info.len(), 1);
         assert_eq!(balance_account_2_info.len(), 1);
         assert_eq!(balance_account_3_info.len(), 1);
-        assert!(check_balance_account_info(
-            &balance_account_1_info[0],
-            &finance_account_1_1.id,
-            &account_1_running_saldo_amount,
-            &account_1_running_saldo_type
-        ));
-        assert!(check_balance_account_info(
-            &balance_account_2_info[0],
-            &finance_account_1_2.id,
-            &account_2_running_saldo_amount,
-            &account_2_running_saldo_type
-        ));
-        assert!(check_balance_account_info(
-            &balance_account_3_info[0],
-            &finance_account_1_3.id,
-            &account_3_running_saldo_amount,
-            &account_3_running_saldo_type
-        ));
+        assert_eq!(
+            check_balance_account_info(
+                &balance_account_1_info[0],
+                &finance_account_1_1.id,
+                &account_1_running_saldo_amount,
+                &account_1_running_saldo_type
+            ),
+            ""
+        );
+        assert_eq!(
+            check_balance_account_info(
+                &balance_account_2_info[0],
+                &finance_account_1_2.id,
+                &account_2_running_saldo_amount,
+                &account_2_running_saldo_type
+            ),
+            ""
+        );
+        assert_eq!(
+            check_balance_account_info(
+                &balance_account_3_info[0],
+                &finance_account_1_3.id,
+                &account_3_running_saldo_amount,
+                &account_3_running_saldo_type
+            ),
+            ""
+        );
     }
 
     fn check_journal_listing_contains_booking_request(
@@ -1306,20 +1312,24 @@ mod test_accounting_handle {
         return "does not match".into();
     }
 
+    //return "" if all OK, otherwise return what mismatched
     fn check_balance_account_info(
         info_to_check: &AccountBalanceInfo,
         account_id: &Uuid,
         amount: &u128,
         balance_type: &AccountBalanceType,
-    ) -> bool {
-        if account_id.eq(&info_to_check.account_id)
-            && amount.eq(&info_to_check.amount)
-            && balance_type.eq(&info_to_check.balance_type)
-        {
-            return true;
-        } else {
-            return false;
+    ) -> String {
+        if account_id.ne(&info_to_check.account_id) {
+            return "Account ID missmatched".into();
         }
+        if amount.ne(&info_to_check.amount) {
+            return "Amount missmatched".into();
+        }
+        if balance_type.ne(&info_to_check.balance_type) {
+            return "Balance Type missmatched".into();
+        }
+
+        return "".into();
     }
     fn get_max_running_number_from_journal_list(journal_list: &Vec<FinanceJournalEntry>) -> u64 {
         let max_option = journal_list.iter().max_by_key(|elem| elem.running_number);
