@@ -1,6 +1,6 @@
 #[cfg(test)]
 
-mod test_accounting_handle {
+pub(crate) mod test_accounting_handle {
     use std::path::{Path, PathBuf};
 
     use mongodb::bson::Uuid;
@@ -45,14 +45,26 @@ mod test_accounting_handle {
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
-        let account_handle_1 =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
-        let mut account_handle_2 =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
-        let mut account_handle_3 =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
-        let mut account_handle_4 =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_4, &in_memory_db);
+        let account_handle_1 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_1,
+            &in_memory_db,
+        );
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_2,
+            &in_memory_db,
+        );
+        let mut account_handle_3 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_3,
+            &in_memory_db,
+        );
+        let mut account_handle_4 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_4,
+            &in_memory_db,
+        );
 
         //prepare data
         //empty list
@@ -249,11 +261,21 @@ mod test_accounting_handle {
         let user_id_3 = Uuid::new();
 
         let mut account_handle_1: FinanceAccountingConfigHandle =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
-        let mut account_handle_2 =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
-        let mut account_handle_3 =
-            FinanceAccountingConfigHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+            FinanceAccountingConfigHandle::new(
+                &dummy_connection_settings,
+                &user_id_1,
+                &in_memory_db,
+            );
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_2,
+            &in_memory_db,
+        );
+        let mut account_handle_3 = FinanceAccountingConfigHandle::new(
+            &dummy_connection_settings,
+            &user_id_3,
+            &in_memory_db,
+        );
 
         let entry_object1 =
             InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
@@ -615,9 +637,9 @@ mod test_accounting_handle {
     }
 
     //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-    static TEST_INIT: std::sync::Once = std::sync::Once::new();
+    pub static TEST_INIT: std::sync::Once = std::sync::Once::new();
 
-    fn init() {
+    pub fn init() {
         TEST_INIT.call_once(|| {
             //get configuration from ini file
             let working_dir = std::env::current_dir().unwrap();

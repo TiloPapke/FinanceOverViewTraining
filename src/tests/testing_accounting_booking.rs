@@ -7,13 +7,18 @@ mod test_accounting_handle {
     use crate::{
         accounting_config_logic::FinanceAccountingConfigHandle,
         accounting_logic::FinanceBookingHandle,
-        database_handler_mongodb::DbConnectionSetting,
+        database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
         datatypes::{
             AccountBalanceInfo, AccountBalanceType, BookingEntryType, FinanceAccount,
             FinanceAccountBookingEntry, FinanceAccountType, FinanceBookingRequest,
             FinanceBookingResult, FinanceJournalEntry,
         },
-        tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
+        password_handle::{validate_credentials, UserCredentials},
+        setting_struct::TestSettingStruct,
+        tests::{
+            mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
+            testing_accounting_config,
+        },
     };
 
     #[tokio::test]
@@ -1110,6 +1115,78 @@ mod test_accounting_handle {
             ),
             ""
         );
+    }
+
+    #[tokio::test]
+    async fn test_accounting_booking_with_mongodb() {
+        testing_accounting_config::test_accounting_handle::init();
+        //let local_setting: SettingStruct = SettingStruct::global().clone();
+        let test_setting = TestSettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(test_setting.backend_database_url),
+            user: String::from(test_setting.backend_database_user),
+            password: String::from(test_setting.backend_database_password),
+            instance: String::from(test_setting.backend_database_instance),
+        };
+        //
+        let credentials = UserCredentials {
+            username: test_setting.test_user_account_user_login,
+            password: test_setting.test_user_account_user_password.into(),
+        };
+
+        let validate_result = validate_credentials(&db_connection, &credentials).await;
+        if validate_result.is_err() {
+            panic!(
+                "test user {} not valid: {}",
+                credentials.username,
+                validate_result.unwrap_err()
+            );
+        }
+
+        let user_id_1 = validate_result.unwrap();
+        let mongo_db = DbHandlerMongoDB {};
+
+        let mut account_handle_1 =
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
+        let booking_handle_1 = FinanceBookingHandle::new(&db_connection, &user_id_1, &mongo_db);
+
+        /* Test 0, further requirements
+         * ensure that at least 4 finance accounts are available, at least 2 accounta with debit balance, at least 2 accounts with debit balance
+         * get balance information for each account
+         * get last booking entry for each account
+         */
+
+        /* Test 1, change balance
+        select 4 accounts A, B, C and D, so that a and B have a debit balance, C and D a credit balance
+        insert amount 1 with A to B
+        check balance information for all 4 accounts
+        insert amount 2 with B to C, so that balance type switches
+        check balance information for all 4 accounts
+        insert amount 3 with C to D
+        check balance information  for all 4 accounts
+        insert amount 4 with D to A, so that balance type switches
+        check balance information for all 4 accounts
+         */
+
+        /* Test 2 creating saldos
+        a) inserting a saldo with correct booking type but wrong amount
+        b) inserting a saldo with wrong booking type but correct amount
+        c) inserting a salo with correct booking type an correct amount
+        checks: a) and b) fail, c) succeeds
+        not required for now: calculation saldo will be implemented in version 0.0.5
+         */
+
+        /* Test 3 inserting bookings aftef and before saldo
+        a) after saldo => succeeds
+        b) before saldo => fails
+        addtional check: get balance info and compare
+        not required for now: calculation saldo will be implemented in version 0.0.5
+         */
+
+        /* Test 4 further invalid operation
+        a) credit and debit on same account
+        b) using a no existing accont
+        */
     }
 
     fn check_journal_listing_contains_booking_request(
