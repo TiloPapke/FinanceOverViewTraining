@@ -1,6 +1,8 @@
 #[cfg(test)]
 
 mod test_accounting_handle {
+    use std::collections::HashMap;
+
     use async_session::chrono::{Datelike, Duration, TimeZone, Utc};
     use mongodb::bson::Uuid;
 
@@ -1155,9 +1157,75 @@ mod test_accounting_handle {
          * get balance information for each account
          * get last booking entry for each account
          */
+        let accounts_per_user_result = account_handle_1.finance_account_list();
+        assert!(
+            accounts_per_user_result.is_ok(),
+            "{}",
+            accounts_per_user_result.unwrap_err()
+        );
+        let accounts_per_user = accounts_per_user_result.unwrap();
+
+        let balance_info_all_accounts_result = booking_handle_1
+            .calculate_balance_info(&accounts_per_user.iter().map(|elem| elem.id).collect());
+        assert!(
+            balance_info_all_accounts_result.is_ok(),
+            "{}",
+            balance_info_all_accounts_result.unwrap_err()
+        );
+        let balance_info = balance_info_all_accounts_result.unwrap();
+
+        let debit_accounts_info: Vec<&AccountBalanceInfo> = balance_info
+            .iter()
+            .filter(|elem| elem.balance_type.eq(&AccountBalanceType::Debit))
+            .collect();
+        let credit_accounts_info: Vec<&AccountBalanceInfo> = balance_info
+            .iter()
+            .filter(|elem| elem.balance_type.eq(&AccountBalanceType::Credit))
+            .collect();
+        assert!(
+            debit_accounts_info.len() > 1,
+            "Not enought accounts with debit balance"
+        );
+        assert!(
+            credit_accounts_info.len() > 1,
+            "Not enought accounts with credit balance"
+        );
+
+        let test_account_a_1_balance_info = debit_accounts_info[0];
+        let test_account_a_2_balance_info = debit_accounts_info[1];
+        let test_account_b_1_balance_info = credit_accounts_info[0];
+        let test_account_b_2_balance_info = credit_accounts_info[1];
+        let list_test_accounts_ids = vec![
+            test_account_a_1_balance_info.account_id,
+            test_account_a_2_balance_info.account_id,
+            test_account_b_1_balance_info.account_id,
+            test_account_b_1_balance_info.account_id,
+        ];
+        let hashmap_last_booking_entries_per_account = HashMap::new();
+        let max_booking_time = Utc
+            .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
+            .unwrap();
+        for account_id in list_test_accounts_ids {
+            let account_entries_result =
+                booking_handle_1.list_account_booking_entries(&account_id, None, None);
+            assert!(
+                account_entries_result.is_ok(),
+                "{}",
+                account_entries_result.unwrap_err()
+            );
+            let account_entries = account_entries_result.unwrap();
+            let latest_pos_option = account_entries.iter().max_by_key(|elem| elem.booking_time);
+            if latest_pos_option.is_some() {
+                let latest_pos = latest_pos_option.unwrap();
+                hashmap_last_booking_entries_per_account.insert(account_id, latest_pos.clone());
+                if latest_pos.booking_time.gt(&max_booking_time) {
+                    max_booking_time = latest_pos.booking_time;
+                }
+            }
+        }
 
         /* Test 1, change balance
-        select 4 accounts A, B, C and D, so that a and B have a debit balance, C and D a credit balance
+        select 4 accounts A, B, C and D, so that a and B have a debit balance, C and D a credit balance (see above)
         insert amount 1 with A to B
         check balance information for all 4 accounts
         insert amount 2 with B to C, so that balance type switches
