@@ -54,7 +54,9 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         user_id: &Uuid,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
-    ) -> Result<Vec<FinanceJournalEntry>, String>;
+    ) -> Result<Vec<FinanceJournalEntry>, String> {
+        panic!("method finance_journal_entry_list for DbHandlerMongoDB not implemented");
+    }
 
     async fn finance_account_booking_entry_list(
         &self,
@@ -63,19 +65,27 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         finance_account_id: &Uuid,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
-    ) -> Result<Vec<FinanceAccountBookingEntry>, String>;
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        panic!("method finance_account_booking_entry_list for DbHandlerMongoDB not implemented");
+    }
 
     async fn finance_insert_booking_entry(
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
-    ) -> Result<FinanceBookingResult, String>;
+    ) -> Result<FinanceBookingResult, String> {
+        panic!("method finance_insert_booking_entry for DbHandlerMongoDB not implemented");
+    }
 
     async fn finance_get_last_saldo_account_entries(
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         list_account_ids: Option<Vec<Uuid>>,
-    ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String>;
+    ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
+        panic!(
+            "method finance_get_last_saldo_account_entries for DbHandlerMongoDB not implemented"
+        );
+    }
 }

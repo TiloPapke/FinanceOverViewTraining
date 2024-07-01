@@ -1148,7 +1148,7 @@ mod test_accounting_handle {
         let user_id_1 = validate_result.unwrap();
         let mongo_db = DbHandlerMongoDB {};
 
-        let mut account_handle_1 =
+        let account_handle_1 =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
         let booking_handle_1 = FinanceBookingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
@@ -1191,21 +1191,21 @@ mod test_accounting_handle {
             "Not enought accounts with credit balance"
         );
 
-        let test_account_a_1_balance_info = debit_accounts_info[0];
-        let test_account_a_2_balance_info = debit_accounts_info[1];
-        let test_account_b_1_balance_info = credit_accounts_info[0];
-        let test_account_b_2_balance_info = credit_accounts_info[1];
+        let test_account_a_balance_info = debit_accounts_info[0];
+        let test_account_b_balance_info = debit_accounts_info[1];
+        let test_account_c_balance_info = credit_accounts_info[0];
+        let test_account_d_balance_info = credit_accounts_info[1];
         let list_test_accounts_ids = vec![
-            test_account_a_1_balance_info.account_id,
-            test_account_a_2_balance_info.account_id,
-            test_account_b_1_balance_info.account_id,
-            test_account_b_1_balance_info.account_id,
+            test_account_a_balance_info.account_id,
+            test_account_b_balance_info.account_id,
+            test_account_c_balance_info.account_id,
+            test_account_d_balance_info.account_id,
         ];
-        let hashmap_last_booking_entries_per_account = HashMap::new();
-        let max_booking_time = Utc
+        let mut hashmap_last_booking_entries_per_account = HashMap::new();
+        let mut max_booking_time = Utc
             .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
             .unwrap();
-        for account_id in list_test_accounts_ids {
+        for account_id in list_test_accounts_ids.iter() {
             let account_entries_result =
                 booking_handle_1.list_account_booking_entries(&account_id, None, None);
             assert!(
@@ -1224,18 +1224,217 @@ mod test_accounting_handle {
             }
         }
 
-        /* Test 1, change balance
+        /* Test 1, change balance, credit to debit
         select 4 accounts A, B, C and D, so that a and B have a debit balance, C and D a credit balance (see above)
         insert amount 1 with A to B
         check balance information for all 4 accounts
-        insert amount 2 with B to C, so that balance type switches
+        insert amount 2 with C to D
         check balance information for all 4 accounts
-        insert amount 3 with C to D
+        insert amount 3 with B to C, so that balance type switches
         check balance information  for all 4 accounts
-        insert amount 4 with D to A, so that balance type switches
+        insert amount 4 with A to D, so that balance type switches
         check balance information for all 4 accounts
          */
+        let test_run_id = Uuid::new().to_string();
+        let booking_time_1 = max_booking_time + Duration::hours(1);
+        let amount_a_b = std::cmp::min(
+            test_account_a_balance_info.amount,
+            test_account_b_balance_info.amount,
+        ) / 2;
+        let insert_request_a_b = FinanceBookingRequest {
+            amount: amount_a_b,
+            booking_time: booking_time_1,
+            credit_finance_account_id: test_account_a_balance_info.account_id,
+            debit_finance_account_id: test_account_b_balance_info.account_id,
+            description: format!("A to B: {}, test run {}", amount_a_b, test_run_id),
+            title: "A to B".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_a_b_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_a_b);
+        assert!(
+            insert_request_a_b_result.is_ok(),
+            "{}",
+            insert_request_a_b_result.unwrap_err()
+        );
+        let balance_info_1_accounts_result =
+            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        assert!(
+            balance_info_1_accounts_result.is_ok(),
+            "{}",
+            balance_info_1_accounts_result.unwrap_err()
+        );
+        let test_account_a_balance_info_1 = AccountBalanceInfo {
+            account_id: test_account_a_balance_info.account_id,
+            amount: test_account_a_balance_info.amount.abs_diff(amount_a_b),
+            balance_type: test_account_a_balance_info.balance_type.clone(),
+        };
+        let test_account_b_balance_info_1 = AccountBalanceInfo {
+            account_id: test_account_b_balance_info.account_id,
+            amount: test_account_b_balance_info.amount + amount_a_b,
+            balance_type: test_account_b_balance_info.balance_type.clone(),
+        };
+        let balance_check_1_result = check_multiple_balance_info(
+            &balance_info_1_accounts_result.unwrap(),
+            &vec![
+                &test_account_a_balance_info_1,
+                &test_account_b_balance_info_1,
+                test_account_c_balance_info,
+                test_account_d_balance_info,
+            ],
+        );
+        assert_eq!(balance_check_1_result, "");
 
+        let booking_time_2 = booking_time_1 + Duration::hours(1);
+        let amount_c_d = std::cmp::min(
+            test_account_c_balance_info.amount,
+            test_account_d_balance_info.amount,
+        ) / 2;
+        let insert_request_c_d = FinanceBookingRequest {
+            amount: amount_c_d,
+            booking_time: booking_time_2,
+            credit_finance_account_id: test_account_c_balance_info.account_id,
+            debit_finance_account_id: test_account_d_balance_info.account_id,
+            description: format!("C to D: {}, test run {}", amount_c_d, test_run_id),
+            title: "C to D".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_c_d_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_c_d);
+        assert!(
+            insert_request_c_d_result.is_ok(),
+            "{}",
+            insert_request_c_d_result.unwrap_err()
+        );
+        let balance_info_2_accounts_result =
+            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        assert!(
+            balance_info_2_accounts_result.is_ok(),
+            "{}",
+            balance_info_2_accounts_result.unwrap_err()
+        );
+        let test_account_c_balance_info_2 = AccountBalanceInfo {
+            account_id: test_account_c_balance_info.account_id,
+            amount: test_account_c_balance_info.amount + amount_c_d,
+            balance_type: test_account_c_balance_info.balance_type.clone(),
+        };
+        let test_account_d_balance_info_2 = AccountBalanceInfo {
+            account_id: test_account_d_balance_info.account_id,
+            amount: test_account_d_balance_info.amount.abs_diff(amount_c_d),
+            balance_type: test_account_d_balance_info.balance_type.clone(),
+        };
+        let balance_check_2_result = check_multiple_balance_info(
+            &balance_info_2_accounts_result.unwrap(),
+            &vec![
+                &test_account_a_balance_info_1,
+                &test_account_b_balance_info_1,
+                &test_account_c_balance_info_2,
+                &test_account_d_balance_info_2,
+            ],
+        );
+        assert_eq!(balance_check_2_result, "");
+
+        let booking_time_3 = booking_time_2 + Duration::hours(1);
+        let amount_b_c = std::cmp::max(
+            test_account_b_balance_info_1.amount,
+            test_account_c_balance_info_2.amount,
+        ) + 17;
+        let insert_request_b_c = FinanceBookingRequest {
+            amount: amount_b_c,
+            booking_time: booking_time_3,
+            credit_finance_account_id: test_account_b_balance_info.account_id,
+            debit_finance_account_id: test_account_c_balance_info.account_id,
+            description: format!("B to C: {}, test run {}", amount_b_c, test_run_id),
+            title: "B to C".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_b_c_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_b_c);
+        assert!(
+            insert_request_b_c_result.is_ok(),
+            "{}",
+            insert_request_b_c_result.unwrap_err()
+        );
+        let balance_info_3_accounts_result =
+            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        assert!(
+            balance_info_3_accounts_result.is_ok(),
+            "{}",
+            balance_info_3_accounts_result.unwrap_err()
+        );
+        let test_account_b_balance_info_3 = AccountBalanceInfo {
+            account_id: test_account_b_balance_info.account_id,
+            amount: test_account_b_balance_info_1.amount.abs_diff(amount_b_c),
+            balance_type: AccountBalanceType::Credit,
+        };
+        let test_account_c_balance_info_3 = AccountBalanceInfo {
+            account_id: test_account_c_balance_info.account_id,
+            amount: test_account_c_balance_info_2.amount.abs_diff(amount_b_c),
+            balance_type: AccountBalanceType::Debit,
+        };
+        let balance_check_3_result = check_multiple_balance_info(
+            &balance_info_3_accounts_result.unwrap(),
+            &vec![
+                &test_account_a_balance_info_1,
+                &test_account_b_balance_info_3,
+                &test_account_c_balance_info_3,
+                &test_account_d_balance_info_2,
+            ],
+        );
+        assert_eq!(balance_check_3_result, "");
+
+        let booking_time_4 = booking_time_3 + Duration::hours(1);
+        let amount_a_d = std::cmp::max(
+            test_account_a_balance_info_1.amount,
+            test_account_d_balance_info_2.amount,
+        ) + 23;
+        let insert_request_a_d = FinanceBookingRequest {
+            amount: amount_a_d,
+            booking_time: booking_time_4,
+            credit_finance_account_id: test_account_b_balance_info.account_id,
+            debit_finance_account_id: test_account_c_balance_info.account_id,
+            description: format!("A to D: {}, test run {}", amount_a_d, test_run_id),
+            title: "A to D".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_a_d_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_a_d);
+        assert!(
+            insert_request_a_d_result.is_ok(),
+            "{}",
+            insert_request_a_d_result.unwrap_err()
+        );
+        let balance_info_4_accounts_result =
+            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        assert!(
+            balance_info_4_accounts_result.is_ok(),
+            "{}",
+            balance_info_4_accounts_result.unwrap_err()
+        );
+        let test_account_a_balance_info_4 = AccountBalanceInfo {
+            account_id: test_account_a_balance_info.account_id,
+            amount: test_account_a_balance_info_1.amount.abs_diff(amount_a_d),
+            balance_type: AccountBalanceType::Credit,
+        };
+        let test_account_d_balance_info_4 = AccountBalanceInfo {
+            account_id: test_account_d_balance_info.account_id,
+            amount: test_account_d_balance_info_2.amount.abs_diff(amount_a_d),
+            balance_type: AccountBalanceType::Debit,
+        };
+        let balance_check_4_result = check_multiple_balance_info(
+            &balance_info_4_accounts_result.unwrap(),
+            &vec![
+                &test_account_a_balance_info_4,
+                &test_account_b_balance_info_3,
+                &test_account_c_balance_info_3,
+                &test_account_d_balance_info_4,
+            ],
+        );
+        assert_eq!(balance_check_4_result, "");
         /* Test 2 creating saldos
         a) inserting a saldo with correct booking type but wrong amount
         b) inserting a saldo with wrong booking type but correct amount
@@ -1255,6 +1454,78 @@ mod test_accounting_handle {
         a) credit and debit on same account
         b) using a no existing accont
         */
+
+        let booking_time_5 = booking_time_4 + Duration::hours(1);
+        let amount_a_a = std::cmp::max(
+            test_account_a_balance_info_1.amount,
+            test_account_d_balance_info_2.amount,
+        ) + 23;
+        let insert_request_a_a = FinanceBookingRequest {
+            amount: amount_a_a,
+            booking_time: booking_time_5,
+            credit_finance_account_id: test_account_a_balance_info.account_id,
+            debit_finance_account_id: test_account_a_balance_info.account_id,
+            description: format!("A to A: {}, test run {}", amount_a_a, test_run_id),
+            title: "A to A".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_a_a_response_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_a_a);
+        assert!(
+            insert_request_a_a_response_result.is_err(),
+            "using same account for credit and debit muss fail"
+        );
+
+        let invalid_account = FinanceAccount {
+            id: Uuid::new(),
+            finance_account_type_id: accounts_per_user[0].finance_account_type_id,
+            description: format!("description for invalid account, test run {}", test_run_id),
+            title: "invalid account".into(),
+        };
+        let booking_time_6 = booking_time_5 + Duration::hours(1);
+        let amount_a_i = std::cmp::max(
+            test_account_a_balance_info_1.amount,
+            test_account_d_balance_info_2.amount,
+        ) + 23;
+        let insert_request_a_i = FinanceBookingRequest {
+            amount: amount_a_i,
+            booking_time: booking_time_6,
+            credit_finance_account_id: test_account_a_balance_info.account_id,
+            debit_finance_account_id: invalid_account.id,
+            description: format!("A to I: {}, test run {}", amount_a_i, test_run_id),
+            title: "A to I".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_a_i_response_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_a_i);
+        assert!(
+            insert_request_a_i_response_result.is_err(),
+            "using invalid account for debit muss fail"
+        );
+
+        let booking_time_7 = booking_time_6 + Duration::hours(1);
+        let amount_i_a = std::cmp::max(
+            test_account_a_balance_info_1.amount,
+            test_account_d_balance_info_2.amount,
+        ) + 23;
+        let insert_request_I_A = FinanceBookingRequest {
+            amount: amount_i_a,
+            booking_time: booking_time_7,
+            credit_finance_account_id: invalid_account.id,
+            debit_finance_account_id: test_account_a_balance_info.account_id,
+            description: format!("I to A: {}, test run {}", amount_i_a, test_run_id),
+            title: "I to A".into(),
+            is_saldo: false,
+            is_simple_entry: true,
+        };
+        let insert_request_i_a_response_result =
+            booking_handle_1.finance_insert_booking_entry(&insert_request_I_A);
+        assert!(
+            insert_request_i_a_response_result.is_err(),
+            "using invalid account for credit muss fail"
+        );
     }
 
     fn check_journal_listing_contains_booking_request(
@@ -1476,6 +1747,54 @@ mod test_accounting_handle {
 
         return "".into();
     }
+
+    fn check_multiple_balance_info(
+        balance_info_list_to_check: &Vec<AccountBalanceInfo>,
+        balance_info_list_expected: &Vec<&AccountBalanceInfo>,
+    ) -> String {
+        if balance_info_list_to_check
+            .len()
+            .ne(&balance_info_list_expected.len())
+        {
+            return format!(
+                "list sizse does not match: {} instead of {}",
+                balance_info_list_to_check.len(),
+                balance_info_list_expected.len()
+            );
+        }
+        for balance_to_check in balance_info_list_to_check {
+            let position_option = balance_info_list_expected
+                .iter()
+                .position(|elem| elem.account_id.eq(&balance_to_check.account_id));
+            if position_option.is_none() {
+                return format!(
+                    "Could not find expected info for account {}",
+                    balance_to_check.account_id
+                );
+            }
+            let balance_expected = balance_info_list_expected[position_option.unwrap()];
+            if balance_to_check.amount.ne(&balance_expected.amount) {
+                return format!(
+                    "amount for account {} does not match: {} instead of {}",
+                    balance_to_check.account_id, balance_to_check.amount, balance_expected.amount
+                );
+            }
+            if balance_to_check
+                .balance_type
+                .ne(&balance_expected.balance_type)
+            {
+                return format!(
+                    "balance type for account {} does not match: {} instead of {}",
+                    balance_to_check.account_id,
+                    balance_to_check.balance_type,
+                    balance_expected.balance_type
+                );
+            }
+        }
+
+        return "".into();
+    }
+
     fn get_max_running_number_from_journal_list(journal_list: &Vec<FinanceJournalEntry>) -> u64 {
         let max_option = journal_list.iter().max_by_key(|elem| elem.running_number);
         if max_option.is_none() {

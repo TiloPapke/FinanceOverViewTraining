@@ -424,7 +424,7 @@ pub(crate) mod test_accounting_handle {
         let list_2_1 = list_2_1_result.unwrap();
         assert!(
             list_2_1.len().eq(&(list_length_base_2 + 1)),
-            "return list length does not math"
+            "return list length does not match"
         );
         assert!(account_list_contains_element(
             &list_2_1,
@@ -455,7 +455,7 @@ pub(crate) mod test_accounting_handle {
         let list_update = list_update_result.unwrap();
         assert!(
             list3.len().eq(&list_update.len()),
-            "return list length does not math"
+            "return list length does not match"
         );
 
         assert!(account_list_contains_element(

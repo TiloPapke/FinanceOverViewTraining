@@ -96,10 +96,26 @@ pub struct FinanceBookingResult {
     pub credit_account_entry: FinanceAccountBookingEntry,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum AccountBalanceType {
     Credit,
     Debit,
+}
+
+impl std::fmt::Display for AccountBalanceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.eq(&AccountBalanceType::Credit) {
+            write!(f, "credit balance");
+            Ok(())
+        } else {
+            if self.eq(&AccountBalanceType::Debit) {
+                write!(f, "debit balance");
+                Ok(())
+            } else {
+                Err(std::fmt::Error)
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
