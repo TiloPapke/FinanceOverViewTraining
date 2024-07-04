@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_session::chrono::{DateTime, Utc};
 use futures::executor;
 use mongodb::bson::Uuid;
@@ -115,14 +117,10 @@ impl<'a> FinanceBookingHandle<'a> {
         }
 
         let saldo_information_result =
-            executor::block_on(self.db_connector.finance_get_last_saldo_account_entries(
-                &self.db_connection_settings,
-                &self.user_id,
-                Some(vec![
-                    action_to_insert.credit_finance_account_id,
-                    action_to_insert.debit_finance_account_id,
-                ]),
-            ));
+            executor::block_on(self.finance_get_last_saldo_account_entries(Some(vec![
+                action_to_insert.credit_finance_account_id,
+                action_to_insert.debit_finance_account_id,
+            ])));
         if saldo_information_result.is_err() {
             return Err(format!(
                 "Error checking already existing entries: {}",
@@ -171,12 +169,9 @@ impl<'a> FinanceBookingHandle<'a> {
         let mut return_object: Vec<AccountBalanceInfo> = Vec::new();
         // at first get last saldo information per account
 
-        let saldo_information_list_result =
-            executor::block_on(self.db_connector.finance_get_last_saldo_account_entries(
-                &self.db_connection_settings,
-                &self.user_id,
-                Some(accounts_to_calculate.clone()),
-            ));
+        let saldo_information_list_result = executor::block_on(
+            self.finance_get_last_saldo_account_entries(Some(accounts_to_calculate.clone())),
+        );
 
         if saldo_information_list_result.is_err() {
             return Err(format!(
@@ -238,5 +233,20 @@ impl<'a> FinanceBookingHandle<'a> {
 
         let temp_var0 = Result::Ok(return_object);
         return temp_var0;
+    }
+
+    pub async fn finance_get_last_saldo_account_entries(
+        &self,
+        list_account_ids: Option<Vec<Uuid>>,
+    ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
+        let value = self
+            .db_connector
+            .finance_get_last_saldo_account_entries(
+                &self.db_connection_settings,
+                &self.user_id,
+                list_account_ids,
+            )
+            .await;
+        return value;
     }
 }

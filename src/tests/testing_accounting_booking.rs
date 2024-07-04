@@ -1,5 +1,7 @@
 #[cfg(test)]
+pub static GLOBAL_PREPARED_MONGODB: std::sync::Once = std::sync::Once::new();
 
+#[cfg(test)]
 mod test_accounting_handle {
     use std::collections::HashMap;
 
@@ -1152,6 +1154,8 @@ mod test_accounting_handle {
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
         let booking_handle_1 = FinanceBookingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
+        let _ = prepare_mongo_db_for_tests(&account_handle_1, &booking_handle_1);
+
         /* Test 0, further requirements
          * ensure that at least 4 finance accounts are available, at least 2 accounta with debit balance, at least 2 accounts with debit balance
          * get balance information for each account
@@ -1165,9 +1169,9 @@ mod test_accounting_handle {
         );
         let accounts_per_user = accounts_per_user_result.unwrap();
 
-        let account_ids:Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
-        let balance_info_all_accounts_result = booking_handle_1
-            .calculate_balance_info(&account_ids);
+        let account_ids: Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
+        let balance_info_all_accounts_result =
+            booking_handle_1.calculate_balance_info(&account_ids);
         assert!(
             balance_info_all_accounts_result.is_ok(),
             "{}",
@@ -1802,5 +1806,101 @@ mod test_accounting_handle {
             return 0;
         }
         return max_option.unwrap().running_number;
+    }
+
+    fn prepare_mongo_db_for_tests(
+        account_handle_1: &FinanceAccountingConfigHandle<'_>,
+        booking_handle_1: &FinanceBookingHandle,
+    ) -> bool {
+        super::GLOBAL_PREPARED_MONGODB.call_once(|| {
+            let accounts_per_user_result = account_handle_1.finance_account_list();
+            assert!(
+                accounts_per_user_result.is_ok(),
+                "{}",
+                accounts_per_user_result.unwrap_err()
+            );
+            let accounts_per_user = accounts_per_user_result.unwrap();
+
+            let account_ids: Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
+            let balance_info_all_accounts_result =
+                booking_handle_1.calculate_balance_info(&account_ids);
+            assert!(
+                balance_info_all_accounts_result.is_ok(),
+                "{}",
+                balance_info_all_accounts_result.unwrap_err()
+            );
+            let balance_info = balance_info_all_accounts_result.unwrap();
+
+            let debit_accounts_info: Vec<&AccountBalanceInfo> = balance_info
+                .iter()
+                .filter(|elem| elem.balance_type.eq(&AccountBalanceType::Debit))
+                .collect();
+            let credit_accounts_info: Vec<&AccountBalanceInfo> = balance_info
+                .iter()
+                .filter(|elem| elem.balance_type.eq(&AccountBalanceType::Credit))
+                .collect();
+
+            if credit_accounts_info.len() < 2 {
+                if debit_accounts_info.len() > 3 {
+                    let mut credit_counter = credit_accounts_info.len();
+                    while credit_counter < 2 {
+                        let index_1 = credit_counter * 2;
+                        let index_2 = credit_counter * 2 + 1;
+                        let amount_mod = debit_accounts_info[index_1].amount + 1;
+                        let saldo_information_list_result = futures::executor::block_on(
+                            booking_handle_1.finance_get_last_saldo_account_entries(Some(vec![
+                                debit_accounts_info[index_1].account_id,
+                                debit_accounts_info[index_2].account_id,
+                            ])),
+                        );
+                        if saldo_information_list_result.is_err() {
+                            panic!(
+                                "Could not prepare MONGODB: {}",
+                                saldo_information_list_result.unwrap_err()
+                            )
+                        }
+                        let saldo_information_list: Vec<FinanceAccountBookingEntry> =
+                            saldo_information_list_result
+                                .unwrap()
+                                .into_values()
+                                .collect();
+                        let update_time = match saldo_information_list.len() {
+                            0 => Utc
+                                .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
+                                .unwrap(),
+                            1 => saldo_information_list[0].booking_time,
+                            _ => std::cmp::max(
+                                saldo_information_list[0].booking_time,
+                                saldo_information_list[1].booking_time,
+                            ),
+                        } + Duration::hours(1);
+                        let insert_request_mod = FinanceBookingRequest {
+                            amount: amount_mod,
+                            booking_time: update_time,
+                            credit_finance_account_id: debit_accounts_info[index_1].account_id,
+                            debit_finance_account_id: debit_accounts_info[index_2].account_id,
+                            description: format!("preapring with amount {}", amount_mod),
+                            title: "Prepare".into(),
+                            is_saldo: false,
+                            is_simple_entry: true,
+                        };
+                        let insert_request_mod_response_result =
+                            booking_handle_1.finance_insert_booking_entry(&insert_request_mod);
+
+                        if insert_request_mod_response_result.is_err() {
+                            panic!(
+                                "Could not prepare MONGODB: {}",
+                                insert_request_mod_response_result.unwrap_err()
+                            )
+                        }
+
+                        credit_counter += 1;
+                    }
+                } else {
+                    panic!("Could not prepare for tests: not enough credit accounts")
+                }
+            }
+        });
+        return true;
     }
 }
