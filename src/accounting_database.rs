@@ -11,12 +11,13 @@ use mongodb::{
 };
 
 use crate::{
+    accounting_config_logic::FinanceAccountingConfigHandle,
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     datatypes::{
-        BookingEntryType, FinanceAccount, FinanceAccountBookingEntry, FinanceBookingRequest,
-        FinanceBookingResult, FinanceJournalEntry,
-    },
+        BookingEntryType, FinanceAccountBookingEntry, FinanceBookingRequest, FinanceBookingResult,
+        FinanceJournalEntry,
+    }, mdb_convert_tools::MdbConvertTools,
 };
 
 #[async_trait(?Send)]
@@ -73,7 +74,139 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        panic!("method finance_account_booking_entry_list for DbHandlerMongoDB not implemented");
+              // Get a handle to the deployment.
+              let client_create_result =
+              DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+          if client_create_result.is_err() {
+              let client_err = &client_create_result.unwrap_err();
+              warn!(target:"app::FinanceOverView","{}",client_err);
+              return Err(client_err.to_string());
+          }
+          let client = client_create_result.unwrap();
+  
+          let db_instance = client.database(&conncetion_settings.instance);
+
+        let accounting_handle =
+            FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
+        let account_list_result = accounting_handle.finance_account_list_async().await;
+        if account_list_result.is_err() {
+            return Err(format!(
+                "Error retriving account list: {}",
+                account_list_result.unwrap_err()
+            ));
+        }
+
+        let account_list = account_list_result.unwrap();
+        let account_position_option = account_list
+            .iter()
+            .position(|elem| elem.id.eq(&finance_account_id));
+        if account_position_option.is_none() {
+            return Err("account not avaiable".to_string());
+        }
+
+        let booking_entries_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);
+
+         //get a binary of UUID or it will not work in production
+        let mut filter = doc! {"user_id":MdbConvertTools::get_binary_from_bson_uuid(user_id),
+            "finance_account_id": MdbConvertTools::get_binary_from_bson_uuid(finance_account_id)};
+            if booking_time_from.is_some() {
+                filter.insert("booking_time", doc!{"$gte": booking_time_from.unwrap()});
+            }
+            if booking_time_till.is_some() {
+                filter.insert("booking_time", doc!{"$lte": booking_time_from.unwrap()});
+            }
+
+
+            debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
+            let projection = doc! {"booking_entry_id":<i32>::from(1),
+            "finance_account_id":<i32>::from(1),
+            "finance_journal_diary_id":<i32>::from(1),
+            "booking_type":<i32>::from(1),
+            "booking_time":<i32>::from(1),
+            "amount":<i32>::from(1),
+            "title":<i32>::from(1),
+            "description":<i32>::from(1),};
+            let options = FindOptions::builder().projection(projection).build();
+    
+            let query_execute_result = booking_entries_collection.find(filter, options).await;
+    
+            if query_execute_result.is_err() {
+                return Result::Err(query_execute_result.unwrap_err().to_string());
+            }
+    
+            let mut cursor = query_execute_result.unwrap();
+    
+            let mut booking_entries_list = Vec::new();
+
+            while let Some(data_doc) = cursor.next().await {
+                if data_doc.is_err() {
+                    return Err(data_doc.unwrap_err().to_string());
+                }
+    
+                let inner_doc = data_doc.unwrap();
+    
+                let some_booking_entry_id_parse_result =
+                    ConvertTools::get_uuid_from_document(&inner_doc, "booking_entry_id");
+                if some_booking_entry_id_parse_result.is_err() {
+                    return Err(some_booking_entry_id_parse_result.unwrap_err().to_string());
+                }
+                let some_finance_account_id_parse_result =
+                    ConvertTools::get_uuid_from_document(&inner_doc, "finance_account_id");
+                if some_finance_account_id_parse_result.is_err() {
+                    return Err(some_finance_account_id_parse_result
+                        .unwrap_err()
+                        .to_string());
+                }
+                let some_finance_journal_diary_id_parse_result =
+                    ConvertTools::get_uuid_from_document(&inner_doc, "finance_journal_diary_id");
+                if some_finance_journal_diary_id_parse_result.is_err() {
+                    return Err(some_finance_journal_diary_id_parse_result
+                        .unwrap_err()
+                        .to_string());
+                }
+                let stored_booking_type_int = inner_doc.get_i32("booking_type");
+                if stored_booking_type_int.is_err() {
+                    return Err(stored_booking_type_int.unwrap_err().to_string());
+                }
+                let stored_booking_type_result =
+                    BookingEntryType::get_from_int(stored_booking_type_int.unwrap());
+                if stored_booking_type_result.is_err() {
+                    return Err(stored_booking_type_result.unwrap_err());
+                }
+    
+                let stored_booking_time = inner_doc.get_datetime("booking_time");
+                if stored_booking_time.is_err() {
+                    return Err(stored_booking_time.unwrap_err().to_string());
+                }
+                let stored_amount = inner_doc.get_i64("amount");
+                if stored_amount.is_err() {
+                    return Err(stored_amount.unwrap_err().to_string());
+                }
+                let stored_title = inner_doc.get_str("title");
+                if stored_title.is_err() {
+                    return Err(stored_title.unwrap_err().to_string());
+                }
+                let stored_description = inner_doc.get_str("description");
+                if stored_description.is_err() {
+                    return Err(stored_description.unwrap_err().to_string());
+                }
+    
+                let entry = FinanceAccountBookingEntry {
+                    id: some_booking_entry_id_parse_result.unwrap(),
+                    finance_account_id: some_finance_account_id_parse_result.unwrap(),
+                    finance_journal_diary_id: some_finance_journal_diary_id_parse_result.unwrap(),
+                    booking_type: stored_booking_type_result.unwrap(),
+                    booking_time: stored_booking_time.unwrap().to_chrono(),
+                    amount: stored_amount.unwrap() as u64,
+                    title: stored_title.unwrap().into(),
+                    description: stored_description.unwrap().into(),
+                };
+    
+                booking_entries_list.push(entry);
+            }
+
+        Ok(booking_entries_list)
     }
 
     async fn finance_insert_booking_entry(
@@ -161,7 +294,13 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
             if stored_booking_type_int.is_err() {
                 return Err(stored_booking_type_int.unwrap_err().to_string());
             }
-            let stored_booking_time = inner_doc.get_timestamp("booking_time");
+            let stored_booking_type_result =
+                BookingEntryType::get_from_int(stored_booking_type_int.unwrap());
+            if stored_booking_type_result.is_err() {
+                return Err(stored_booking_type_result.unwrap_err());
+            }
+
+            let stored_booking_time = inner_doc.get_datetime("booking_time");
             if stored_booking_time.is_err() {
                 return Err(stored_booking_time.unwrap_err().to_string());
             }
@@ -182,9 +321,9 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
                 id: some_booking_entry_id_parse_result.unwrap(),
                 finance_account_id: some_finance_account_id_parse_result.unwrap(),
                 finance_journal_diary_id: some_finance_journal_diary_id_parse_result.unwrap(),
-                booking_type: stored_booking_type_int.unwrap(),
-                booking_time: stored_booking_time.unwrap(),
-                amount: stored_amount.unwrap(),
+                booking_type: stored_booking_type_result.unwrap(),
+                booking_time: stored_booking_time.unwrap().to_chrono(),
+                amount: stored_amount.unwrap() as u64,
                 title: stored_title.unwrap().into(),
                 description: stored_description.unwrap().into(),
             };

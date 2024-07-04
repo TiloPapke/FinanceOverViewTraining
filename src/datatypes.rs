@@ -52,7 +52,7 @@ pub struct FinanceJournalEntry {
     pub credit_finance_account_id: Uuid,
     pub running_number: u64,
     pub booking_time: DateTime<Utc>,
-    pub amount: u128,
+    pub amount: u64,
     pub title: String,
     pub description: String,
 }
@@ -65,6 +65,18 @@ pub enum BookingEntryType {
     SaldoDebit,
 }
 
+impl BookingEntryType {
+    pub fn get_from_int(type_value: i32) -> Result<BookingEntryType, String> {
+        match type_value {
+            0 => std::result::Result::Ok(BookingEntryType::Credit),
+            1 => std::result::Result::Ok(BookingEntryType::Debit),
+            2 => std::result::Result::Ok(BookingEntryType::SaldoCredit),
+            3 => std::result::Result::Ok(BookingEntryType::SaldoDebit),
+            _ => Err(format!("value not supported: {}", type_value)),
+        }
+    }
+}
+
 #[derive(PartialEq, Deserialize, Debug, Clone)]
 pub struct FinanceAccountBookingEntry {
     pub id: Uuid,
@@ -72,7 +84,7 @@ pub struct FinanceAccountBookingEntry {
     pub finance_journal_diary_id: Uuid,
     pub booking_type: BookingEntryType,
     pub booking_time: DateTime<Utc>,
-    pub amount: u128,
+    pub amount: u64,
     pub title: String,
     pub description: String,
 }
@@ -84,7 +96,7 @@ pub struct FinanceBookingRequest {
     pub debit_finance_account_id: Uuid,
     pub credit_finance_account_id: Uuid,
     pub booking_time: DateTime<Utc>,
-    pub amount: u128,
+    pub amount: u64,
     pub title: String,
     pub description: String,
 }
@@ -106,11 +118,11 @@ impl std::fmt::Display for AccountBalanceType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.eq(&AccountBalanceType::Credit) {
             write!(f, "credit balance");
-            Ok(())
+            std::result::Result::Ok(())
         } else {
             if self.eq(&AccountBalanceType::Debit) {
                 write!(f, "debit balance");
-                Ok(())
+                std::result::Result::Ok(())
             } else {
                 Err(std::fmt::Error)
             }
@@ -122,5 +134,5 @@ impl std::fmt::Display for AccountBalanceType {
 pub struct AccountBalanceInfo {
     pub account_id: Uuid,
     pub balance_type: AccountBalanceType,
-    pub amount: u128,
+    pub amount: u64,
 }

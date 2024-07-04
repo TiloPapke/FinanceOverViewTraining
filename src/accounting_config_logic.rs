@@ -49,11 +49,15 @@ impl<'a> FinanceAccountingConfigHandle<'a> {
     }
 
     pub fn finance_account_list(&self) -> Result<Vec<FinanceAccount>, String> {
-        let temp_var_1 = executor::block_on(
-            self.db_connector
-                .finance_account_list(&self.db_connection_settings, &self.user_id),
-        );
+        let temp_var_1 = executor::block_on(self.finance_account_list_async());
+        return temp_var_1;
+    }
 
+    pub async fn finance_account_list_async(&self) -> Result<Vec<FinanceAccount>, String> {
+        let temp_var_1 = self
+            .db_connector
+            .finance_account_list(&self.db_connection_settings, &self.user_id)
+            .await;
         return temp_var_1;
     }
 

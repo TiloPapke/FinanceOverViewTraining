@@ -31,4 +31,9 @@ impl MdbConvertTools{
         
     }
 
+    pub fn get_binary_from_bson_uuid(input:&mongodb::bson::Uuid)->mongodb::bson::Binary{
+        let result_value = mongodb::bson::Binary::from_uuid(input.clone());
+        return result_value
+    }
+
 }

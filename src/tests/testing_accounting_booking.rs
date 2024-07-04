@@ -1157,7 +1157,7 @@ mod test_accounting_handle {
          * get balance information for each account
          * get last booking entry for each account
          */
-        let accounts_per_user_result = account_handle_1.finance_account_list();
+        let accounts_per_user_result = account_handle_1.finance_account_list_async().await;
         assert!(
             accounts_per_user_result.is_ok(),
             "{}",
@@ -1165,8 +1165,9 @@ mod test_accounting_handle {
         );
         let accounts_per_user = accounts_per_user_result.unwrap();
 
+        let account_ids:Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
         let balance_info_all_accounts_result = booking_handle_1
-            .calculate_balance_info(&accounts_per_user.iter().map(|elem| elem.id).collect());
+            .calculate_balance_info(&account_ids);
         assert!(
             balance_info_all_accounts_result.is_ok(),
             "{}",
@@ -1510,7 +1511,7 @@ mod test_accounting_handle {
             test_account_a_balance_info_1.amount,
             test_account_d_balance_info_2.amount,
         ) + 23;
-        let insert_request_I_A = FinanceBookingRequest {
+        let insert_request_i_a = FinanceBookingRequest {
             amount: amount_i_a,
             booking_time: booking_time_7,
             credit_finance_account_id: invalid_account.id,
@@ -1521,7 +1522,7 @@ mod test_accounting_handle {
             is_simple_entry: true,
         };
         let insert_request_i_a_response_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_I_A);
+            booking_handle_1.finance_insert_booking_entry(&insert_request_i_a);
         assert!(
             insert_request_i_a_response_result.is_err(),
             "using invalid account for credit muss fail"
@@ -1732,7 +1733,7 @@ mod test_accounting_handle {
     fn check_balance_account_info(
         info_to_check: &AccountBalanceInfo,
         account_id: &Uuid,
-        amount: &u128,
+        amount: &u64,
         balance_type: &AccountBalanceType,
     ) -> String {
         if account_id.ne(&info_to_check.account_id) {
