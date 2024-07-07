@@ -47,8 +47,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccountType>, String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -123,8 +122,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         finance_account_type: &FinanceAccountType,
     ) -> Result<(), String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -175,8 +173,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccount>, String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -258,8 +255,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         finance_account: &FinanceAccount,
     ) -> Result<(), String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);

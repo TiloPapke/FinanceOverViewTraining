@@ -34,7 +34,9 @@ pub enum EmailVerificationStatus {
     Verified,
 }
 
-pub struct DbHandlerMongoDB {}
+pub struct DbHandlerMongoDB {
+    internal_mongodb_client: Option<Client>,
+}
 
 impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_GENERAL_INFORMATION: &'static str = "GeneralInformation";
@@ -46,6 +48,27 @@ impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_BOOKING_ENTRIES: &'static str = "BookingEntries";
     pub const COLLECTION_NAME_JOURNAL_DIARY: &'static str = "FinanceJournalDiary";
     pub const COLLECTION_NAME_COUNTERS: &'static str = "CounterCollection";
+
+    pub fn new() -> DbHandlerMongoDB {
+        return DbHandlerMongoDB {
+            internal_mongodb_client: None,
+        };
+    }
+
+    pub fn new_with_connection(connection_settings: &DbConnectionSetting) -> DbHandlerMongoDB {
+        let db_client =
+            DbHandlerMongoDB::create_client_connection_sync(connection_settings).unwrap();
+        return DbHandlerMongoDB {
+            internal_mongodb_client: Some(db_client),
+        };
+    }
+
+    pub(crate) fn get_internal_db_client(&self) -> Result<Client, String> {
+        if self.internal_mongodb_client.is_some() {
+            return Ok(self.internal_mongodb_client.clone().unwrap());
+        }
+        return Err("no DB client prepared".into());
+    }
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
         // Get a handle to the deployment.
@@ -79,12 +102,16 @@ impl DbHandlerMongoDB {
 
         let db_instance = client.database(&conncetion_settings.instance);
 
-        let arr_required_collection: [&str; 5] = [
+        let arr_required_collection: [&str; 9] = [
             &DbHandlerMongoDB::COLLECTION_NAME_GENERAL_INFORMATION,
             &DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC,
             &DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO,
             &DbHandlerMongoDB::COLLECTION_NAME_USER_LIST,
             &DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES,
+            &DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTS,
+            &DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES,
+            &DbHandlerMongoDB::COLLECTION_NAME_COUNTERS,
+            &DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY,
         ];
 
         let query_result_collections = executor::block_on(db_instance.list_collection_names(None));
@@ -243,7 +270,7 @@ impl DbHandlerMongoDB {
         );
 
         // Get a handle to the deployment.
-        let client = Client::with_options(client_options).unwrap();
+        let client: Client = Client::with_options(client_options).unwrap();
         return Result::Ok(client);
     }
 

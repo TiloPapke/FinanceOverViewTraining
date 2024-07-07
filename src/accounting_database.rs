@@ -66,8 +66,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -193,8 +192,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -203,7 +201,8 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         let client = client_create_result.unwrap();
 
         let db_instance = client.database(&conncetion_settings.instance);
-
+        panic!("Need an option to only search for specific accounts!");
+        /*
         let accounting_handle =
             FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
         let account_list_result = accounting_handle.finance_account_list_async().await;
@@ -221,6 +220,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         if account_position_option.is_none() {
             return Err("account not avaiable".to_string());
         }
+        */
 
         let booking_entries_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);
@@ -333,8 +333,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -417,8 +416,8 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
         // Get a handle to the deployment.
-        let client_create_result =
-            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        let client_create_result = self.get_internal_db_client();
+
         if client_create_result.is_err() {
             let client_err = &client_create_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",client_err);
@@ -594,7 +593,7 @@ impl DbHandlerMongoDB {
             )
             .await?;
 
-        if increasing_journal_max_result.modified_count != 1 {
+        if increasing_journal_max_result.modified_count.ne(&1) {
             return Err(mongodb::error::Error::custom(format!(
                 "could not update max number record, upated record: {}",
                 increasing_journal_max_result.modified_count
@@ -665,7 +664,7 @@ impl DbHandlerMongoDB {
         let credit_finance_account_id_value =
             mongodb::bson::Binary::from_uuid(action_to_insert.credit_finance_account_id);
 
-        journal_diary_entries_collection
+        let journal_insert_result = journal_diary_entries_collection
             .insert_one_with_session(
                 doc! {
                     "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
@@ -683,9 +682,16 @@ impl DbHandlerMongoDB {
                 None,
                 session,
             )
-            .await?;
+            .await;
 
-        booking_entries_collection
+        if journal_insert_result.is_err() {
+            return Err(mongodb::error::Error::custom(format!(
+                "could not update journal: {}",
+                journal_insert_result.unwrap_err()
+            )));
+        }
+
+        let booking_insert_1_result = booking_entries_collection
             .insert_one_with_session(
                 doc! {
                     "booking_entry_id":mongodb::bson::Binary::from_uuid(new_debit_account_entry.id),
@@ -701,9 +707,16 @@ impl DbHandlerMongoDB {
                 None,
                 session,
             )
-            .await?;
+            .await;
 
-        booking_entries_collection.insert_one_with_session(doc! {
+        if booking_insert_1_result.is_err() {
+            return Err(mongodb::error::Error::custom(format!(
+                "could not update first booking: {}",
+                booking_insert_1_result.unwrap_err()
+            )));
+        }
+
+        let booking_insert_2_result=booking_entries_collection.insert_one_with_session(doc! {
     "booking_entry_id":mongodb::bson::Binary::from_uuid(new_credit_account_entry.id),
     "user_id": user_id_value.clone(),
     "finance_account_id":credit_finance_account_id_value.clone(),
@@ -713,7 +726,14 @@ impl DbHandlerMongoDB {
     "amount":action_to_insert.amount  as i64,
     "title":action_to_insert.title.clone(),
     "description":action_to_insert.description.clone()
-}, None, session).await?;
+}, None, session).await;
+
+        if booking_insert_2_result.is_err() {
+            return Err(mongodb::error::Error::custom(format!(
+                "could not update second booking: {}",
+                booking_insert_2_result.unwrap_err()
+            )));
+        }
 
         loop {
             let result = session.commit_transaction().await;

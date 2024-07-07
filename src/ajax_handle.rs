@@ -685,7 +685,7 @@ pub async fn do_create_new_finance_account_type(
 
         session.expire_in(std::time::Duration::from_secs(60 * 10));
 
-        let db_handler = DbHandlerMongoDB {};
+        let db_handler = DbHandlerMongoDB::new();
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -804,7 +804,7 @@ pub async fn do_update_finance_account_type(
 
         session.expire_in(std::time::Duration::from_secs(60 * 10));
 
-        let db_handler = DbHandlerMongoDB {};
+        let db_handler = DbHandlerMongoDB::new();
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -927,7 +927,7 @@ pub async fn do_create_new_finance_account(
 
         session.expire_in(std::time::Duration::from_secs(60 * 10));
 
-        let db_handler = DbHandlerMongoDB {};
+        let db_handler = DbHandlerMongoDB::new();
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -1057,7 +1057,7 @@ pub async fn do_update_finance_account(
 
         session.expire_in(std::time::Duration::from_secs(60 * 10));
 
-        let db_handler = DbHandlerMongoDB {};
+        let db_handler = DbHandlerMongoDB::new();
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
