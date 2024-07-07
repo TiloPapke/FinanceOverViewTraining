@@ -6,8 +6,9 @@ use futures::StreamExt;
 use log::{debug, warn};
 use mongodb::{
     bson::{doc, Document, Uuid},
-    options::FindOptions,
-    Collection,
+    error::{TRANSIENT_TRANSACTION_ERROR, UNKNOWN_TRANSACTION_COMMIT_RESULT},
+    options::{Acknowledgment, FindOptions, ReadConcern, TransactionOptions, WriteConcern},
+    ClientSession, Collection,
 };
 
 use crate::{
@@ -17,7 +18,8 @@ use crate::{
     datatypes::{
         BookingEntryType, FinanceAccountBookingEntry, FinanceBookingRequest, FinanceBookingResult,
         FinanceJournalEntry,
-    }, mdb_convert_tools::MdbConvertTools,
+    },
+    mdb_convert_tools::MdbConvertTools,
 };
 
 #[async_trait(?Send)]
@@ -63,7 +65,123 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String> {
-        panic!("method finance_journal_entry_list for DbHandlerMongoDB not implemented");
+        // Get a handle to the deployment.
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let journal_diary_entries_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY);
+
+        //get a binary of UUID or it will not work in production
+        let mut filter = doc! {"user_id":MdbConvertTools::get_binary_from_bson_uuid(user_id)};
+        if booking_time_from.is_some() {
+            filter.insert("booking_time", doc! {"$gte": booking_time_from.unwrap()});
+        }
+        if booking_time_till.is_some() {
+            filter.insert("booking_time", doc! {"$lte": booking_time_from.unwrap()});
+        }
+
+        debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
+        let projection = doc! {
+        "finance_journal_diary_id":<i32>::from(1),
+        "is_simple_entry":<i32>::from(1),
+        "is_saldo":<i32>::from(1),
+        "debit_finance_account_id":<i32>::from(1),
+        "credit_finance_account_id":<i32>::from(1),
+        "running_number":<i32>::from(1),
+        "booking_time":<i32>::from(1),
+        "amount":<i32>::from(1),
+        "title":<i32>::from(1),
+        "description":<i32>::from(1),};
+        let options = FindOptions::builder().projection(projection).build();
+
+        let query_execute_result = journal_diary_entries_collection.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        let mut journal_entries_list = Vec::new();
+
+        while let Some(data_doc) = cursor.next().await {
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
+            }
+
+            let inner_doc = data_doc.unwrap();
+
+            let some_journal_entry_id_parse_result =
+                ConvertTools::get_uuid_from_document(&inner_doc, "finance_journal_diary_id");
+            if some_journal_entry_id_parse_result.is_err() {
+                return Err(some_journal_entry_id_parse_result.unwrap_err().to_string());
+            }
+            let some_debit_account_id_parse_result =
+                ConvertTools::get_uuid_from_document(&inner_doc, "debit_finance_account_id");
+            if some_debit_account_id_parse_result.is_err() {
+                return Err(some_debit_account_id_parse_result.unwrap_err().to_string());
+            }
+            let some_credit_account_id_parse_result =
+                ConvertTools::get_uuid_from_document(&inner_doc, "credit_finance_account_id");
+            if some_credit_account_id_parse_result.is_err() {
+                return Err(some_credit_account_id_parse_result.unwrap_err().to_string());
+            }
+
+            let stored_booking_time = inner_doc.get_datetime("booking_time");
+            if stored_booking_time.is_err() {
+                return Err(stored_booking_time.unwrap_err().to_string());
+            }
+            let stored_amount = inner_doc.get_i64("amount");
+            if stored_amount.is_err() {
+                return Err(stored_amount.unwrap_err().to_string());
+            }
+            let stored_running_number = inner_doc.get_i64("running_number");
+            if stored_running_number.is_err() {
+                return Err(stored_running_number.unwrap_err().to_string());
+            }
+            let stored_title = inner_doc.get_str("title");
+            if stored_title.is_err() {
+                return Err(stored_title.unwrap_err().to_string());
+            }
+            let stored_description = inner_doc.get_str("description");
+            if stored_description.is_err() {
+                return Err(stored_description.unwrap_err().to_string());
+            }
+            let stored_is_simple_entry = inner_doc.get_bool("is_simple_entry");
+            if stored_is_simple_entry.is_err() {
+                return Err(stored_is_simple_entry.unwrap_err().to_string());
+            }
+            let stored_is_saldo = inner_doc.get_bool("is_saldo");
+            if stored_is_saldo.is_err() {
+                return Err(stored_is_simple_entry.unwrap_err().to_string());
+            }
+
+            let entry = FinanceJournalEntry {
+                id: some_journal_entry_id_parse_result.unwrap(),
+                booking_time: stored_booking_time.unwrap().to_chrono(),
+                amount: stored_amount.unwrap() as u64,
+                title: stored_title.unwrap().into(),
+                description: stored_description.unwrap().into(),
+                is_simple_entry: stored_is_simple_entry.unwrap(),
+                is_saldo: stored_is_saldo.unwrap(),
+                debit_finance_account_id: some_debit_account_id_parse_result.unwrap(),
+                credit_finance_account_id: some_credit_account_id_parse_result.unwrap(),
+                running_number: stored_running_number.unwrap() as u64,
+            };
+
+            journal_entries_list.push(entry);
+        }
+
+        Ok(journal_entries_list)
     }
 
     async fn finance_account_booking_entry_list(
@@ -74,17 +192,17 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-              // Get a handle to the deployment.
-              let client_create_result =
-              DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
-          if client_create_result.is_err() {
-              let client_err = &client_create_result.unwrap_err();
-              warn!(target:"app::FinanceOverView","{}",client_err);
-              return Err(client_err.to_string());
-          }
-          let client = client_create_result.unwrap();
-  
-          let db_instance = client.database(&conncetion_settings.instance);
+        // Get a handle to the deployment.
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
 
         let accounting_handle =
             FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
@@ -107,104 +225,103 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         let booking_entries_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);
 
-         //get a binary of UUID or it will not work in production
+        //get a binary of UUID or it will not work in production
         let mut filter = doc! {"user_id":MdbConvertTools::get_binary_from_bson_uuid(user_id),
-            "finance_account_id": MdbConvertTools::get_binary_from_bson_uuid(finance_account_id)};
-            if booking_time_from.is_some() {
-                filter.insert("booking_time", doc!{"$gte": booking_time_from.unwrap()});
-            }
-            if booking_time_till.is_some() {
-                filter.insert("booking_time", doc!{"$lte": booking_time_from.unwrap()});
+        "finance_account_id": MdbConvertTools::get_binary_from_bson_uuid(finance_account_id)};
+        if booking_time_from.is_some() {
+            filter.insert("booking_time", doc! {"$gte": booking_time_from.unwrap()});
+        }
+        if booking_time_till.is_some() {
+            filter.insert("booking_time", doc! {"$lte": booking_time_from.unwrap()});
+        }
+
+        debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
+        let projection = doc! {"booking_entry_id":<i32>::from(1),
+        "finance_account_id":<i32>::from(1),
+        "finance_journal_diary_id":<i32>::from(1),
+        "booking_type":<i32>::from(1),
+        "booking_time":<i32>::from(1),
+        "amount":<i32>::from(1),
+        "title":<i32>::from(1),
+        "description":<i32>::from(1),};
+        let options = FindOptions::builder().projection(projection).build();
+
+        let query_execute_result = booking_entries_collection.find(filter, options).await;
+
+        if query_execute_result.is_err() {
+            return Result::Err(query_execute_result.unwrap_err().to_string());
+        }
+
+        let mut cursor = query_execute_result.unwrap();
+
+        let mut booking_entries_list = Vec::new();
+
+        while let Some(data_doc) = cursor.next().await {
+            if data_doc.is_err() {
+                return Err(data_doc.unwrap_err().to_string());
             }
 
+            let inner_doc = data_doc.unwrap();
 
-            debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
-            let projection = doc! {"booking_entry_id":<i32>::from(1),
-            "finance_account_id":<i32>::from(1),
-            "finance_journal_diary_id":<i32>::from(1),
-            "booking_type":<i32>::from(1),
-            "booking_time":<i32>::from(1),
-            "amount":<i32>::from(1),
-            "title":<i32>::from(1),
-            "description":<i32>::from(1),};
-            let options = FindOptions::builder().projection(projection).build();
-    
-            let query_execute_result = booking_entries_collection.find(filter, options).await;
-    
-            if query_execute_result.is_err() {
-                return Result::Err(query_execute_result.unwrap_err().to_string());
+            let some_booking_entry_id_parse_result =
+                ConvertTools::get_uuid_from_document(&inner_doc, "booking_entry_id");
+            if some_booking_entry_id_parse_result.is_err() {
+                return Err(some_booking_entry_id_parse_result.unwrap_err().to_string());
             }
-    
-            let mut cursor = query_execute_result.unwrap();
-    
-            let mut booking_entries_list = Vec::new();
+            let some_finance_account_id_parse_result =
+                ConvertTools::get_uuid_from_document(&inner_doc, "finance_account_id");
+            if some_finance_account_id_parse_result.is_err() {
+                return Err(some_finance_account_id_parse_result
+                    .unwrap_err()
+                    .to_string());
+            }
+            let some_finance_journal_diary_id_parse_result =
+                ConvertTools::get_uuid_from_document(&inner_doc, "finance_journal_diary_id");
+            if some_finance_journal_diary_id_parse_result.is_err() {
+                return Err(some_finance_journal_diary_id_parse_result
+                    .unwrap_err()
+                    .to_string());
+            }
+            let stored_booking_type_int = inner_doc.get_i32("booking_type");
+            if stored_booking_type_int.is_err() {
+                return Err(stored_booking_type_int.unwrap_err().to_string());
+            }
+            let stored_booking_type_result =
+                BookingEntryType::get_from_int(stored_booking_type_int.unwrap());
+            if stored_booking_type_result.is_err() {
+                return Err(stored_booking_type_result.unwrap_err());
+            }
 
-            while let Some(data_doc) = cursor.next().await {
-                if data_doc.is_err() {
-                    return Err(data_doc.unwrap_err().to_string());
-                }
-    
-                let inner_doc = data_doc.unwrap();
-    
-                let some_booking_entry_id_parse_result =
-                    ConvertTools::get_uuid_from_document(&inner_doc, "booking_entry_id");
-                if some_booking_entry_id_parse_result.is_err() {
-                    return Err(some_booking_entry_id_parse_result.unwrap_err().to_string());
-                }
-                let some_finance_account_id_parse_result =
-                    ConvertTools::get_uuid_from_document(&inner_doc, "finance_account_id");
-                if some_finance_account_id_parse_result.is_err() {
-                    return Err(some_finance_account_id_parse_result
-                        .unwrap_err()
-                        .to_string());
-                }
-                let some_finance_journal_diary_id_parse_result =
-                    ConvertTools::get_uuid_from_document(&inner_doc, "finance_journal_diary_id");
-                if some_finance_journal_diary_id_parse_result.is_err() {
-                    return Err(some_finance_journal_diary_id_parse_result
-                        .unwrap_err()
-                        .to_string());
-                }
-                let stored_booking_type_int = inner_doc.get_i32("booking_type");
-                if stored_booking_type_int.is_err() {
-                    return Err(stored_booking_type_int.unwrap_err().to_string());
-                }
-                let stored_booking_type_result =
-                    BookingEntryType::get_from_int(stored_booking_type_int.unwrap());
-                if stored_booking_type_result.is_err() {
-                    return Err(stored_booking_type_result.unwrap_err());
-                }
-    
-                let stored_booking_time = inner_doc.get_datetime("booking_time");
-                if stored_booking_time.is_err() {
-                    return Err(stored_booking_time.unwrap_err().to_string());
-                }
-                let stored_amount = inner_doc.get_i64("amount");
-                if stored_amount.is_err() {
-                    return Err(stored_amount.unwrap_err().to_string());
-                }
-                let stored_title = inner_doc.get_str("title");
-                if stored_title.is_err() {
-                    return Err(stored_title.unwrap_err().to_string());
-                }
-                let stored_description = inner_doc.get_str("description");
-                if stored_description.is_err() {
-                    return Err(stored_description.unwrap_err().to_string());
-                }
-    
-                let entry = FinanceAccountBookingEntry {
-                    id: some_booking_entry_id_parse_result.unwrap(),
-                    finance_account_id: some_finance_account_id_parse_result.unwrap(),
-                    finance_journal_diary_id: some_finance_journal_diary_id_parse_result.unwrap(),
-                    booking_type: stored_booking_type_result.unwrap(),
-                    booking_time: stored_booking_time.unwrap().to_chrono(),
-                    amount: stored_amount.unwrap() as u64,
-                    title: stored_title.unwrap().into(),
-                    description: stored_description.unwrap().into(),
-                };
-    
-                booking_entries_list.push(entry);
+            let stored_booking_time = inner_doc.get_datetime("booking_time");
+            if stored_booking_time.is_err() {
+                return Err(stored_booking_time.unwrap_err().to_string());
             }
+            let stored_amount = inner_doc.get_i64("amount");
+            if stored_amount.is_err() {
+                return Err(stored_amount.unwrap_err().to_string());
+            }
+            let stored_title = inner_doc.get_str("title");
+            if stored_title.is_err() {
+                return Err(stored_title.unwrap_err().to_string());
+            }
+            let stored_description = inner_doc.get_str("description");
+            if stored_description.is_err() {
+                return Err(stored_description.unwrap_err().to_string());
+            }
+
+            let entry = FinanceAccountBookingEntry {
+                id: some_booking_entry_id_parse_result.unwrap(),
+                finance_account_id: some_finance_account_id_parse_result.unwrap(),
+                finance_journal_diary_id: some_finance_journal_diary_id_parse_result.unwrap(),
+                booking_type: stored_booking_type_result.unwrap(),
+                booking_time: stored_booking_time.unwrap().to_chrono(),
+                amount: stored_amount.unwrap() as u64,
+                title: stored_title.unwrap().into(),
+                description: stored_description.unwrap().into(),
+            };
+
+            booking_entries_list.push(entry);
+        }
 
         Ok(booking_entries_list)
     }
@@ -215,7 +332,82 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
-        panic!("method finance_insert_booking_entry for DbHandlerMongoDB not implemented");
+        // Get a handle to the deployment.
+        let client_create_result =
+            DbHandlerMongoDB::create_client_connection_async(&conncetion_settings).await;
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let accounting_handle =
+            FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
+        let account_list_result = accounting_handle.finance_account_list_async().await;
+        if account_list_result.is_err() {
+            return Err(format!(
+                "Error retriving account list: {}",
+                account_list_result.unwrap_err()
+            ));
+        }
+
+        let account_list = account_list_result.unwrap();
+        let check_credit_account_check_option = account_list
+            .iter()
+            .position(|elem| elem.id.eq(&action_to_insert.credit_finance_account_id));
+        if check_credit_account_check_option.is_none() {
+            return Err("credit account is not available".into());
+        }
+        let check_debit_account_check_option = account_list
+            .iter()
+            .position(|elem| elem.id.eq(&action_to_insert.debit_finance_account_id));
+        if check_debit_account_check_option.is_none() {
+            return Err("debit account is not available".into());
+        }
+
+        let session_result = client.start_session(None).await;
+        if session_result.is_err() {
+            return Err(format!(
+                "problem getting session: {}",
+                session_result.unwrap_err()
+            ));
+        }
+
+        let options = TransactionOptions::builder()
+            .read_concern(ReadConcern::majority())
+            .write_concern(WriteConcern::builder().w(Acknowledgment::Majority).build())
+            .build();
+
+        let mut session = session_result.unwrap();
+        let transaction_start_result = session.start_transaction(options).await;
+        if transaction_start_result.is_err() {
+            return Err(format!(
+                "problem starting transaction: {}",
+                transaction_start_result.unwrap_err()
+            ));
+        }
+
+        loop {
+            let execute_result =
+                DbHandlerMongoDB::execute_finance_insert_booking_entry_with_transaction(
+                    &mut session,
+                    &conncetion_settings.instance,
+                    &user_id,
+                    action_to_insert.clone(),
+                )
+                .await;
+            if execute_result.is_ok() {
+                let result_object = execute_result.unwrap();
+                return Ok(result_object);
+            } else {
+                let error_var = execute_result.unwrap_err();
+
+                if !error_var.contains_label(TRANSIENT_TRANSACTION_ERROR) {
+                    return Err(format!("Problem closing transaction: {}", error_var));
+                }
+            }
+        }
     }
 
     async fn finance_get_last_saldo_account_entries(
@@ -365,5 +557,178 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         debug!(target:"app::FinanceOverView","returned {} saldo entries",return_object.len());
 
         Ok(return_object)
+    }
+}
+
+impl DbHandlerMongoDB {
+    /// Helper function for DBFinanceAccountingFunctions::finance_insert_booking_entry()
+    /// see https://github.com/mongodb/mongo-rust-driver/blob/main/tests/transactions_example.rs
+    /// see https://docs.rs/mongodb/2.8.2/mongodb/struct.ClientSession.html
+    /// see https://www.mongodb.com/docs/v2.2/reference/operator/update/inc/
+    async fn execute_finance_insert_booking_entry_with_transaction(
+        session: &mut ClientSession,
+        db_instance_name: &String,
+        user_id: &Uuid,
+        action_to_insert: FinanceBookingRequest,
+    ) -> Result<FinanceBookingResult, mongodb::error::Error> {
+        let client = session.client();
+        let db_instance = client.database(&db_instance_name);
+
+        let booking_entries_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);
+
+        let journal_diary_entries_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY);
+
+        let counter_entries_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_COUNTERS);
+
+        let user_id_value = mongodb::bson::Binary::from_uuid(user_id.clone());
+
+        let increasing_journal_max_result = counter_entries_collection
+            .update_one_with_session(
+                doc! {"user_id": user_id_value.clone()},
+                doc! {"$inc": doc! {"booking_journal_max_number":1}},
+                None,
+                session,
+            )
+            .await?;
+
+        if increasing_journal_max_result.modified_count != 1 {
+            return Err(mongodb::error::Error::custom(format!(
+                "could not update max number record, upated record: {}",
+                increasing_journal_max_result.modified_count
+            )));
+        }
+
+        let filter = doc! {"user_id":user_id_value.clone()};
+
+        let max_number_execute_result = counter_entries_collection.find_one(filter, None).await?;
+        let counter_document = max_number_execute_result.unwrap();
+        let new_running_number_result = counter_document.get_i64("booking_journal_max_number");
+        if new_running_number_result.is_err() {
+            return Err(mongodb::error::Error::custom(format!(
+                "could not get nex max number: {}",
+                new_running_number_result.unwrap_err()
+            )));
+        }
+        let new_running_number = new_running_number_result.unwrap() as u64;
+
+        let journal_diary_entry_id = Uuid::new();
+        let journal_diary_entry_id_value =
+            mongodb::bson::Binary::from_uuid(journal_diary_entry_id.clone());
+        let new_journal_entry = FinanceJournalEntry {
+            id: Uuid::new(),
+            is_simple_entry: action_to_insert.is_simple_entry,
+            is_saldo: action_to_insert.is_saldo,
+            debit_finance_account_id: action_to_insert.debit_finance_account_id,
+            credit_finance_account_id: action_to_insert.credit_finance_account_id,
+            running_number: new_running_number as u64,
+            booking_time: action_to_insert.booking_time,
+            amount: action_to_insert.amount,
+            title: action_to_insert.title.clone(),
+            description: action_to_insert.description.clone(),
+        };
+
+        let credit_booking_type = if action_to_insert.is_saldo {
+            BookingEntryType::SaldoCredit
+        } else {
+            BookingEntryType::Credit
+        };
+        let new_credit_account_entry = FinanceAccountBookingEntry {
+            id: Uuid::new(),
+            finance_account_id: action_to_insert.credit_finance_account_id,
+            finance_journal_diary_id: new_journal_entry.id.clone(),
+            booking_type: credit_booking_type.clone(),
+            booking_time: action_to_insert.booking_time,
+            amount: action_to_insert.amount,
+            title: action_to_insert.title.clone(),
+            description: action_to_insert.description.clone(),
+        };
+        let debit_booking_type = if action_to_insert.is_saldo {
+            BookingEntryType::SaldoDebit
+        } else {
+            BookingEntryType::Debit
+        };
+        let new_debit_account_entry = FinanceAccountBookingEntry {
+            id: Uuid::new(),
+            finance_account_id: action_to_insert.debit_finance_account_id,
+            finance_journal_diary_id: new_journal_entry.id.clone(),
+            booking_type: debit_booking_type.clone(),
+            booking_time: action_to_insert.booking_time,
+            amount: action_to_insert.amount,
+            title: action_to_insert.title.clone(),
+            description: action_to_insert.description.clone(),
+        };
+        let debit_finance_account_id_value =
+            mongodb::bson::Binary::from_uuid(action_to_insert.debit_finance_account_id);
+        let credit_finance_account_id_value =
+            mongodb::bson::Binary::from_uuid(action_to_insert.credit_finance_account_id);
+
+        journal_diary_entries_collection
+            .insert_one_with_session(
+                doc! {
+                    "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
+                    "user_id": user_id_value.clone(),
+                    "is_simple_entry": action_to_insert.is_simple_entry,
+                    "is_saldo":action_to_insert.is_saldo,
+                    "debit_finance_account_id":debit_finance_account_id_value.clone(),
+                    "credit_finance_account_id":credit_finance_account_id_value.clone(),
+                    "running_number":new_running_number as i64,
+                    "booking_time":action_to_insert.booking_time,
+                    "amount":action_to_insert.amount as i64,
+                    "title":action_to_insert.title.clone(),
+                    "description":action_to_insert.description.clone()
+                },
+                None,
+                session,
+            )
+            .await?;
+
+        booking_entries_collection
+            .insert_one_with_session(
+                doc! {
+                    "booking_entry_id":mongodb::bson::Binary::from_uuid(new_debit_account_entry.id),
+                    "user_id": user_id_value.clone(),
+                    "finance_account_id":debit_finance_account_id_value.clone(),
+                    "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
+                    "booking_type":debit_booking_type.to_int(),
+                    "booking_time":action_to_insert.booking_time,
+                    "amount":action_to_insert.amount  as i64,
+                    "title":action_to_insert.title.clone(),
+                    "description":action_to_insert.description.clone()
+                },
+                None,
+                session,
+            )
+            .await?;
+
+        booking_entries_collection.insert_one_with_session(doc! {
+    "booking_entry_id":mongodb::bson::Binary::from_uuid(new_credit_account_entry.id),
+    "user_id": user_id_value.clone(),
+    "finance_account_id":credit_finance_account_id_value.clone(),
+    "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
+    "booking_type":credit_booking_type.to_int(),
+    "booking_time":action_to_insert.booking_time,
+    "amount":action_to_insert.amount  as i64,
+    "title":action_to_insert.title.clone(),
+    "description":action_to_insert.description.clone()
+}, None, session).await?;
+
+        loop {
+            let result = session.commit_transaction().await;
+            if let Err(ref error) = result {
+                if error.contains_label(UNKNOWN_TRANSACTION_COMMIT_RESULT) {
+                    continue;
+                }
+            }
+
+            let return_object = FinanceBookingResult {
+                journal_entry: new_journal_entry,
+                debit_account_entry: new_debit_account_entry,
+                credit_account_entry: new_credit_account_entry,
+            };
+            return Ok(return_object);
+        }
     }
 }

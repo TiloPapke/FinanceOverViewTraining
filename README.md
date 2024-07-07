@@ -11,6 +11,11 @@ goal points for version 0.0.4
 - [ ] simple finance account management
 - [ ] journaling of income and expanses
 
+!Attention!, please see this:
+https://www.mongodb.com/docs/manual/core/retryable-writes/
+https://stackoverflow.com/questions/58589631/mongoerror-this-mongodb-deployment-does-not-support-retryable-writes-please-ad
+https://dba.stackexchange.com/questions/265236/how-can-we-use-transaction-in-mongodb-standalone-connection
+might need a super user for this: https://stackoverflow.com/questions/23943651/mongodb-admin-user-not-authorized
 version 0.0.3:
 - [x] session controls
 - [x] minimal user settings page

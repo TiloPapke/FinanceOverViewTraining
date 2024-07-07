@@ -1847,6 +1847,7 @@ mod test_accounting_handle {
                         let index_1 = credit_counter * 2;
                         let index_2 = credit_counter * 2 + 1;
                         let amount_mod = debit_accounts_info[index_1].amount + 1;
+                        panic!("Fore some reason the following line will not return");
                         let saldo_information_list_result = futures::executor::block_on(
                             booking_handle_1.finance_get_last_saldo_account_entries(Some(vec![
                                 debit_accounts_info[index_1].account_id,

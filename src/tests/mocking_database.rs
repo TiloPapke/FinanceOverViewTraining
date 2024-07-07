@@ -277,13 +277,13 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
                 .iter()
                 .position(|elem| elem.id.eq(&action_to_insert.credit_finance_account_id));
             if check_credit_account_check_option.is_none() {
-                return Err("credit account type is not available".into());
+                return Err("credit account is not available".into());
             }
             let check_debit_account_check_option = account_list
                 .iter()
                 .position(|elem| elem.id.eq(&action_to_insert.debit_finance_account_id));
             if check_debit_account_check_option.is_none() {
-                return Err("debit account type is not available".into());
+                return Err("debit account is not available".into());
             }
 
             let max_current_running_number_option = journal_entries_list

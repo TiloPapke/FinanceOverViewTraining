@@ -75,6 +75,15 @@ impl BookingEntryType {
             _ => Err(format!("value not supported: {}", type_value)),
         }
     }
+
+    pub fn to_int(&self) -> i32 {
+        match self {
+            BookingEntryType::Credit => 0,
+            BookingEntryType::Debit => 1,
+            BookingEntryType::SaldoCredit => 2,
+            BookingEntryType::SaldoDebit => 3,
+        }
+    }
 }
 
 #[derive(PartialEq, Deserialize, Debug, Clone)]
