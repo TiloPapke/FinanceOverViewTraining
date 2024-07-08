@@ -574,7 +574,7 @@ pub async fn display_accounting_config_main_page(
             }
 
             let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
-                accounting_config_handle.finance_account_list();
+                accounting_config_handle.finance_account_list(None);
 
             if accounts_result.is_err() {
                 warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,accounts_result.unwrap_err());

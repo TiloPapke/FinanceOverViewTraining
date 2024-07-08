@@ -346,13 +346,13 @@ pub(crate) mod test_accounting_handle {
             title: "account_1_3".into(),
             description: "description_1_3".into(),
         };
-        let list_0_result = account_handle_1.finance_account_list();
+        let list_0_result = account_handle_1.finance_account_list(None);
         let insert_1_result = account_handle_1.finance_account_upsert(&finance_account_1_1);
-        let list_1_result = account_handle_1.finance_account_list();
+        let list_1_result = account_handle_1.finance_account_list(None);
         let insert_2_result = account_handle_1.finance_account_upsert(&finance_account_1_2);
-        let list_2_result = account_handle_1.finance_account_list();
+        let list_2_result = account_handle_1.finance_account_list(None);
         let insert_3_result = account_handle_1.finance_account_upsert(&finance_account_1_3);
-        let list_3_result = account_handle_1.finance_account_list();
+        let list_3_result = account_handle_1.finance_account_list(None);
 
         assert!(list_0_result.is_ok(), "{}", list_0_result.unwrap_err());
         assert!(list_1_result.is_ok(), "{}", list_1_result.unwrap_err());
@@ -405,9 +405,9 @@ pub(crate) mod test_accounting_handle {
             title: "account_2_2".into(),
             description: "description_2_2".into(),
         };
-        let list_2_0_result = account_handle_2.finance_account_list();
+        let list_2_0_result = account_handle_2.finance_account_list(None);
         let insert_2_1_result = account_handle_2.finance_account_upsert(&finance_account_2_1);
-        let list_2_1_result = account_handle_2.finance_account_list();
+        let list_2_1_result = account_handle_2.finance_account_list(None);
         let insert_2_2_result = account_handle_2.finance_account_upsert(&finance_account_2_2);
         assert!(list_2_0_result.is_ok(), "{}", list_2_0_result.unwrap_err());
         assert!(list_2_1_result.is_ok(), "{}", list_2_1_result.unwrap_err());
@@ -444,7 +444,7 @@ pub(crate) mod test_accounting_handle {
             description: "Another description for 1_2".into(),
         };
         let upsert_result = account_handle_1.finance_account_upsert(&finance_account_1_2_update);
-        let list_update_result = account_handle_1.finance_account_list();
+        let list_update_result = account_handle_1.finance_account_list(None);
         assert!(upsert_result.is_ok(), "{}", upsert_result.unwrap_err());
         assert!(
             list_update_result.is_ok(),
@@ -475,14 +475,37 @@ pub(crate) mod test_accounting_handle {
             &finance_account_1_2
         ));
 
-        /* Testcase 4
+        /* Testcase 4 checking limiting query for accounts */
+        let list_4_result = account_handle_1
+            .finance_account_list_async(Some(&vec![
+                finance_account_1_1.id,
+                finance_account_1_2_update.id,
+            ]))
+            .await;
+        assert!(list_4_result.is_ok(), "{}", list_4_result.unwrap_err());
+        let list4 = list_4_result.unwrap();
+        assert_eq!(list4.len(), 2);
+        assert!(account_list_contains_element(&list4, &finance_account_1_1));
+        assert!(account_list_contains_element(
+            &list4,
+            &finance_account_1_2_update
+        ));
+        let list_5_result = account_handle_1
+            .finance_account_list_async(Some(&vec![finance_account_1_3.id]))
+            .await;
+        assert!(list_5_result.is_ok(), "{}", list_5_result.unwrap_err());
+        let list5 = list_5_result.unwrap();
+        assert_eq!(list5.len(), 1);
+        assert!(account_list_contains_element(&list4, &finance_account_1_3));
+
+        /* Testcase 5
         trying to list and insert value for a new user that does not exist
 
         Check:
             all operation have to fail
          */
 
-        let list_e1_result = account_handle_3.finance_account_list();
+        let list_e1_result = account_handle_3.finance_account_list(None);
         let insert_e1_result = account_handle_3.finance_account_upsert(&finance_account_1_1);
         assert!(
             list_e1_result.is_err(),
@@ -560,11 +583,11 @@ pub(crate) mod test_accounting_handle {
             title: "SomeTitle".to_string() + &id2.to_string(),
             description: "some Decription for ".to_string() + &id2.to_string(),
         };
-        let list_accounts_0_result = account_handle_1.finance_account_list();
+        let list_accounts_0_result = account_handle_1.finance_account_list(None);
         let insert_1_result = account_handle_1.finance_account_upsert(&account_1);
-        let list_accounts_1_result = account_handle_1.finance_account_list();
+        let list_accounts_1_result = account_handle_1.finance_account_list(None);
         let insert_2_result = account_handle_1.finance_account_upsert(&account_2);
-        let list_accounts_2_result = account_handle_1.finance_account_list();
+        let list_accounts_2_result = account_handle_1.finance_account_list(None);
 
         assert!(
             list_accounts_0_result.is_ok(),
@@ -610,7 +633,7 @@ pub(crate) mod test_accounting_handle {
             description: "changed description".to_string() + &account_2.id.to_string(),
         };
         let insert_updated_result = account_handle_1.finance_account_upsert(&account_updated);
-        let list_updated_result = account_handle_1.finance_account_list();
+        let list_updated_result = account_handle_1.finance_account_list(None);
         assert!(
             insert_updated_result.is_ok(),
             "{}",
@@ -634,6 +657,52 @@ pub(crate) mod test_accounting_handle {
             &account_updated
         ));
         assert!(!account_list_contains_element(&list_updated, &account_2));
+
+        /* Testcase 3 limited query */
+        let list_fat_2_result = account_handle_1.finance_account_list_async(None).await;
+        let list_fat_2 = list_fat_2_result.unwrap();
+        let index_start = 0;
+        let index_end = list_fat_2.len() - 1;
+        let index_middle = index_end / 2;
+        let sub_list_1: Vec<FinanceAccount> = list_fat_2[index_start..index_middle]
+            .iter()
+            .cloned()
+            .collect();
+        let sub_list_2: Vec<FinanceAccount> = list_fat_2[index_middle + 1..index_end]
+            .iter()
+            .cloned()
+            .collect();
+        let sub_ids_1 = sub_list_1.iter().map(|elem| elem.id).collect::<Vec<Uuid>>();
+        let sub_ids_2 = sub_list_2.iter().map(|elem| elem.id).collect::<Vec<Uuid>>();
+
+        let limit_list_1_result = account_handle_1
+            .finance_account_list_async(Some(&sub_ids_1))
+            .await;
+        let limit_list_2_result = account_handle_1
+            .finance_account_list_async(Some(&sub_ids_2))
+            .await;
+
+        assert!(
+            limit_list_1_result.is_ok(),
+            "{}",
+            limit_list_1_result.unwrap_err()
+        );
+        assert!(
+            limit_list_2_result.is_ok(),
+            "{}",
+            limit_list_2_result.unwrap_err()
+        );
+        let limit_list_1 = limit_list_1_result.unwrap();
+        let limit_list_2 = limit_list_2_result.unwrap();
+        assert_eq!(limit_list_1.len(), sub_ids_1.len());
+        assert_eq!(limit_list_2.len(), sub_ids_2.len());
+
+        for account in sub_list_1 {
+            assert!(account_list_contains_element(&limit_list_1, &account))
+        }
+        for account in sub_list_2 {
+            assert!(account_list_contains_element(&limit_list_2, &account))
+        }
     }
 
     //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust

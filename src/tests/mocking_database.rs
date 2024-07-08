@@ -109,6 +109,7 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
         &self,
         _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
+        limit_account_ids: Option<&Vec<Uuid>>,
     ) -> Result<Vec<FinanceAccount>, String> {
         let data_obj = GLOBAL_IN_MEMORY_DATA.get().unwrap();
         let data_obj2 = data_obj.lock().unwrap();
@@ -118,9 +119,13 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             .iter()
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
-            let copy_list = InMemoryDatabaseData::clone_finance_account_vector(
+            let mut copy_list = InMemoryDatabaseData::clone_finance_account_vector(
                 &data_obj2.data_per_user[position].accounts_per_user,
             );
+            if limit_account_ids.is_some() {
+                let limit_list = limit_account_ids.unwrap();
+                copy_list.retain(|elem| limit_list.contains(&&elem.id));
+            }
             drop(data_obj2);
             Ok(copy_list)
         } else {

@@ -1071,7 +1071,7 @@ pub async fn do_update_finance_account(
             let mut accounting_config_handle =
                 FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
-            let available_accounts_result = accounting_config_handle.finance_account_list();
+            let available_accounts_result = accounting_config_handle.finance_account_list(None);
             if available_accounts_result.is_err() {
                 debug!(target: "app::FinanceOverView","error in function do_update_finance_account, could not load available accounts for user {}",&user_id);
                 let return_value = UpdateFinanceAccountResponse {

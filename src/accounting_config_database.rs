@@ -30,6 +30,7 @@ pub trait DBFinanceConfigFunctions {
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
+        limit_account_ids: Option<&Vec<Uuid>>,
     ) -> Result<Vec<FinanceAccount>, String>;
     async fn finance_account_upsert(
         &self,
@@ -171,6 +172,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
+        limit_account_ids: Option<&Vec<Uuid>>,
     ) -> Result<Vec<FinanceAccount>, String> {
         // Get a handle to the deployment.
         let client_create_result = self.get_internal_db_client();
@@ -188,7 +190,11 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
 
         //get a binary of UUID or it will not work in production
         let search_value = mongodb::bson::Binary::from_uuid(user_id.clone());
-        let filter = doc! {"user_id":search_value};
+        let mut filter = doc! {"user_id":search_value};
+        if limit_account_ids.is_some() {
+            let limit_ids = limit_account_ids.unwrap();
+            filter.insert("finance_account_id", doc! {"$in": limit_ids});
+        }
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
         let projection = doc! {"finance_account_id":<i32>::from(1),

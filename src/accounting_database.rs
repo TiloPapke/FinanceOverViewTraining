@@ -343,7 +343,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
 
         let accounting_handle =
             FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
-        let account_list_result = accounting_handle.finance_account_list_async().await;
+        let account_list_result = accounting_handle.finance_account_list_async(None).await;
         if account_list_result.is_err() {
             return Err(format!(
                 "Error retriving account list: {}",
