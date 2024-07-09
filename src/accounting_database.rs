@@ -22,6 +22,26 @@ use crate::{
     mdb_convert_tools::MdbConvertTools,
 };
 
+pub struct FinanceAccountBookingEntryListSearchOption {
+    pub(crate) finance_account_id: Uuid,
+    pub(crate) booking_time_from: Option<DateTime<Utc>>,
+    pub(crate) booking_time_till: Option<DateTime<Utc>>,
+}
+
+impl FinanceAccountBookingEntryListSearchOption {
+    pub fn new(
+        finance_account_id: &Uuid,
+        booking_time_from: Option<DateTime<Utc>>,
+        booking_time_till: Option<DateTime<Utc>>,
+    ) -> Self {
+        Self {
+            finance_account_id: finance_account_id.clone(),
+            booking_time_from,
+            booking_time_till,
+        }
+    }
+}
+
 #[async_trait(?Send)]
 pub trait DBFinanceAccountingFunctions {
     async fn finance_journal_entry_list(
@@ -39,6 +59,13 @@ pub trait DBFinanceAccountingFunctions {
         finance_account_id: &Uuid,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String>;
+
+    async fn finance_account_booking_entry_list_multi(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String>;
 
     async fn finance_insert_booking_entry(
@@ -201,11 +228,12 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         let client = client_create_result.unwrap();
 
         let db_instance = client.database(&conncetion_settings.instance);
-        panic!("Need an option to only search for specific accounts!");
-        /*
+
         let accounting_handle =
             FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
-        let account_list_result = accounting_handle.finance_account_list_async().await;
+        let account_list_result = accounting_handle
+            .finance_account_list_async(Some(&vec![finance_account_id.clone()]))
+            .await;
         if account_list_result.is_err() {
             return Err(format!(
                 "Error retriving account list: {}",
@@ -220,7 +248,6 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         if account_position_option.is_none() {
             return Err("account not avaiable".to_string());
         }
-        */
 
         let booking_entries_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);
@@ -326,6 +353,15 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         Ok(booking_entries_list)
     }
 
+    async fn finance_account_booking_entry_list_multi(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        panic!("finance_account_booking_entry_list_multi not implemented for mongodb");
+    }
+
     async fn finance_insert_booking_entry(
         &self,
         conncetion_settings: &DbConnectionSetting,
@@ -343,7 +379,12 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
 
         let accounting_handle =
             FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
-        let account_list_result = accounting_handle.finance_account_list_async(None).await;
+        let account_list_result = accounting_handle
+            .finance_account_list_async(Some(&vec![
+                action_to_insert.credit_finance_account_id,
+                action_to_insert.debit_finance_account_id,
+            ]))
+            .await;
         if account_list_result.is_err() {
             return Err(format!(
                 "Error retriving account list: {}",

@@ -10,6 +10,7 @@ mod test_accounting_handle {
 
     use crate::{
         accounting_config_logic::FinanceAccountingConfigHandle,
+        accounting_database::FinanceAccountBookingEntryListSearchOption,
         accounting_logic::FinanceBookingHandle,
         database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
         datatypes::{
@@ -637,8 +638,42 @@ mod test_accounting_handle {
             ),
             ""
         );
+        //multi search
+        let filter_option_1 = FinanceAccountBookingEntryListSearchOption::new(
+            &finance_account_2_1.id,
+            None,
+            Some(booking_time_2),
+        );
+        let filter_option_2 = FinanceAccountBookingEntryListSearchOption::new(
+            &finance_account_2_2.id,
+            Some(booking_time_4),
+            None,
+        );
+        let multi_account_list_result = booking_handle_2
+            .list_account_booking_entries_multi(vec![filter_option_1, filter_option_2]);
+        assert!(
+            multi_account_list_result.is_ok(),
+            "{}",
+            multi_account_list_result.unwrap_err()
+        );
+        let multi_account_list = multi_account_list_result.unwrap();
+        assert_eq!(multi_account_list.len(), 2);
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &multi_account_list,
+                &finance_booking_request_2_3
+            ),
+            ""
+        );
+        assert_eq!(
+            check_account_listing_contains_booking_request(
+                &multi_account_list,
+                &finance_booking_request_2_2
+            ),
+            ""
+        );
 
-        /* Test 5 further invalid operations
+        /* Test 6 further invalid operations
         trying to perform invalid operations
         a) using datetime filtering where till datetime is before from datetime
             a1) for journal entries

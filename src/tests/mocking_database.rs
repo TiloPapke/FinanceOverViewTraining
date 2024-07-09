@@ -1,4 +1,6 @@
 #[cfg(test)]
+use crate::accounting_database::FinanceAccountBookingEntryListSearchOption;
+#[cfg(test)]
 use crate::database_handler_mongodb::DbConnectionSetting;
 #[cfg(test)]
 use crate::datatypes::BookingEntryType;
@@ -249,6 +251,65 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
             }
             if booking_time_till.is_some() {
                 return_object.retain(|elem| elem.booking_time.le(&booking_time_till.unwrap()))
+            }
+            drop(data_obj3);
+            Ok(return_object)
+        } else {
+            drop(data_obj3);
+            Err("User not found".to_string())
+        }
+    }
+
+    async fn finance_account_booking_entry_list_multi(
+        &self,
+        _conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+        search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
+        let data_obj2 = data_obj.unwrap();
+        let data_obj3 = data_obj2.lock().unwrap();
+        let position_option = data_obj3
+            .data_per_user
+            .iter()
+            .position(|elem| elem.user_id.eq(&user_id));
+        if let Some(position) = position_option {
+            let user_object = &data_obj3.data_per_user.get(position).unwrap();
+            let booking_entries_list = &user_object.booking_entries_per_user;
+
+            let account_list = &user_object.accounts_per_user;
+            for search_option in &search_options {
+                let account_position_option = account_list
+                    .iter()
+                    .position(|elem| elem.id.eq(&search_option.finance_account_id));
+                if account_position_option.is_none() {
+                    return Err(format!(
+                        "account {} not avaiable",
+                        search_option.finance_account_id
+                    ));
+                }
+            }
+
+            let mut return_object = Vec::new();
+            for search_option in &search_options {
+                let mut list_per_account = booking_entries_list.clone();
+                list_per_account.retain(|elem| {
+                    elem.finance_account_id
+                        .eq(&search_option.finance_account_id)
+                });
+                if search_option.booking_time_from.is_some() {
+                    list_per_account.retain(|elem| {
+                        elem.booking_time
+                            .ge(&search_option.booking_time_from.unwrap())
+                    })
+                }
+                if search_option.booking_time_till.is_some() {
+                    list_per_account.retain(|elem| {
+                        elem.booking_time
+                            .le(&search_option.booking_time_till.unwrap())
+                    })
+                }
+                return_object.append(&mut list_per_account);
             }
             drop(data_obj3);
             Ok(return_object)

@@ -5,7 +5,9 @@ use futures::executor;
 use mongodb::bson::Uuid;
 
 use crate::{
-    accounting_database::DBFinanceAccountingFunctions,
+    accounting_database::{
+        DBFinanceAccountingFunctions, FinanceAccountBookingEntryListSearchOption,
+    },
     database_handler_mongodb::DbConnectionSetting,
     datatypes::{
         AccountBalanceInfo, AccountBalanceType, BookingEntryType, FinanceAccountBookingEntry,
@@ -60,20 +62,42 @@ impl<'a> FinanceBookingHandle<'a> {
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        if booking_time_from.is_some() && booking_time_till.is_some() {
-            if booking_time_from.unwrap().gt(&booking_time_till.unwrap()) {
-                return Err(
-                    "could not query because booking_time_from is after booking_time_till".into(),
-                );
-            }
-        }
-        let temp_var_1 = executor::block_on(self.db_connector.finance_account_booking_entry_list(
-            &self.db_connection_settings,
-            &self.user_id,
+        let search_option = FinanceAccountBookingEntryListSearchOption::new(
             finance_account_id,
             booking_time_from,
             booking_time_till,
-        ));
+        );
+        let temp_var_1 = self.list_account_booking_entries_multi(vec![search_option]);
+
+        return temp_var_1;
+    }
+
+    pub fn list_account_booking_entries_multi(
+        &self,
+        search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        for search_option in &search_options {
+            if search_option.booking_time_from.is_some()
+                && search_option.booking_time_till.is_some()
+            {
+                if search_option
+                    .booking_time_from
+                    .unwrap()
+                    .gt(&search_option.booking_time_till.unwrap())
+                {
+                    return Err(
+                        "could not query because booking_time_from is after booking_time_till"
+                            .into(),
+                    );
+                }
+            }
+        }
+        let temp_var_1 =
+            executor::block_on(self.db_connector.finance_account_booking_entry_list_multi(
+                &self.db_connection_settings,
+                &self.user_id,
+                search_options,
+            ));
 
         return temp_var_1;
     }
