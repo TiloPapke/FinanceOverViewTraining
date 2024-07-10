@@ -802,7 +802,7 @@ impl DbHandlerMongoDB {
 
         let filter = doc! {"user_id":user_id_value.clone()};
 
-        let max_number_execute_result = counter_entries_collection.find_one(filter, None).await?;
+        let max_number_execute_result = counter_entries_collection.find_one_with_session(filter, None, session).await?;
         let counter_document = max_number_execute_result.unwrap();
         let new_running_number_result = counter_document.get_i64("booking_journal_max_number");
         if new_running_number_result.is_err() {
