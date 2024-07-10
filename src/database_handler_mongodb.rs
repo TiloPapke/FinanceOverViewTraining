@@ -1136,4 +1136,161 @@ impl DbHandlerMongoDB {
         }
         return Err("unable to reset value".to_string());
     }
+
+    pub async fn repair_counter_record_for_user(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+    ) -> Result<(), String> {
+        // Get a handle to the deployment.
+        let client_create_result = self.get_internal_db_client();
+
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let counter_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_COUNTERS);
+
+        //get a binary of UUID or it will not work in production
+        let user_id_value = mongodb::bson::Binary::from_uuid(user_id.clone());
+        let filter = doc! {"user_id":&user_id_value};
+
+        let find_result = counter_collection.find_one(filter.clone(), None).await;
+        if find_result.is_err() {
+            let error_var = find_result.unwrap_err();
+            return Err(format!("Error getting record: {}", error_var));
+        }
+        let find_record_option = find_result.unwrap();
+        if find_record_option.is_none() {
+            let journal_max_number_result = self
+                .get_max_running_journal_number(&conncetion_settings, user_id)
+                .await;
+            if journal_max_number_result.is_err() {
+                return Err(journal_max_number_result.unwrap_err());
+            }
+            let base_doc = doc! {"user_id": &user_id_value,
+            "counter_entry_id":mongodb::bson::Binary::from_uuid(Uuid::new()),
+            "booking_journal_max_number": journal_max_number_result.unwrap()};
+
+            let insert_result = counter_collection.insert_one(base_doc, None).await;
+            if insert_result.is_err() {
+                return Err(format!(
+                    "Error inserting base counter record: {}",
+                    insert_result.unwrap_err()
+                ));
+            }
+            let insert_one_info = insert_result.unwrap();
+            return Ok(());
+        }
+
+        let counter_record = find_record_option.unwrap();
+        if !counter_record.contains_key("booking_journal_max_number") {
+            let journal_max_number_result = self
+                .get_max_running_journal_number(&conncetion_settings, user_id)
+                .await;
+            if journal_max_number_result.is_err() {
+                return Err(journal_max_number_result.unwrap_err());
+            }
+
+            let mut updated_info = counter_record.clone();
+            updated_info.insert(
+                "booking_journal_max_number",
+                journal_max_number_result.unwrap(),
+            );
+
+            let update_result = counter_collection
+                .update_one(filter.clone(), updated_info, None)
+                .await;
+            if update_result.is_err() {
+                return Err(format!(
+                    "Error updating base counter record: {}",
+                    update_result.unwrap_err()
+                ));
+            }
+            let update_info = update_result.unwrap();
+            if update_info.modified_count.ne(&1) {
+                return Err(format!(
+                    "Error updating base counter record: {} records modfied",
+                    update_info.modified_count
+                ));
+            }
+        }
+
+        return Ok(());
+    }
+
+    async fn get_max_running_journal_number(
+        &self,
+        conncetion_settings: &DbConnectionSetting,
+        user_id: &Uuid,
+    ) -> Result<(i64), String> {
+        // Get a handle to the deployment.
+        let client_create_result = self.get_internal_db_client();
+
+        if client_create_result.is_err() {
+            let client_err = &client_create_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",client_err);
+            return Err(client_err.to_string());
+        }
+        let client = client_create_result.unwrap();
+
+        let db_instance = client.database(&conncetion_settings.instance);
+
+        let journal_collection: Collection<Document> =
+            db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY);
+
+        //get a binary of UUID or it will not work in production
+        let user_id_value = mongodb::bson::Binary::from_uuid(user_id.clone());
+        let aggregate_pipeline = [
+            doc! {"$match": doc! {"user_id":user_id_value}},
+            doc! {"$group": doc! {"_id": "user_id", "max_journal_number": doc! {"$max": "running_number"}}},
+        ];
+        let max_current_number_result =
+            journal_collection.aggregate(aggregate_pipeline, None).await;
+        if max_current_number_result.is_err() {
+            return Err(format!(
+                "Error getting max running from journal: {}",
+                max_current_number_result.unwrap_err()
+            ));
+        }
+
+        let mut max_current_number_cursor = max_current_number_result.unwrap();
+        let mut count_doc = 0;
+        let mut global_max = 0;
+
+        while let Some(data_doc) = max_current_number_cursor.next().await {
+            if data_doc.is_err() {
+                return Err(format!(
+                    "Error receving max running from journal: {}",
+                    data_doc.unwrap_err().to_string()
+                ));
+            }
+            let inner_doc = data_doc.unwrap();
+
+            let current_number_result = inner_doc.get_i64("max_journal_number");
+            if current_number_result.is_err() {
+                return Err(format!(
+                    "Error extracting max running from journal: {}",
+                    current_number_result.unwrap_err().to_string()
+                ));
+            }
+
+            count_doc += 1;
+            global_max = current_number_result.unwrap();
+        }
+        if count_doc <= 1 {
+            return Ok(global_max);
+        } else {
+            return Err(format!(
+                "Error extracting max running from journal: more than 1 record found {}",
+                count_doc
+            ));
+        }
+    }
 }

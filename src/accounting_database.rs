@@ -807,7 +807,7 @@ impl DbHandlerMongoDB {
         let new_running_number_result = counter_document.get_i64("booking_journal_max_number");
         if new_running_number_result.is_err() {
             return Err(mongodb::error::Error::custom(format!(
-                "could not get nex max number: {}",
+                "could not get new max number: {}",
                 new_running_number_result.unwrap_err()
             )));
         }

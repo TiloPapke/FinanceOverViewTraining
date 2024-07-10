@@ -1201,6 +1201,10 @@ mod test_accounting_handle {
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
         let booking_handle_1 = FinanceBookingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
+        let repair_result = mongo_db
+            .repair_counter_record_for_user(&db_connection, &user_id_1)
+            .await;
+        assert!(repair_result.is_ok(), "{}", repair_result.unwrap_err());
         let _ = prepare_mongo_db_for_tests(&account_handle_1, &booking_handle_1, &db_connection);
 
         /* Test 0, further requirements
