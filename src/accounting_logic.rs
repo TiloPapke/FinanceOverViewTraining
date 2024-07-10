@@ -76,6 +76,9 @@ impl<'a> FinanceBookingHandle<'a> {
         &self,
         search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        if search_options.len() == 0 {
+            return Err("could not query because search options is empty".into());
+        }
         for search_option in &search_options {
             if search_option.booking_time_from.is_some()
                 && search_option.booking_time_till.is_some()

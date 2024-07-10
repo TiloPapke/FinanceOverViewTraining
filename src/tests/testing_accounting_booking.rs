@@ -690,6 +690,7 @@ mod test_accounting_handle {
             d3) using credit account before debit saldo
             d4) using debit account before credit saldo
         e) listing account entries from a different user
+        f) multi search with empty insert
         */
         let full_listing_user_1_6_result =
             booking_handle_1.list_journal_entries(Some(check_date_time_2), Some(check_date_time_1));
@@ -909,6 +910,17 @@ mod test_accounting_handle {
             finance_account_1_1_listing_6_result.is_err(),
             "operation should have failed"
         );
+
+        let empty_search_options = Vec::new();
+        let finance_empty_listing_result =
+            booking_handle_1.list_account_booking_entries_multi(empty_search_options);
+        assert!(
+            finance_empty_listing_result.is_err(),
+            "query with empty search options needs to fail"
+        );
+        assert!(finance_empty_listing_result
+            .unwrap_err()
+            .contains("could not query because search options is empty"));
     }
 
     #[tokio::test]
@@ -1493,6 +1505,7 @@ mod test_accounting_handle {
         /* Test 4 further invalid operation
         a) credit and debit on same account
         b) using a no existing accont
+        c) multi list with empty search option
         */
 
         let booking_time_5 = booking_time_4 + Duration::hours(1);
@@ -1566,6 +1579,17 @@ mod test_accounting_handle {
             insert_request_i_a_response_result.is_err(),
             "using invalid account for credit muss fail"
         );
+
+        let empty_search_options = Vec::new();
+        let finance_empty_listing_result =
+            booking_handle_1.list_account_booking_entries_multi(empty_search_options);
+        assert!(
+            finance_empty_listing_result.is_err(),
+            "query with empty search options needs to fail"
+        );
+        assert!(finance_empty_listing_result
+            .unwrap_err()
+            .contains("could not query because search options is empty"));
     }
 
     fn check_journal_listing_contains_booking_request(
