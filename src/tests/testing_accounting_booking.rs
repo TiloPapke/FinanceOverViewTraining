@@ -303,18 +303,24 @@ mod test_accounting_handle {
             title: "f_b_r_3_1".into(),
             description: "description_f_b_r_3_1".into(),
         };
-        let insert_finance_booking_request_1_1_result =
-            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_1);
-        let insert_finance_booking_request_1_2_result =
-            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_2);
-        let insert_finance_booking_request_2_1_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_1);
-        let insert_finance_booking_request_2_2_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_2);
-        let insert_finance_booking_request_2_3_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_3);
-        let insert_finance_booking_request_3_1_result =
-            booking_handle_3.finance_insert_booking_entry(&finance_booking_request_3_1);
+        let insert_finance_booking_request_1_1_result = booking_handle_1
+            .finance_insert_booking_entry(&finance_booking_request_1_1)
+            .await;
+        let insert_finance_booking_request_1_2_result = booking_handle_1
+            .finance_insert_booking_entry(&finance_booking_request_1_2)
+            .await;
+        let insert_finance_booking_request_2_1_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_1)
+            .await;
+        let insert_finance_booking_request_2_2_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_2)
+            .await;
+        let insert_finance_booking_request_2_3_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_3)
+            .await;
+        let insert_finance_booking_request_3_1_result = booking_handle_3
+            .finance_insert_booking_entry(&finance_booking_request_3_1)
+            .await;
 
         assert!(
             insert_finance_booking_request_1_1_result.is_ok(),
@@ -382,8 +388,8 @@ mod test_accounting_handle {
             ""
         );
 
-        let full_listing_user_1_result = booking_handle_1.list_journal_entries(None, None);
-        let full_listing_user_2_result = booking_handle_2.list_journal_entries(None, None);
+        let full_listing_user_1_result = booking_handle_1.list_journal_entries(None, None).await;
+        let full_listing_user_2_result = booking_handle_2.list_journal_entries(None, None).await;
         assert!(
             full_listing_user_1_result.is_ok(),
             "{}",
@@ -436,8 +442,9 @@ mod test_accounting_handle {
             title: "f_b_r_1_3".into(),
             description: "description_f_b_r_1_3".into(),
         };
-        let insert_finance_booking_request_1_3_result =
-            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_3);
+        let insert_finance_booking_request_1_3_result = booking_handle_1
+            .finance_insert_booking_entry(&finance_booking_request_1_3)
+            .await;
         assert!(
             insert_finance_booking_request_1_3_result.is_ok(),
             "{}",
@@ -450,7 +457,7 @@ mod test_accounting_handle {
             ),
             ""
         );
-        let full_listing_user_1_2_result = booking_handle_1.list_journal_entries(None, None);
+        let full_listing_user_1_2_result = booking_handle_1.list_journal_entries(None, None).await;
         let full_listing_user_1_2 = full_listing_user_1_2_result.unwrap();
         assert_eq!(full_listing_user_1_2.len(), 3);
         assert!(check_journal_listing_contains_booking_request(
@@ -483,12 +490,15 @@ mod test_accounting_handle {
         */
         let check_date_time_1 = booking_time_2 - Duration::seconds(1);
         let check_date_time_2 = booking_time_7 - Duration::seconds(1);
-        let full_listing_user_1_3_result =
-            booking_handle_1.list_journal_entries(Some(check_date_time_1), None);
-        let full_listing_user_1_4_result =
-            booking_handle_1.list_journal_entries(None, Some(check_date_time_2));
-        let full_listing_user_1_5_result =
-            booking_handle_1.list_journal_entries(Some(check_date_time_1), Some(check_date_time_2));
+        let full_listing_user_1_3_result = booking_handle_1
+            .list_journal_entries(Some(check_date_time_1), None)
+            .await;
+        let full_listing_user_1_4_result = booking_handle_1
+            .list_journal_entries(None, Some(check_date_time_2))
+            .await;
+        let full_listing_user_1_5_result = booking_handle_1
+            .list_journal_entries(Some(check_date_time_1), Some(check_date_time_2))
+            .await;
         assert!(
             full_listing_user_1_3_result.is_ok(),
             "{}",
@@ -692,8 +702,9 @@ mod test_accounting_handle {
         e) listing account entries from a different user
         f) multi search with empty insert
         */
-        let full_listing_user_1_6_result =
-            booking_handle_1.list_journal_entries(Some(check_date_time_2), Some(check_date_time_1));
+        let full_listing_user_1_6_result = booking_handle_1
+            .list_journal_entries(Some(check_date_time_2), Some(check_date_time_1))
+            .await;
         assert!(
             full_listing_user_1_6_result.is_err(),
             "filtering with date till before date from must fail"
@@ -730,8 +741,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_4".into(),
             description: "description_f_b_r_2_4".into(),
         };
-        let insert_finance_booking_request_2_4_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_4);
+        let insert_finance_booking_request_2_4_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_4)
+            .await;
         assert!(
             insert_finance_booking_request_2_4_result.is_err(),
             "inserting booking request for credit account with same booking time twice must fail"
@@ -747,8 +759,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_5".into(),
             description: "description_f_b_r_2_5".into(),
         };
-        let insert_finance_booking_request_2_5_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_5);
+        let insert_finance_booking_request_2_5_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_5)
+            .await;
         assert!(
             insert_finance_booking_request_2_5_result.is_err(),
             "inserting booking request for debit account with same booking time twice must fail"
@@ -766,8 +779,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_6".into(),
             description: "description_f_b_r_2_6".into(),
         };
-        let insert_finance_booking_request_2_6_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_6);
+        let insert_finance_booking_request_2_6_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_6)
+            .await;
         assert!(
             insert_finance_booking_request_2_6_result.is_err(),
             "inserting booking request for credit account from another user must fail"
@@ -783,8 +797,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_7".into(),
             description: "description_f_b_r_2_7".into(),
         };
-        let insert_finance_booking_request_2_7_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_7);
+        let insert_finance_booking_request_2_7_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_7)
+            .await;
         assert!(
             insert_finance_booking_request_2_7_result.is_err(),
             "inserting booking request for debit account from another user must fail"
@@ -802,8 +817,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_8".into(),
             description: "description_f_b_r_2_8".into(),
         };
-        let insert_finance_booking_request_2_8_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_8);
+        let insert_finance_booking_request_2_8_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_8)
+            .await;
         assert!(
             insert_finance_booking_request_2_8_result.is_ok(),
             "could not prepare saldo check: {}",
@@ -830,8 +846,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_9".into(),
             description: "description_f_b_r_2_9".into(),
         };
-        let insert_finance_booking_request_2_9_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_9);
+        let insert_finance_booking_request_2_9_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_9)
+            .await;
         assert!(
             insert_finance_booking_request_2_9_result.is_err(),
             "operation should have failed"
@@ -851,8 +868,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_10".into(),
             description: "description_f_b_r_2_10".into(),
         };
-        let insert_finance_booking_request_2_10_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_10);
+        let insert_finance_booking_request_2_10_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_10)
+            .await;
         assert!(
             insert_finance_booking_request_2_10_result.is_err(),
             "operation should have failed"
@@ -872,8 +890,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_11".into(),
             description: "description_f_b_r_2_11".into(),
         };
-        let insert_finance_booking_request_2_11_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_11);
+        let insert_finance_booking_request_2_11_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_11)
+            .await;
         assert!(
             insert_finance_booking_request_2_11_result.is_err(),
             "operation should have failed"
@@ -893,8 +912,9 @@ mod test_accounting_handle {
             title: "f_b_r_2_12".into(),
             description: "description_f_b_r_2_12".into(),
         };
-        let insert_finance_booking_request_2_12_result =
-            booking_handle_2.finance_insert_booking_entry(&finance_booking_request_2_12);
+        let insert_finance_booking_request_2_12_result = booking_handle_2
+            .finance_insert_booking_entry(&finance_booking_request_2_12)
+            .await;
         assert!(
             insert_finance_booking_request_2_12_result.is_err(),
             "operation should have failed"
@@ -1066,12 +1086,15 @@ mod test_accounting_handle {
         let account_3_running_saldo_amount = amount_2 + amount_3;
         let account_3_running_saldo_type = AccountBalanceType::Credit;
 
-        let insert_finance_booking_request_1_1_result =
-            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_1);
-        let insert_finance_booking_request_1_2_result =
-            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_2);
-        let insert_finance_booking_request_1_3_result =
-            booking_handle_1.finance_insert_booking_entry(&finance_booking_request_1_3);
+        let insert_finance_booking_request_1_1_result = booking_handle_1
+            .finance_insert_booking_entry(&finance_booking_request_1_1)
+            .await;
+        let insert_finance_booking_request_1_2_result = booking_handle_1
+            .finance_insert_booking_entry(&finance_booking_request_1_2)
+            .await;
+        let insert_finance_booking_request_1_3_result = booking_handle_1
+            .finance_insert_booking_entry(&finance_booking_request_1_3)
+            .await;
         assert!(
             insert_finance_booking_request_1_1_result.is_ok(),
             "{}",
@@ -1307,8 +1330,9 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_a_b_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_a_b);
+        let insert_request_a_b_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_a_b)
+            .await;
         assert!(
             insert_request_a_b_result.is_ok(),
             "{}",
@@ -1357,8 +1381,9 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_c_d_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_c_d);
+        let insert_request_c_d_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_c_d)
+            .await;
         assert!(
             insert_request_c_d_result.is_ok(),
             "{}",
@@ -1407,13 +1432,16 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_b_c_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_b_c);
+
+        let insert_request_b_c_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_b_c)
+            .await;
         assert!(
             insert_request_b_c_result.is_ok(),
             "{}",
             insert_request_b_c_result.unwrap_err()
         );
+
         let balance_info_3_accounts_result =
             booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
         assert!(
@@ -1457,8 +1485,9 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_a_d_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_a_d);
+        let insert_request_a_d_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_a_d)
+            .await;
         assert!(
             insert_request_a_d_result.is_ok(),
             "{}",
@@ -1481,6 +1510,7 @@ mod test_accounting_handle {
             amount: test_account_d_balance_info_2.amount.abs_diff(amount_a_d),
             balance_type: AccountBalanceType::Debit,
         };
+
         let balance_check_4_result = check_multiple_balance_info(
             &balance_info_4_accounts_result.unwrap(),
             &vec![
@@ -1491,6 +1521,7 @@ mod test_accounting_handle {
             ],
         );
         assert_eq!(balance_check_4_result, "");
+
         /* Test 2 creating saldos
         a) inserting a saldo with correct booking type but wrong amount
         b) inserting a saldo with wrong booking type but correct amount
@@ -1527,8 +1558,9 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_a_a_response_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_a_a);
+        let insert_request_a_a_response_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_a_a)
+            .await;
         assert!(
             insert_request_a_a_response_result.is_err(),
             "using same account for credit and debit muss fail"
@@ -1555,8 +1587,9 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_a_i_response_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_a_i);
+        let insert_request_a_i_response_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_a_i)
+            .await;
         assert!(
             insert_request_a_i_response_result.is_err(),
             "using invalid account for debit muss fail"
@@ -1577,8 +1610,9 @@ mod test_accounting_handle {
             is_saldo: false,
             is_simple_entry: true,
         };
-        let insert_request_i_a_response_result =
-            booking_handle_1.finance_insert_booking_entry(&insert_request_i_a);
+        let insert_request_i_a_response_result = booking_handle_1
+            .finance_insert_booking_entry(&insert_request_i_a)
+            .await;
         assert!(
             insert_request_i_a_response_result.is_err(),
             "using invalid account for credit muss fail"
@@ -1913,7 +1947,7 @@ mod test_accounting_handle {
                     while credit_counter < 2 {
                         let index_1 = credit_counter * 2;
                         let index_2 = credit_counter * 2 + 1;
-                        let amount_mod = debit_accounts_info[index_1].amount + 1;
+                        let amount_mod = debit_accounts_info[index_1].amount + 100;
                         //panic!("Fore some reason the following line will not return");
                         let saldo_information_list_result = futures::executor::block_on(
                             booking_handle_1.finance_get_last_saldo_account_entries(Some(vec![
@@ -1932,16 +1966,44 @@ mod test_accounting_handle {
                                 .unwrap()
                                 .into_values()
                                 .collect();
-                        let update_time = match saldo_information_list.len() {
-                            0 => Utc
-                                .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
-                                .unwrap(),
-                            1 => saldo_information_list[0].booking_time,
-                            _ => std::cmp::max(
+                        let last_saldo_time_option = match saldo_information_list.len() {
+                            0 => None,
+                            1 => Some(saldo_information_list[0].booking_time),
+                            _ => Some(std::cmp::max(
                                 saldo_information_list[0].booking_time,
                                 saldo_information_list[1].booking_time,
+                            )),
+                        };
+                        let search_options = vec![
+                            FinanceAccountBookingEntryListSearchOption::new(
+                                &debit_accounts_info[index_1].account_id,
+                                last_saldo_time_option,
+                                None,
                             ),
-                        } + Duration::hours(1);
+                            FinanceAccountBookingEntryListSearchOption::new(
+                                &debit_accounts_info[index_2].account_id,
+                                last_saldo_time_option,
+                                None,
+                            ),
+                        ];
+                        let booking_entries_result =
+                            booking_handle_1.list_account_booking_entries_multi(search_options);
+                        if booking_entries_result.is_err() {
+                            panic!(
+                                "Could not prepare MONGODB: {}",
+                                booking_entries_result.unwrap_err()
+                            )
+                        }
+                        let booking_entries = booking_entries_result.unwrap();
+                        let max_booking_entry =
+                            booking_entries.iter().max_by_key(|elem| elem.booking_time);
+                        let update_time = match max_booking_entry {
+                            Some(max_elem) => max_elem.booking_time + Duration::hours(1),
+                            None => Utc
+                                .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
+                                .unwrap(),
+                        };
+
                         let insert_request_mod = FinanceBookingRequest {
                             amount: amount_mod,
                             booking_time: update_time,
@@ -1952,8 +2014,9 @@ mod test_accounting_handle {
                             is_saldo: false,
                             is_simple_entry: true,
                         };
-                        let insert_request_mod_response_result =
-                            booking_handle_1.finance_insert_booking_entry(&insert_request_mod);
+                        let insert_request_mod_response_result = futures::executor::block_on(
+                            booking_handle_1.finance_insert_booking_entry(&insert_request_mod),
+                        );
 
                         if insert_request_mod_response_result.is_err() {
                             panic!(

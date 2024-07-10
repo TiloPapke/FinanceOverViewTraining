@@ -243,7 +243,7 @@ impl DbHandlerMongoDB {
                 .source(Some(co_source))
                 .build(),
         );
-
+        
         // Get a handle to the deployment.
         let client = Client::with_options(client_options).unwrap();
         return Result::Ok(client);
@@ -1229,7 +1229,7 @@ impl DbHandlerMongoDB {
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-    ) -> Result<(i64), String> {
+    ) -> Result<i64, String> {
         // Get a handle to the deployment.
         let client_create_result = self.get_internal_db_client();
 

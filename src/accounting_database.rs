@@ -107,13 +107,22 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY);
 
         //get a binary of UUID or it will not work in production
-        let mut filter = doc! {"user_id":MdbConvertTools::get_binary_from_bson_uuid(user_id)};
+        let user_filter = doc! {"user_id":MdbConvertTools::get_binary_from_bson_uuid(user_id)};
+        let mut sub_filters = Vec::new();
+        sub_filters.push(user_filter);
         if booking_time_from.is_some() {
-            filter.insert("booking_time", doc! {"$gte": booking_time_from.unwrap()});
+            let sub_doc1 = doc! {"booking_time": doc! {"$gte": booking_time_from.unwrap()}};
+            sub_filters.push(sub_doc1);
         }
         if booking_time_till.is_some() {
-            filter.insert("booking_time", doc! {"$lte": booking_time_from.unwrap()});
+            let sub_doc2 = doc! {"booking_time": doc! {"$lte": booking_time_till.unwrap()}};
+            sub_filters.push(sub_doc2);
         }
+        let filter = if sub_filters.len().eq(&1) {
+            sub_filters[0].clone()
+        } else {
+            doc!("$and": sub_filters)
+        };
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
         let projection = doc! {
@@ -802,7 +811,9 @@ impl DbHandlerMongoDB {
 
         let filter = doc! {"user_id":user_id_value.clone()};
 
-        let max_number_execute_result = counter_entries_collection.find_one_with_session(filter, None, session).await?;
+        let max_number_execute_result = counter_entries_collection
+            .find_one_with_session(filter, None, session)
+            .await?;
         let counter_document = max_number_execute_result.unwrap();
         let new_running_number_result = counter_document.get_i64("booking_journal_max_number");
         if new_running_number_result.is_err() {

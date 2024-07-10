@@ -34,7 +34,7 @@ impl<'a> FinanceBookingHandle<'a> {
         }
     }
 
-    pub fn list_journal_entries(
+    pub async fn list_journal_entries(
         &self,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
@@ -46,12 +46,15 @@ impl<'a> FinanceBookingHandle<'a> {
                 );
             }
         }
-        let temp_var_1 = executor::block_on(self.db_connector.finance_journal_entry_list(
-            &self.db_connection_settings,
-            &self.user_id,
-            booking_time_from,
-            booking_time_till,
-        ));
+        let temp_var_1 = self
+            .db_connector
+            .finance_journal_entry_list(
+                &self.db_connection_settings,
+                &self.user_id,
+                booking_time_from,
+                booking_time_till,
+            )
+            .await;
 
         return temp_var_1;
     }
@@ -105,14 +108,16 @@ impl<'a> FinanceBookingHandle<'a> {
         return temp_var_1;
     }
 
-    pub fn finance_insert_booking_entry(
+    pub async fn finance_insert_booking_entry(
         &self,
         action_to_insert: &FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
-        let check_journal_entries_result = self.list_journal_entries(
-            Some(action_to_insert.booking_time),
-            Some(action_to_insert.booking_time),
-        );
+        let check_journal_entries_result = self
+            .list_journal_entries(
+                Some(action_to_insert.booking_time),
+                Some(action_to_insert.booking_time),
+            )
+            .await;
         if check_journal_entries_result.is_err() {
             return Err(format!(
                 "Error checking already existing entries: {}",
@@ -124,19 +129,15 @@ impl<'a> FinanceBookingHandle<'a> {
             let position_credit_result = check_journal_entries.iter().position(|elem| {
                 elem.credit_finance_account_id
                     .eq(&action_to_insert.credit_finance_account_id)
-                    || elem
-                        .debit_finance_account_id
-                        .eq(&action_to_insert.credit_finance_account_id)
+                    && elem.booking_time.eq(&action_to_insert.booking_time)
             });
             if position_credit_result.is_some() {
                 return Err("Could not perform request: there is already an entry for credit account at specified booking time".into());
             }
             let position_debit_result = check_journal_entries.iter().position(|elem| {
-                elem.credit_finance_account_id
+                elem.debit_finance_account_id
                     .eq(&action_to_insert.debit_finance_account_id)
-                    || elem
-                        .debit_finance_account_id
-                        .eq(&action_to_insert.debit_finance_account_id)
+                    && elem.booking_time.eq(&action_to_insert.booking_time)
             });
             if position_debit_result.is_some() {
                 return Err("Could not perform request: there is already an entry for debit account at specified booking time".into());
