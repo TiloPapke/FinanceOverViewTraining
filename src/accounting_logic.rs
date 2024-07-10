@@ -209,7 +209,7 @@ impl<'a> FinanceBookingHandle<'a> {
 
         let saldo_information_list = saldo_information_list_result.unwrap();
 
-        // per account get entries since last saldo
+        let mut search_options = Vec::new();
         for account_id in accounts_to_calculate {
             let time_start_option;
             if saldo_information_list.contains_key(account_id) {
@@ -218,19 +218,32 @@ impl<'a> FinanceBookingHandle<'a> {
             } else {
                 time_start_option = None;
             }
-            let booking_entries_result =
-                self.list_account_booking_entries(account_id, time_start_option, None);
-            if booking_entries_result.is_err() {
-                return Err(format!(
-                    "Error getting booking entries for account {}: {}",
-                    account_id,
-                    booking_entries_result.unwrap_err()
-                ));
-            }
+            let search_option = FinanceAccountBookingEntryListSearchOption::new(
+                account_id,
+                time_start_option,
+                None,
+            );
+            search_options.push(search_option);
+        }
+        let booking_entries_multi_result = self.list_account_booking_entries_multi(search_options);
+        if booking_entries_multi_result.is_err() {
+            return Err(format!(
+                "Error getting multi booking entries: {}",
+                booking_entries_multi_result.unwrap_err()
+            ));
+        }
+        let booking_entries_multi = booking_entries_multi_result.unwrap();
 
+        // per account get entries since last saldo
+        for account_id in accounts_to_calculate {
             let mut sum_credit_amount = 0;
             let mut sum_debit_amount = 0;
-            let booking_entries = booking_entries_result.unwrap();
+            let booking_entries: std::iter::Filter<
+                std::slice::Iter<FinanceAccountBookingEntry>,
+                _,
+            > = booking_entries_multi
+                .iter()
+                .filter(|elem| elem.finance_account_id.eq(account_id));
             for booking_entry in booking_entries {
                 if booking_entry.booking_type.eq(&BookingEntryType::Credit)
                     || booking_entry
