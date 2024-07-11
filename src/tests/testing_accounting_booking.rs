@@ -1478,8 +1478,8 @@ mod test_accounting_handle {
         let insert_request_a_d = FinanceBookingRequest {
             amount: amount_a_d,
             booking_time: booking_time_4,
-            credit_finance_account_id: test_account_b_balance_info.account_id,
-            debit_finance_account_id: test_account_c_balance_info.account_id,
+            credit_finance_account_id: test_account_a_balance_info.account_id,
+            debit_finance_account_id: test_account_d_balance_info.account_id,
             description: format!("A to D: {}, test run {}", amount_a_d, test_run_id),
             title: "A to D".into(),
             is_saldo: false,
