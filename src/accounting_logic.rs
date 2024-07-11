@@ -144,6 +144,10 @@ impl<'a> FinanceBookingHandle<'a> {
             }
         }
 
+        if action_to_insert.credit_finance_account_id.eq(&action_to_insert.debit_finance_account_id){
+            return Err("Could not perform request: same account for debit and credit".into());
+        }
+
         let saldo_information_result =
             executor::block_on(self.finance_get_last_saldo_account_entries(Some(vec![
                 action_to_insert.credit_finance_account_id,
