@@ -496,7 +496,7 @@ pub(crate) mod test_accounting_handle {
         assert!(list_5_result.is_ok(), "{}", list_5_result.unwrap_err());
         let list5 = list_5_result.unwrap();
         assert_eq!(list5.len(), 1);
-        assert!(account_list_contains_element(&list4, &finance_account_1_3));
+        assert!(account_list_contains_element(&list5, &finance_account_1_3));
 
         /* Testcase 5
         trying to list and insert value for a new user that does not exist
