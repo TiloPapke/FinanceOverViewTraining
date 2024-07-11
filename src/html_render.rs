@@ -557,7 +557,7 @@ pub async fn display_accounting_config_main_page(
             if account_types_result.is_err() {
                 warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,account_types_result.unwrap_err());
                 let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-                    username: "Session expired".to_string(),
+                    username: "problems while getting account types list".to_string(),
                     account_types: empty_account_type_list,
                     accounts: empty_account_list,
                 };
@@ -579,7 +579,7 @@ pub async fn display_accounting_config_main_page(
             if accounts_result.is_err() {
                 warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,accounts_result.unwrap_err());
                 let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-                    username: "Session expired".to_string(),
+                    username: "problems while getting account list".to_string(),
                     account_types: empty_account_type_list,
                     accounts: empty_account_list,
                 };
