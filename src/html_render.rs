@@ -537,7 +537,6 @@ pub async fn display_accounting_config_main_page(
     let username: String = session.get("user_name").unwrap();
     let user_id: Uuid = session.get("user_account_id").unwrap();
 
-    let db_handler = DbHandlerMongoDB::new();
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
         url: String::from(&local_setting.backend_database_url),
@@ -545,6 +544,7 @@ pub async fn display_accounting_config_main_page(
         password: String::from(local_setting.backend_database_password),
         instance: String::from(&local_setting.backend_database_instance),
     };
+    let db_handler = DbHandlerMongoDB::new(&db_connection);
 
     {
         let accounting_config_handle =

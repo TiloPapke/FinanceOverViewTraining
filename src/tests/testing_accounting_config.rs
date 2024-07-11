@@ -171,7 +171,7 @@ pub(crate) mod test_accounting_handle {
         }
 
         let user_id_1 = validate_result.unwrap();
-        let mongo_db = DbHandlerMongoDB::new_with_connection(&db_connection);
+        let mongo_db = DbHandlerMongoDB::new(&db_connection);
 
         let mut account_handle_1 =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
@@ -544,7 +544,7 @@ pub(crate) mod test_accounting_handle {
         }
 
         let user_id_1 = validate_result.unwrap();
-        let mongo_db = DbHandlerMongoDB::new_with_connection(&db_connection);
+        let mongo_db = DbHandlerMongoDB::new(&db_connection);
 
         let mut account_handle_1 =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);

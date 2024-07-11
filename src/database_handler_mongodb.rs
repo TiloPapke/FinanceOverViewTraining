@@ -49,13 +49,7 @@ impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_JOURNAL_DIARY: &'static str = "FinanceJournalDiary";
     pub const COLLECTION_NAME_COUNTERS: &'static str = "CounterCollection";
 
-    pub fn new() -> DbHandlerMongoDB {
-        return DbHandlerMongoDB {
-            internal_mongodb_client: None,
-        };
-    }
-
-    pub fn new_with_connection(connection_settings: &DbConnectionSetting) -> DbHandlerMongoDB {
+    pub fn new(connection_settings: &DbConnectionSetting) -> DbHandlerMongoDB {
         let db_client =
             DbHandlerMongoDB::create_client_connection_sync(connection_settings).unwrap();
         return DbHandlerMongoDB {
@@ -243,7 +237,7 @@ impl DbHandlerMongoDB {
                 .source(Some(co_source))
                 .build(),
         );
-        
+
         // Get a handle to the deployment.
         let client = Client::with_options(client_options).unwrap();
         return Result::Ok(client);
