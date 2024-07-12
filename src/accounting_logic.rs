@@ -144,15 +144,19 @@ impl<'a> FinanceBookingHandle<'a> {
             }
         }
 
-        if action_to_insert.credit_finance_account_id.eq(&action_to_insert.debit_finance_account_id){
+        if action_to_insert
+            .credit_finance_account_id
+            .eq(&action_to_insert.debit_finance_account_id)
+        {
             return Err("Could not perform request: same account for debit and credit".into());
         }
 
-        let saldo_information_result =
-            executor::block_on(self.finance_get_last_saldo_account_entries(Some(vec![
+        let saldo_information_result = self
+            .finance_get_last_saldo_account_entries(Some(vec![
                 action_to_insert.credit_finance_account_id,
                 action_to_insert.debit_finance_account_id,
-            ])));
+            ]))
+            .await;
         if saldo_information_result.is_err() {
             return Err(format!(
                 "Error checking already existing entries: {}",
@@ -190,7 +194,7 @@ impl<'a> FinanceBookingHandle<'a> {
             &self.user_id,
             action_to_insert.clone(),
         );
-        let temp_var_1 = executor::block_on(temp_var_0);
+        let temp_var_1 = temp_var_0.await;
         return temp_var_1;
     }
 
