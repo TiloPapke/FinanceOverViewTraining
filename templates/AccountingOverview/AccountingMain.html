@@ -1,15 +1,73 @@
 <head>
     <script src="/js_code/jquery-3.6.1.js"></script>
     <script type="text/javascript">
+        $(document).ready(function () {
+            $.fn.requestBookingEntry = function (e) {
+                // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
+                e.preventDefault();
 
+                var currency_value = $("#amountCurrency").valueAsNumber;
+                var amount_value = Math.trunc(currency_value*100);
+
+                var formData = {
+                    credit_account_id: $("#fromCreditAccount").val(),
+                    debit_account_id: $("#toDebitAccount").val(),
+                    amount: amount_value,
+                };
+            }
+            $.fn.changeAccountSelection = function (e, select_id, section_id){
+                e.preventDefault();
+                alert("changed "+ select_id+" for section "+section_id) ;
+            }
+            $("#requestBookingEntryButton").click(function (e) {
+                $.fn.requestBookingEntry(e);
+            });
+            $("#fromCreditAccount").change(function (e) {
+                $.fn.changeAccountSelection(e,"fromCreditAccount","credit_information");
+            });
+            $("#toDebitAccount").change(function (e) {
+                $.fn.changeAccountSelection(e,"toDebitAccount","debit_information");
+            });
+
+        });
     </script>
 </head>
 
 <body>
-    <h2>Main Account View</h2>
+    <h2>Main Accounting View</h2>
     <br><a href="/doshow_accounting_journal">View Journal</a>
     <br><a href="/doshow_accounting_booking_review">Review Bookings for specific accounts</a>
     <br>
     <h3>inserting new booking request</h3>
-    
+    <form>
+        <label>from credit account 
+            <select id="fromCreditAccount" name="fromCreditAccount">
+                {% for account in account_list %}
+                <option value="{{account.id}}">{{account.name}}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>to debit account 
+            <select id="toDebitAccount" name="toDebitAccount">
+                {% for account in account_list %}
+                <option value="{{account.id}}">{{account.name}}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>amount
+        <input type="number" id="amountCurrency" name="amountCurrency" min="0" step="0.00">
+        <button id="requestBookingEntryButton">insert booking entry</button>
+    </label>
+    </form>
+    <div id="response_BookingEntryRequest" style="display: none;">
+        nothing to report
+    </div>
+    <br>
+    <div id="section_account_information" style="display: none;">
+    <h4>account information</h4>
+    <table border="0">
+        <tr><td id="credit_information">info credit account</td>
+            <td id="debit_information">info debit account</td></tr>
+    </table>
+    </div>
 </body>

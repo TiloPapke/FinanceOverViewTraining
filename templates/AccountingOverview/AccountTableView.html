@@ -1,0 +1,28 @@
+<table border ="0">
+    <tr>
+    <td>booking time</td>
+    <td>credit</td>
+    <td></td>
+    <td></td>
+    <td>debit</td>
+    <td></td>
+</tr>
+    {% for booking_row in account_table.booking_rows %}
+    <tr>
+        <td>{{booking_row.booking_time}}</td>
+        {% if booking_row.is_credit %}
+        <td>{{booking_row.title}}</td>
+        <td>{{booking_row.amount_currence}}</td>
+        <td></td>
+        <td></td></tr>
+        <td></td>
+        {% elseif %}
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>{{booking_row.title}}</td>
+        <td>{{booking_row.amount_currence}}</td>
+        {% end if %}
+    </tr>>
+    {% endfor %}
+</table>

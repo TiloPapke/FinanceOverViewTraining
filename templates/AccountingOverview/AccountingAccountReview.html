@@ -1,0 +1,9 @@
+<head>
+
+</head>
+<h2>Account tables</h2>
+{% for account_table in account_table %}
+<br>
+{{account_table.account_name}}
+{% include "AccountTableView.html" %}
+{% endfor %}
