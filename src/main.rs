@@ -254,6 +254,10 @@ async fn https_server() {
             "/request_update_account",
             post(ajax_handle::do_update_finance_account),
         )
+        .route(
+            "/do_show_accounting_main",
+            get(html_render::display_accounting_main_page),
+        )
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 
