@@ -258,6 +258,10 @@ async fn https_server() {
             "/do_show_accounting_main",
             get(html_render::display_accounting_main_page),
         )
+        .route(
+            "/request_booking_entry",
+            post(ajax_handle::do_create_booking_entry),
+        )
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 

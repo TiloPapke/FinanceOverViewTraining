@@ -198,6 +198,14 @@ impl<'a> FinanceBookingHandle<'a> {
         return temp_var_1;
     }
 
+    pub fn finance_insert_booking_entry_sync(
+        &self,
+        action_to_insert: &FinanceBookingRequest,
+    ) -> Result<FinanceBookingResult, String> {
+        let temp_var_0 = executor::block_on(self.finance_insert_booking_entry(action_to_insert));
+        return temp_var_0;
+    }
+
     pub fn calculate_balance_info(
         &self,
         accounts_to_calculate: &Vec<Uuid>,

@@ -27,9 +27,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
+    accounting_logic::FinanceBookingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     datatypes::{
-        FinanceAccount, FinanceAccountType, PasswordResetRequest, PasswordResetTokenRequest,
+        FinanceAccount, FinanceAccountType, FinanceBookingRequest, PasswordResetRequest,
+        PasswordResetTokenRequest,
     },
     frontend_functions::send_password_reset_email,
     html_render::{AccountTemplate, AccountTypeTemplate, HtmlTemplate},
@@ -1116,6 +1118,134 @@ pub async fn do_update_finance_account(
 
         let return_value = UpdateFinanceAccountResponse {
             result: upsert_result,
+        };
+
+        let _new_cookie = session_data.session_store.store_session(session).await;
+
+        (return_status_code, headers, return_value)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateBookingEntryFormInput {
+    pub credit_account_id: String,
+    pub debit_account_id: String,
+    pub amount: u64,
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct CreateBookingEntryResponse {
+    pub result: String,
+}
+
+impl IntoResponse for CreateBookingEntryResponse {
+    fn into_response(self) -> Response {
+        return Json(json!(self)).into_response();
+    }
+}
+
+pub async fn do_create_booking_entry(
+    session_data: SessionDataResult,
+    Form(input): Form<CreateBookingEntryFormInput>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    if !is_logged_in {
+        let return_value = CreateBookingEntryResponse {
+            result: "not logged in".to_string(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = CreateBookingEntryResponse {
+            result: "session expired".to_string(),
+        };
+
+        (StatusCode::BAD_REQUEST, headers, return_value)
+    } else {
+        let create_result: String;
+
+        session.expire_in(std::time::Duration::from_secs(60 * 10));
+
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+        let db_handler = DbHandlerMongoDB::new(&db_connection);
+        let user_id: Uuid = session.get("user_account_id").unwrap();
+
+        let mut return_status_code = StatusCode::OK;
+        {
+            let debit_account_id_parse = Uuid::parse_str(&input.debit_account_id);
+            if debit_account_id_parse.is_err() {
+                let return_value = CreateBookingEntryResponse {
+                    result: format!(
+                        "error parsing debit_account_id: {}",
+                        debit_account_id_parse.unwrap_err()
+                    ),
+                };
+                return (StatusCode::BAD_REQUEST, headers, return_value);
+            }
+
+            let credit_account_id_parse = Uuid::parse_str(&input.credit_account_id);
+            if credit_account_id_parse.is_err() {
+                let return_value = CreateBookingEntryResponse {
+                    result: format!(
+                        "error parsing credit_account_id: {}",
+                        credit_account_id_parse.unwrap_err()
+                    ),
+                };
+                return (StatusCode::BAD_REQUEST, headers, return_value);
+            }
+            let current_time = Utc::now();
+
+            let booking_config_handle =
+                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+
+            let action_to_insert = FinanceBookingRequest {
+                is_simple_entry: true,
+                is_saldo: false,
+                debit_finance_account_id: credit_account_id_parse.unwrap(),
+                credit_finance_account_id: debit_account_id_parse.unwrap(),
+                booking_time: current_time,
+                amount: input.amount,
+                title: input.title,
+                description: input.description,
+            };
+
+            //let create_result_response_async =  booking_config_handle.finance_insert_booking_entry(&action_to_insert).await;
+            let create_result_response =
+                booking_config_handle.finance_insert_booking_entry_sync(&action_to_insert);
+            {
+                if create_result_response.is_err() {
+                    return_status_code = StatusCode::BAD_REQUEST;
+                    create_result = create_result_response.unwrap_err().to_string()
+                } else {
+                    create_result = "OK, booking request inserted".to_string();
+                };
+            }
+        }
+
+        session.expire_in(std::time::Duration::from_secs(60 * 1));
+
+        let return_value = CreateBookingEntryResponse {
+            result: create_result,
         };
 
         let _new_cookie = session_data.session_store.store_session(session).await;

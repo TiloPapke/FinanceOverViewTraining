@@ -6,14 +6,25 @@
                 // see https://stackoverflow.com/questions/19233254/jquery-submit-form-without-reloading-page
                 e.preventDefault();
 
-                var currency_value = $("#amountCurrency").valueAsNumber;
+                var currency_value = $("#amountCurrency")[0].valueAsNumber;
                 var amount_value = Math.trunc(currency_value * 100);
 
                 var formData = {
                     credit_account_id: $("#fromCreditAccount").val(),
                     debit_account_id: $("#toDebitAccount").val(),
                     amount: amount_value,
+                    title: $("#input_title").val(),
+                    description: $("#input_description").val(),
                 };
+                $.post("request_booking_entry", formData, function (data, status) { })
+                    .done(function (data) {
+                        $("#response_BookingEntryRequest").prop('style').display = "inline";
+                        $("#response_BookingEntryRequest").text(data.result);
+                    })
+                    .fail(function (data) {
+                        $("#response_BookingEntryRequest").prop('style').display = "inline";
+                        $("#response_BookingEntryRequest").text("Fehler: " + data.responsetext);
+                    });
             }
             $.fn.changeAccountSelection = function (e, select_id, section_id) {
                 e.preventDefault();
@@ -54,8 +65,14 @@
         </label>
         <label>amount
             <input type="number" id="amountCurrency" name="amountCurrency" min="0" step="0.01">
-            <button id="requestBookingEntryButton">insert booking entry</button>
         </label>
+        <label>title
+            <input type="text" id="input_title" name="input_title">
+        </label>
+        <label>description
+            <input type="text" id="input_description" name="input_description">
+        </label>
+        <button id="requestBookingEntryButton">insert booking entry</button>
     </form>
     <div id="response_BookingEntryRequest" style="display: none;">
         nothing to report
