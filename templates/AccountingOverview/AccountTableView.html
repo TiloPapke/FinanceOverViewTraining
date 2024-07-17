@@ -12,17 +12,17 @@
         <td>{{booking_row.booking_time}}</td>
         {% if booking_row.is_credit %}
         <td>{{booking_row.title}}</td>
-        <td>{{booking_row.amount_currence}}</td>
+        <td>{{booking_row.amount_currency}}</td>
         <td></td>
         <td></td></tr>
         <td></td>
-        {% elseif %}
+        {% else %}
         <td></td>
         <td></td>
         <td></td>
         <td>{{booking_row.title}}</td>
-        <td>{{booking_row.amount_currence}}</td>
-        {% end if %}
+        <td>{{booking_row.amount_currency}}</td>
+        {% endif %}
     </tr>>
     {% endfor %}
 </table>

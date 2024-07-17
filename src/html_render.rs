@@ -15,8 +15,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
+    accounting_logic::FinanceBookingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
-    frontend_functions::get_general_userdata_fromdatabase,
+    frontend_functions::{generate_account_tables, get_general_userdata_fromdatabase},
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
@@ -123,7 +124,10 @@ pub async fn accept_login_form(
                         let _result = session.insert("logged_in", true);
                         let _result2 = session.insert("user_account_id", user_id);
                         let _cookie3 = a_store.store_session(session).await;
-
+                        let mongo_db = DbHandlerMongoDB::new(&db_connection);
+                        let _repair_result = mongo_db
+                            .repair_counter_record_for_user(&db_connection, &user_id)
+                            .await;
                         debug!(target: "app::FinanceOverView","user_id is {}",user_id);
                         Redirect::to("/user_home").into_response()
                     }
@@ -706,6 +710,113 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
     let return_value = AccountingMainTemplate {
         username: username,
         accounts: return_account_list,
+    };
+
+    session.expire_in(std::time::Duration::from_secs(60 * 10));
+    let _new_cookie = session_data.session_store.store_session(session).await;
+
+    trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
+
+    HtmlTemplate(return_value)
+}
+
+#[derive(Debug)]
+pub struct AccountTablleBookingRow {
+    pub booking_time: DateTime<Utc>,
+    pub is_credit: bool,
+    pub title: String,
+    pub amount_currency: f64,
+}
+
+#[derive(Debug)]
+pub struct AccountTableTemplate {
+    pub account_name: String,
+    pub booking_rows: Vec<AccountTablleBookingRow>,
+}
+#[derive(Debug, Template)]
+#[template(path = "AccountingOverview/AccountingAccountReview.html")]
+pub struct AccountingAccountReviewTemplate {
+    username: String,
+    account_tables: Vec<AccountTableTemplate>,
+}
+
+pub async fn display_accounting_review_page(session_data: SessionDataResult) -> impl IntoResponse {
+    debug!(target: "app::FinanceOverView","display accounting review page");
+
+    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    let empty_account_table_list: Vec<AccountTableTemplate> = Vec::with_capacity(0);
+    let mut return_account_table_list: Vec<AccountTableTemplate> = Vec::new();
+
+    if !is_logged_in {
+        let return_value = AccountingAccountReviewTemplate {
+            username: "not logged in".to_string(),
+            account_tables: empty_account_table_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = AccountingAccountReviewTemplate {
+            username: "Session expired".to_string(),
+            account_tables: empty_account_table_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
+    }
+
+    let username: String = session.get("user_name").unwrap();
+    let user_id: Uuid = session.get("user_account_id").unwrap();
+
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+    let db_handler = DbHandlerMongoDB::new(&db_connection);
+
+    {
+        let accounting_config_handle =
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+        let accounting_booking_hanlde =
+            FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+        {
+            let table_generate_result = generate_account_tables(
+                &accounting_booking_hanlde,
+                &accounting_config_handle,
+                None,
+            )
+            .await;
+            if table_generate_result.is_err() {
+                warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
+                let return_value = AccountingAccountReviewTemplate {
+                    username: "problems while getting account tables".to_string(),
+                    account_tables: empty_account_table_list,
+                };
+                return HtmlTemplate(return_value);
+            }
+
+            return_account_table_list.append(&mut table_generate_result.unwrap());
+        }
+    }
+
+    let return_value = AccountingAccountReviewTemplate {
+        username: username,
+        account_tables: return_account_table_list,
     };
 
     session.expire_in(std::time::Duration::from_secs(60 * 10));

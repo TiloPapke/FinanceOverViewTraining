@@ -1179,7 +1179,7 @@ impl DbHandlerMongoDB {
                     insert_result.unwrap_err()
                 ));
             }
-            let insert_one_info = insert_result.unwrap();
+
             return Ok(());
         }
 

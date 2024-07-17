@@ -2,12 +2,20 @@ use std::borrow::Borrow;
 
 use anyhow::{Error, Ok};
 use log::error;
+use mongodb::bson::Uuid;
 use secrecy::Secret;
 
 use crate::{
+    accounting_config_logic::FinanceAccountingConfigHandle,
+    accounting_database::FinanceAccountBookingEntryListSearchOption,
+    accounting_logic::FinanceBookingHandle,
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
-    datatypes::{GenerallUserData, PasswordResetTokenRequestResult},
+    datatypes::{
+        BookingEntryType, FinanceAccountBookingEntry, GenerallUserData,
+        PasswordResetTokenRequestResult,
+    },
+    html_render::{AccountTableTemplate, AccountTablleBookingRow},
     mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
 };
@@ -247,4 +255,98 @@ pub async fn send_password_reset_email(
     }
 
     return Ok(true);
+}
+
+pub async fn generate_account_tables<'a>(
+    booking_handler: &FinanceBookingHandle<'a>,
+    config_handle: &FinanceAccountingConfigHandle<'a>,
+    limit_account_ids: Option<&Vec<Uuid>>,
+) -> Result<Vec<AccountTableTemplate>, Error> {
+    let mut return_list = Vec::new();
+
+    let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
+        config_handle.finance_account_list(limit_account_ids);
+
+    if accounts_result.is_err() {
+        return Err(anyhow::anyhow!(accounts_result.unwrap_err()));
+    }
+    let account_info_list = accounts_result.unwrap();
+    let account_ids = account_info_list
+        .iter()
+        .map(|elem| elem.id)
+        .collect::<Vec<Uuid>>();
+
+    let saldo_info_result_future =
+        booking_handler.finance_get_last_saldo_account_entries(Some(account_ids.clone()));
+    let balance_info_result = booking_handler.calculate_balance_info(&account_ids);
+    let saldo_info_result = saldo_info_result_future.await;
+
+    if balance_info_result.is_err() {
+        return Err(anyhow::anyhow!(balance_info_result.unwrap_err()));
+    }
+    if saldo_info_result.is_err() {
+        return Err(anyhow::anyhow!(saldo_info_result.unwrap_err()));
+    }
+
+    let balance_info = balance_info_result.unwrap();
+    let saldo_info = saldo_info_result.unwrap();
+
+    let mut search_options = Vec::new();
+    for account_info in &account_info_list {
+        let last_saldo_time_option = if saldo_info.contains_key(&account_info.id) {
+            Some(saldo_info[&account_info.id].booking_time)
+        } else {
+            None
+        };
+
+        let search_option = FinanceAccountBookingEntryListSearchOption::new(
+            &account_info.finance_account_type_id,
+            last_saldo_time_option,
+            None,
+        );
+        search_options.push(search_option);
+    }
+
+    let booking_info_result = booking_handler.list_account_booking_entries_multi(search_options);
+    if booking_info_result.is_err() {
+        return Err(anyhow::anyhow!(booking_info_result.unwrap_err()));
+    }
+
+    let booking_info = booking_info_result.unwrap();
+
+    for account_info in &account_info_list {
+        let balance_info_position = balance_info
+            .iter()
+            .position(|elem| elem.account_id.eq(&account_info.id));
+        if balance_info_position.is_none() {
+            return Err(anyhow::anyhow!(
+                "no balance information for account {}",
+                account_info.title
+            ));
+        }
+
+        let booking_info_per_account = booking_info
+            .iter()
+            .filter(|elem| elem.finance_account_id.eq(&account_info.id));
+        let mut booking_rows_per_account = Vec::new();
+
+        for booking_entry in booking_info_per_account {
+            let booking_row = AccountTablleBookingRow {
+                booking_time: booking_entry.booking_time,
+                is_credit: booking_entry.booking_type.eq(&BookingEntryType::Credit)
+                    || booking_entry
+                        .booking_type
+                        .eq(&BookingEntryType::SaldoCredit),
+                title: booking_entry.title.clone(),
+                amount_currency: (booking_entry.amount as f64) / (100 as f64),
+            };
+            booking_rows_per_account.push(booking_row);
+        }
+        return_list.push(AccountTableTemplate {
+            account_name: account_info.title.clone(),
+            booking_rows: booking_rows_per_account,
+        })
+    }
+
+    return Ok(return_list);
 }
