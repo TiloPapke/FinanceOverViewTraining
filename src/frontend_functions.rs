@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 
 use anyhow::{Error, Ok};
+use futures::executor;
 use log::error;
 use mongodb::bson::Uuid;
 use secrecy::Secret;
@@ -12,7 +13,7 @@ use crate::{
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     datatypes::{
-        BookingEntryType, FinanceAccountBookingEntry, GenerallUserData,
+        BookingEntryType, GenerallUserData,
         PasswordResetTokenRequestResult,
     },
     html_render::{AccountTableTemplate, AccountTablleBookingRow},
@@ -264,8 +265,9 @@ pub async fn generate_account_tables<'a>(
 ) -> Result<Vec<AccountTableTemplate>, Error> {
     let mut return_list = Vec::new();
 
-    let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
-        config_handle.finance_account_list(limit_account_ids);
+    let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> = config_handle
+        .finance_account_list_async(limit_account_ids)
+        .await;
 
     if accounts_result.is_err() {
         return Err(anyhow::anyhow!(accounts_result.unwrap_err()));
@@ -278,7 +280,7 @@ pub async fn generate_account_tables<'a>(
 
     let saldo_info_result_future =
         booking_handler.finance_get_last_saldo_account_entries(Some(account_ids.clone()));
-    let balance_info_result = booking_handler.calculate_balance_info(&account_ids);
+    let balance_info_result = booking_handler.calculate_balance_info(&account_ids).await;
     let saldo_info_result = saldo_info_result_future.await;
 
     if balance_info_result.is_err() {
@@ -300,14 +302,16 @@ pub async fn generate_account_tables<'a>(
         };
 
         let search_option = FinanceAccountBookingEntryListSearchOption::new(
-            &account_info.finance_account_type_id,
+            &account_info.id,
             last_saldo_time_option,
             None,
         );
         search_options.push(search_option);
     }
 
-    let booking_info_result = booking_handler.list_account_booking_entries_multi(search_options);
+    let booking_info_result = booking_handler
+        .list_account_booking_entries_multi(search_options)
+        .await;
     if booking_info_result.is_err() {
         return Err(anyhow::anyhow!(booking_info_result.unwrap_err()));
     }
@@ -349,4 +353,17 @@ pub async fn generate_account_tables<'a>(
     }
 
     return Ok(return_list);
+}
+
+pub fn generate_account_tables_sync<'a>(
+    booking_handler: &FinanceBookingHandle<'a>,
+    config_handle: &FinanceAccountingConfigHandle<'a>,
+    limit_account_ids: Option<&Vec<Uuid>>,
+) -> Result<Vec<AccountTableTemplate>, Error> {
+    let return_var = executor::block_on(generate_account_tables(
+        booking_handler,
+        config_handle,
+        limit_account_ids,
+    ));
+    return return_var;
 }

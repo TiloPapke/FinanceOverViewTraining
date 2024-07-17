@@ -660,7 +660,8 @@ mod test_accounting_handle {
             None,
         );
         let multi_account_list_result = booking_handle_2
-            .list_account_booking_entries_multi(vec![filter_option_1, filter_option_2]);
+            .list_account_booking_entries_multi(vec![filter_option_1, filter_option_2])
+            .await;
         assert!(
             multi_account_list_result.is_ok(),
             "{}",
@@ -932,8 +933,9 @@ mod test_accounting_handle {
         );
 
         let empty_search_options = Vec::new();
-        let finance_empty_listing_result =
-            booking_handle_1.list_account_booking_entries_multi(empty_search_options);
+        let finance_empty_listing_result = booking_handle_1
+            .list_account_booking_entries_multi(empty_search_options)
+            .await;
         assert!(
             finance_empty_listing_result.is_err(),
             "query with empty search options needs to fail"
@@ -1111,12 +1113,15 @@ mod test_accounting_handle {
             insert_finance_booking_request_1_3_result.unwrap_err()
         );
 
-        let balance_account_1_result: Result<Vec<AccountBalanceInfo>, String> =
-            booking_handle_1.calculate_balance_info(&vec![finance_account_1_1.id]);
-        let balance_account_2_result: Result<Vec<AccountBalanceInfo>, String> =
-            booking_handle_1.calculate_balance_info(&vec![finance_account_1_2.id]);
-        let balance_account_3_result =
-            booking_handle_1.calculate_balance_info(&vec![finance_account_1_3.id]);
+        let balance_account_1_result: Result<Vec<AccountBalanceInfo>, String> = booking_handle_1
+            .calculate_balance_info(&vec![finance_account_1_1.id])
+            .await;
+        let balance_account_2_result: Result<Vec<AccountBalanceInfo>, String> = booking_handle_1
+            .calculate_balance_info(&vec![finance_account_1_2.id])
+            .await;
+        let balance_account_3_result = booking_handle_1
+            .calculate_balance_info(&vec![finance_account_1_3.id])
+            .await;
 
         assert!(
             balance_account_1_result.is_ok(),
@@ -1245,7 +1250,7 @@ mod test_accounting_handle {
 
         let account_ids: Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
         let balance_info_all_accounts_result =
-            booking_handle_1.calculate_balance_info(&account_ids);
+            booking_handle_1.calculate_balance_info(&account_ids).await;
         assert!(
             balance_info_all_accounts_result.is_ok(),
             "{}",
@@ -1338,8 +1343,9 @@ mod test_accounting_handle {
             "{}",
             insert_request_a_b_result.unwrap_err()
         );
-        let balance_info_1_accounts_result =
-            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        let balance_info_1_accounts_result = booking_handle_1
+            .calculate_balance_info(&list_test_accounts_ids)
+            .await;
         assert!(
             balance_info_1_accounts_result.is_ok(),
             "{}",
@@ -1389,8 +1395,9 @@ mod test_accounting_handle {
             "{}",
             insert_request_c_d_result.unwrap_err()
         );
-        let balance_info_2_accounts_result =
-            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        let balance_info_2_accounts_result = booking_handle_1
+            .calculate_balance_info(&list_test_accounts_ids)
+            .await;
         assert!(
             balance_info_2_accounts_result.is_ok(),
             "{}",
@@ -1442,8 +1449,9 @@ mod test_accounting_handle {
             insert_request_b_c_result.unwrap_err()
         );
 
-        let balance_info_3_accounts_result =
-            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        let balance_info_3_accounts_result = booking_handle_1
+            .calculate_balance_info(&list_test_accounts_ids)
+            .await;
         assert!(
             balance_info_3_accounts_result.is_ok(),
             "{}",
@@ -1493,8 +1501,9 @@ mod test_accounting_handle {
             "{}",
             insert_request_a_d_result.unwrap_err()
         );
-        let balance_info_4_accounts_result =
-            booking_handle_1.calculate_balance_info(&list_test_accounts_ids);
+        let balance_info_4_accounts_result = booking_handle_1
+            .calculate_balance_info(&list_test_accounts_ids)
+            .await;
         assert!(
             balance_info_4_accounts_result.is_ok(),
             "{}",
@@ -1619,8 +1628,9 @@ mod test_accounting_handle {
         );
 
         let empty_search_options = Vec::new();
-        let finance_empty_listing_result =
-            booking_handle_1.list_account_booking_entries_multi(empty_search_options);
+        let finance_empty_listing_result = booking_handle_1
+            .list_account_booking_entries_multi(empty_search_options)
+            .await;
         assert!(
             finance_empty_listing_result.is_err(),
             "query with empty search options needs to fail"
@@ -1924,7 +1934,7 @@ mod test_accounting_handle {
 
             let account_ids: Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
             let balance_info_all_accounts_result =
-                booking_handle_1.calculate_balance_info(&account_ids);
+                booking_handle_1.calculate_balance_info_sync(&account_ids);
             assert!(
                 balance_info_all_accounts_result.is_ok(),
                 "{}",
@@ -1986,8 +1996,8 @@ mod test_accounting_handle {
                                 None,
                             ),
                         ];
-                        let booking_entries_result =
-                            booking_handle_1.list_account_booking_entries_multi(search_options);
+                        let booking_entries_result = booking_handle_1
+                            .list_account_booking_entries_multi_sync(search_options);
                         if booking_entries_result.is_err() {
                             panic!(
                                 "Could not prepare MONGODB: {}",

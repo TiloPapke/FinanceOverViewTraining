@@ -17,7 +17,7 @@ use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
     accounting_logic::FinanceBookingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
-    frontend_functions::{generate_account_tables, get_general_userdata_fromdatabase},
+    frontend_functions::{generate_account_tables_sync, get_general_userdata_fromdatabase},
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
@@ -795,12 +795,11 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         let accounting_booking_hanlde =
             FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
         {
-            let table_generate_result = generate_account_tables(
+            let table_generate_result = generate_account_tables_sync(
                 &accounting_booking_hanlde,
                 &accounting_config_handle,
                 None,
-            )
-            .await;
+            );
             if table_generate_result.is_err() {
                 warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
                 let return_value = AccountingAccountReviewTemplate {
