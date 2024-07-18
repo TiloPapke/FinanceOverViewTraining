@@ -8,22 +8,33 @@
         <td></td>
     </tr>
     {% for booking_row in account_table.booking_rows %}
+    {% if booking_row.is_credit %}
     <tr>
-        <td>{{booking_row.booking_time}}</td>
-        {% if booking_row.is_credit %}
+        <td>{% if booking_row.is_saldo %}
+            {% else %}
+            {{booking_row.booking_time}}
+            {% endif %}
+        </td>
         <td>{{booking_row.title}}</td>
         <td>{{booking_row.amount_currency}}</td>
         <td></td>
         <td></td>
+        <td></td>
     </tr>
-    <td></td>
     {% else %}
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>{{booking_row.title}}</td>
-    <td>{{booking_row.amount_currency}}</td>
-    {% endif %}
+    <tr>
+        <td>{% if booking_row.is_saldo %}
+            {% else %}
+            {{booking_row.booking_time}}
+            {% endif %}
+        </td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>{{booking_row.title}}</td>
+        <td>{{booking_row.amount_currency}}</td>
     </tr>
+    {% endif %}
+
     {% endfor %}
 </table>

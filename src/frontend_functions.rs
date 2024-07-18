@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 
 use anyhow::{Error, Ok};
+use async_session::chrono::Utc;
 use futures::executor;
 use log::error;
 use mongodb::bson::Uuid;
@@ -13,10 +14,9 @@ use crate::{
     convert_tools::ConvertTools,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
     datatypes::{
-        BookingEntryType, GenerallUserData,
-        PasswordResetTokenRequestResult,
+        AccountBalanceType, BookingEntryType, GenerallUserData, PasswordResetTokenRequestResult,
     },
-    html_render::{AccountTableTemplate, AccountTablleBookingRow},
+    html_render::{AccountTableBookingRow, AccountTableTemplate},
     mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
 };
@@ -335,17 +335,40 @@ pub async fn generate_account_tables<'a>(
         let mut booking_rows_per_account = Vec::new();
 
         for booking_entry in booking_info_per_account {
-            let booking_row = AccountTablleBookingRow {
+            let booking_row = AccountTableBookingRow {
                 booking_time: booking_entry.booking_time,
                 is_credit: booking_entry.booking_type.eq(&BookingEntryType::Credit)
                     || booking_entry
                         .booking_type
                         .eq(&BookingEntryType::SaldoCredit),
+                is_saldo: false,
                 title: booking_entry.title.clone(),
                 amount_currency: (booking_entry.amount as f64) / (100 as f64),
             };
             booking_rows_per_account.push(booking_row);
         }
+        if booking_rows_per_account.len() > 0 {
+            let position = balance_info_position.unwrap();
+            let account_balance_info = &balance_info[position];
+            let saldo_row = AccountTableBookingRow {
+                booking_time: Utc::now(),
+                is_credit: account_balance_info
+                    .balance_type
+                    .eq(&AccountBalanceType::Credit),
+                is_saldo: true,
+                title: if account_balance_info
+                    .balance_type
+                    .eq(&AccountBalanceType::Credit)
+                {
+                    "Credit".into()
+                } else {
+                    "Debit".into()
+                },
+                amount_currency: (account_balance_info.amount as f64) / (100 as f64),
+            };
+            booking_rows_per_account.push(saldo_row);
+        }
+
         return_list.push(AccountTableTemplate {
             account_name: account_info.title.clone(),
             booking_rows: booking_rows_per_account,

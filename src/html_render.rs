@@ -721,9 +721,10 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
 }
 
 #[derive(Debug)]
-pub struct AccountTablleBookingRow {
+pub struct AccountTableBookingRow {
     pub booking_time: DateTime<Utc>,
     pub is_credit: bool,
+    pub is_saldo: bool,
     pub title: String,
     pub amount_currency: f64,
 }
@@ -731,7 +732,7 @@ pub struct AccountTablleBookingRow {
 #[derive(Debug)]
 pub struct AccountTableTemplate {
     pub account_name: String,
-    pub booking_rows: Vec<AccountTablleBookingRow>,
+    pub booking_rows: Vec<AccountTableBookingRow>,
 }
 #[derive(Debug, Template)]
 #[template(path = "AccountingOverview/AccountingAccountReview.html")]
