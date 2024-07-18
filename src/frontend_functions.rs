@@ -16,7 +16,7 @@ use crate::{
     datatypes::{
         AccountBalanceType, BookingEntryType, GenerallUserData, PasswordResetTokenRequestResult,
     },
-    html_render::{AccountTableBookingRow, AccountTableTemplate},
+    html_render::{AccountTableBookingRow, AccountTableTemplate, JournalTableRow},
     mail_handle::{self, validate_email_format, SimpleMailData, SmtpMailSetting},
     setting_struct::SettingStruct,
 };
@@ -387,6 +387,80 @@ pub fn generate_account_tables_sync<'a>(
         booking_handler,
         config_handle,
         limit_account_ids,
+    ));
+    return return_var;
+}
+
+pub async fn generate_review_journal_entries<'a>(
+    booking_handler: &FinanceBookingHandle<'a>,
+    config_handle: &FinanceAccountingConfigHandle<'a>,
+) -> Result<Vec<JournalTableRow>, Error> {
+    let mut return_list = Vec::new();
+
+    let journal_entries_result_future = booking_handler.list_journal_entries(None, None);
+
+    let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
+        config_handle.finance_account_list_async(None).await;
+
+    if accounts_result.is_err() {
+        return Err(anyhow::anyhow!(accounts_result.unwrap_err()));
+    }
+    let account_info_list = accounts_result.unwrap();
+    let account_ids = account_info_list
+        .iter()
+        .map(|elem| elem.id)
+        .collect::<Vec<Uuid>>();
+
+    let journal_entries_result = journal_entries_result_future.await;
+    if journal_entries_result.is_err() {
+        return Err(anyhow::anyhow!(journal_entries_result.unwrap_err()));
+    }
+    let journal_entries = journal_entries_result.unwrap();
+
+    for journal_entry in &journal_entries {
+        let credit_account_position_option = account_info_list
+            .iter()
+            .position(|elem| elem.id.eq(&journal_entry.credit_finance_account_id));
+        let debit_account_position_option = account_info_list
+            .iter()
+            .position(|elem| elem.id.eq(&journal_entry.debit_finance_account_id));
+
+        return_list.push(JournalTableRow {
+            id: journal_entry.id.to_string(),
+            booking_time: journal_entry.booking_time,
+            is_simple_entry: journal_entry.is_simple_entry,
+            is_saldo: journal_entry.is_saldo,
+            credit_account_name: if credit_account_position_option.is_none() {
+                "unkown account".into()
+            } else {
+                account_info_list[credit_account_position_option.unwrap()]
+                    .title
+                    .clone()
+            },
+            debit_account_name: if debit_account_position_option.is_none() {
+                "unkown account".into()
+            } else {
+                account_info_list[debit_account_position_option.unwrap()]
+                    .title
+                    .clone()
+            },
+            title: journal_entry.title.clone(),
+            description: journal_entry.description.clone(),
+            currency_amount: (journal_entry.amount as f64) / (100 as f64),
+            running_number: journal_entry.running_number as i64,
+        })
+    }
+
+    return Ok(return_list);
+}
+
+pub fn generate_review_journal_entries_sync<'a>(
+    booking_handler: &FinanceBookingHandle<'a>,
+    config_handle: &FinanceAccountingConfigHandle<'a>,
+) -> Result<Vec<JournalTableRow>, Error> {
+    let return_var = executor::block_on(generate_review_journal_entries(
+        booking_handler,
+        config_handle,
     ));
     return return_var;
 }

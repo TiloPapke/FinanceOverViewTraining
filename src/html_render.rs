@@ -17,7 +17,10 @@ use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
     accounting_logic::FinanceBookingHandle,
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
-    frontend_functions::{generate_account_tables_sync, get_general_userdata_fromdatabase},
+    frontend_functions::{
+        generate_account_tables_sync, generate_review_journal_entries_sync,
+        get_general_userdata_fromdatabase,
+    },
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
@@ -822,7 +825,113 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
     session.expire_in(std::time::Duration::from_secs(60 * 10));
     let _new_cookie = session_data.session_store.store_session(session).await;
 
-    trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
+    trace!(target: "app::FinanceOverView","Loaded accounting review user id {}", user_id);
+
+    HtmlTemplate(return_value)
+}
+
+#[derive(Debug)]
+pub struct JournalTableRow {
+    pub id: String,
+    pub booking_time: DateTime<Utc>,
+    pub is_simple_entry: bool,
+    pub is_saldo: bool,
+    pub credit_account_name: String,
+    pub debit_account_name: String,
+    pub title: String,
+    pub description: String,
+    pub currency_amount: f64,
+    pub running_number: i64,
+}
+
+#[derive(Debug, Template)]
+#[template(path = "AccountingOverview/AccountingJournalView.html")]
+pub struct AccountingJournalReviewTemplate {
+    username: String,
+    journal_entries_list: Vec<JournalTableRow>,
+}
+
+pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoResponse {
+    debug!(target: "app::FinanceOverView","display journal review page");
+
+    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    let empty_journal_list: Vec<JournalTableRow> = Vec::with_capacity(0);
+    let mut return_journal_entries: Vec<JournalTableRow> = Vec::new();
+
+    if !is_logged_in {
+        let return_value = AccountingJournalReviewTemplate {
+            username: "not logged in".to_string(),
+            journal_entries_list: empty_journal_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = AccountingJournalReviewTemplate {
+            username: "Session expired".to_string(),
+            journal_entries_list: empty_journal_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
+    }
+
+    let username: String = session.get("user_name").unwrap();
+    let user_id: Uuid = session.get("user_account_id").unwrap();
+
+    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(&local_setting.backend_database_url),
+        user: String::from(local_setting.backend_database_user),
+        password: String::from(local_setting.backend_database_password),
+        instance: String::from(&local_setting.backend_database_instance),
+    };
+    let db_handler = DbHandlerMongoDB::new(&db_connection);
+
+    {
+        let accounting_config_handle =
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+        let accounting_booking_hanlde =
+            FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+        {
+            let table_generate_result = generate_review_journal_entries_sync(
+                &accounting_booking_hanlde,
+                &accounting_config_handle,
+            );
+            if table_generate_result.is_err() {
+                warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
+                let return_value = AccountingJournalReviewTemplate {
+                    username: "problems while getting account tables".to_string(),
+                    journal_entries_list: empty_journal_list,
+                };
+                return HtmlTemplate(return_value);
+            }
+
+            return_journal_entries.append(&mut table_generate_result.unwrap());
+        }
+    }
+
+    let return_value = AccountingJournalReviewTemplate {
+        username: username,
+        journal_entries_list: return_journal_entries,
+    };
+
+    session.expire_in(std::time::Duration::from_secs(60 * 10));
+    let _new_cookie = session_data.session_store.store_session(session).await;
+
+    trace!(target: "app::FinanceOverView","Loaded journal review user id {}", user_id);
 
     HtmlTemplate(return_value)
 }

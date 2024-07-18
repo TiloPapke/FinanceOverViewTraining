@@ -1,34 +1,36 @@
 <head>
 
 </head>
+
 <body>
     <h2>Journal</h2>
     <br>
-    <table><tr>
-        <td style="display: none;">entry id</td>
-        <td>running number</td>
-        <td>booking time</td>
-        <td>amount</td>
-        <td>credit account</td>
-        <td>debit account</td>
-        <td>title</td>
-        <td>description</td>
-        <td>is saldo</td>
-        <td>is simple entry</td>
-    </tr>
-    {% for journal_entry in journal_entries_list %}
-    <tr>
-        <td> style="display: none;">{{journal_entry.id}}</td>
-        <td>{{journal_entry.running_number}}</td>
-        <td>{{journal_entry.booking_time}}</td>
-        <td>{{journal_entry.currency_amount}}</td>
-        <td>{{journal_entry.credit_account_name}}</td>
-        <td>{{journal_entry.debit_account_name}}</td>
-        <td>{{journal_entry.title}}</td>
-        <td>{{journal_entry.description}}</td>
-        <td>{{journal_entry.is_saldo}}</td>
-        <td>{{journal_entry.is_simple_entry}}</td>
-    </tr>>
-    {% endfor %}
+    <table>
+        <tr>
+            <td style="display: none;">entry id</td>
+            <td>running number</td>
+            <td>booking time</td>
+            <td>amount</td>
+            <td>credit account</td>
+            <td>debit account</td>
+            <td>title</td>
+            <td>description</td>
+            <td>is saldo</td>
+            <td>is simple entry</td>
+        </tr>
+        {% for journal_entry in journal_entries_list %}
+        <tr>
+            <td style="display: none;">{{journal_entry.id}}</td>
+            <td>{{journal_entry.running_number}}</td>
+            <td>{{journal_entry.booking_time}}</td>
+            <td>{{journal_entry.currency_amount}}</td>
+            <td>{{journal_entry.credit_account_name}}</td>
+            <td>{{journal_entry.debit_account_name}}</td>
+            <td>{{journal_entry.title}}</td>
+            <td>{{journal_entry.description}}</td>
+            <td>{{journal_entry.is_saldo}}</td>
+            <td>{{journal_entry.is_simple_entry}}</td>
+        </tr>
+        {% endfor %}
     </table>
 </body>

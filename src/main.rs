@@ -266,6 +266,10 @@ async fn https_server() {
             "/do_show_booking_review",
             get(html_render::display_accounting_review_page),
         )
+        .route(
+            "/do_show_journal_view",
+            get(html_render::display_journal_page),
+        )
         .route("/js_code/*path", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 
