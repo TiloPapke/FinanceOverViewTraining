@@ -20,7 +20,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use log::debug;
+use log::{debug, warn};
 use mongodb::bson::Uuid;
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
@@ -33,8 +33,11 @@ use crate::{
         FinanceAccount, FinanceAccountType, FinanceBookingRequest, PasswordResetRequest,
         PasswordResetTokenRequest,
     },
-    frontend_functions::send_password_reset_email,
-    html_render::{AccountTemplate, AccountTypeTemplate, HtmlTemplate},
+    frontend_functions::{generate_account_tables_sync, send_password_reset_email},
+    html_render::{
+        AccountTableTemplate, AccountTemplate, AccountTypeTemplate,
+        AccountingAccountSingleTableTemplate, HtmlTemplate,
+    },
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionData, SessionDataResult},
     setting_struct::SettingStruct,
@@ -1251,5 +1254,117 @@ pub async fn do_create_booking_entry(
         let _new_cookie = session_data.session_store.store_session(session).await;
 
         (return_status_code, headers, return_value)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GetAccountTableRequest {
+    pub account_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct GetAccountTableResponse {
+    pub result: String,
+}
+
+impl IntoResponse for GetAccountTableResponse {
+    fn into_response(self) -> Response {
+        return Json(json!(self)).into_response();
+    }
+}
+
+pub async fn do_get_account_table_request(
+    session_data: SessionDataResult,
+    Form(input): Form<GetAccountTableRequest>,
+) -> impl IntoResponse {
+    let session_data = SessionData::from_session_data_result(session_data);
+
+    let mut session = session_data.session_option.unwrap().clone();
+
+    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+
+    if !is_logged_in {
+        let return_value = GetAccountTableResponse {
+            result: "not logged in".to_string(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
+    }
+
+    if session.is_expired() {
+        let return_value = GetAccountTableResponse {
+            result: "session expired".to_string(),
+        };
+
+        return (StatusCode::BAD_REQUEST, headers, return_value);
+    } else {
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(local_settings.backend_database_url),
+            user: String::from(local_settings.backend_database_user),
+            password: String::from(local_settings.backend_database_password),
+            instance: String::from(local_settings.backend_database_instance),
+        };
+        let db_handler = DbHandlerMongoDB::new(&db_connection);
+        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let username: String = session.get("user_name").unwrap();
+
+        let return_status_code = StatusCode::OK;
+        {
+            let account_id_parse = Uuid::parse_str(&input.account_id);
+            if account_id_parse.is_err() {
+                let return_value = GetAccountTableResponse {
+                    result: format!(
+                        "error parsing account_id: {}",
+                        account_id_parse.unwrap_err()
+                    ),
+                };
+                return (StatusCode::BAD_REQUEST, headers, return_value);
+            }
+
+            let account_config_handle =
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+
+            let accounting_booking_handle =
+                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+
+            let table_generate_result = generate_account_tables_sync(
+                &accounting_booking_handle,
+                &account_config_handle,
+                Some(&vec![account_id_parse.unwrap()]),
+            );
+            if table_generate_result.is_err() {
+                warn!(target: "app::FinanceOverView","error in do_get_account_table_request for user {}: {}",username,table_generate_result.unwrap_err());
+                let return_value = GetAccountTableResponse {
+                    result: "problems while getting account tables".to_string(),
+                };
+                return (StatusCode::BAD_REQUEST, headers, return_value);
+            }
+            let table_generate_value = table_generate_result.unwrap();
+            let first_value = &table_generate_value[0];
+
+            let single_table = AccountTableTemplate {
+                account_name: first_value.account_name.clone(),
+                booking_rows: first_value.booking_rows.clone(),
+            };
+
+            let response_html_result = HtmlTemplate(AccountingAccountSingleTableTemplate {
+                account_table: single_table,
+            })
+            .0
+            .render();
+            let return_html = response_html_result.unwrap();
+
+            let return_value = GetAccountTableResponse {
+                result: return_html,
+            };
+
+            return (return_status_code, headers, return_value);
+        }
     }
 }

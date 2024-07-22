@@ -263,6 +263,10 @@ async fn https_server() {
             post(ajax_handle::do_create_booking_entry),
         )
         .route(
+            "/get_single_accounting_table",
+            get(ajax_handle::do_get_account_table_request),
+        )
+        .route(
             "/do_show_booking_review",
             get(html_render::display_accounting_review_page),
         )

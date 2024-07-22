@@ -4,11 +4,11 @@ Main goal of this project is to train development using "rust". Side goal is to 
 reached mile stones:
 
 goal points for version 0.0.4
-- [ ] unit tests
+- [x] unit tests
 - [-] hashed session id to ensure a users identity for futres calls so that a user can only change own data, rejected instead user_id stored in server side session data
 - [x] defintion of data structure for storage
 - [x] hash content of field "reset_secret"
-- [ ] simple finance account management
+- [x] simple finance account management
 - [ ] journaling of income and expanses
 
 !Attention!, please see this:
@@ -56,6 +56,7 @@ goal points for version 0.0.6
 - [ ] check if some mut markings in implementations of trait DBFinanceConfigFunctions can be removed
 - [ ] redesign UI
 - [ ] using a css framework for better styles
+- [ ] updating account table info when inserting booking entry
 
 goal points for version 0.0.7
 - [ ] refactoring unit tests that uses mocking database, use an init method that prepares a datastruture for alls mocking test

@@ -723,7 +723,7 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
     HtmlTemplate(return_value)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AccountTableBookingRow {
     pub booking_time: DateTime<Utc>,
     pub is_credit: bool,
@@ -742,6 +742,12 @@ pub struct AccountTableTemplate {
 pub struct AccountingAccountReviewTemplate {
     username: String,
     account_tables: Vec<AccountTableTemplate>,
+}
+
+#[derive(Debug, Template)]
+#[template(path = "AccountingOverview/AccountTableView.html")]
+pub struct AccountingAccountSingleTableTemplate {
+    pub account_table: AccountTableTemplate,
 }
 
 pub async fn display_accounting_review_page(session_data: SessionDataResult) -> impl IntoResponse {
@@ -796,11 +802,11 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
     {
         let accounting_config_handle =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
-        let accounting_booking_hanlde =
+        let accounting_booking_handle =
             FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
         {
             let table_generate_result = generate_account_tables_sync(
-                &accounting_booking_hanlde,
+                &accounting_booking_handle,
                 &accounting_config_handle,
                 None,
             );
@@ -903,11 +909,11 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
     {
         let accounting_config_handle =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
-        let accounting_booking_hanlde =
+        let accounting_booking_handle =
             FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
         {
             let table_generate_result = generate_review_journal_entries_sync(
-                &accounting_booking_hanlde,
+                &accounting_booking_handle,
                 &accounting_config_handle,
             );
             if table_generate_result.is_err() {

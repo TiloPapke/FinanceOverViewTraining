@@ -28,7 +28,18 @@
             }
             $.fn.changeAccountSelection = function (e, select_id, section_id) {
                 e.preventDefault();
-                alert("changed " + select_id + " for section " + section_id);
+                var formData = {
+                    account_id: $("#" + select_id).val(),
+                };
+                $.get("get_single_accounting_table", formData, function (data, status) { })
+                    .done(function (data) {
+                        $("#section_account_information").prop('style').display = "inline";
+                        $("#" + section_id).html(data.result);
+                    })
+                    .fail(function (data) {
+                        $("#section_account_information").prop('style').display = "inline";
+                        $("#" + section_id).text("Fehler: " + data.responsetext);
+                    });
             }
             $("#requestBookingEntryButton").click(function (e) {
                 $.fn.requestBookingEntry(e);

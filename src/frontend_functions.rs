@@ -406,6 +406,7 @@ pub async fn generate_review_journal_entries<'a>(
         return Err(anyhow::anyhow!(accounts_result.unwrap_err()));
     }
     let account_info_list = accounts_result.unwrap();
+
     let account_ids = account_info_list
         .iter()
         .map(|elem| elem.id)
