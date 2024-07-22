@@ -9,7 +9,7 @@ goal points for version 0.0.4
 - [x] defintion of data structure for storage
 - [x] hash content of field "reset_secret"
 - [x] simple finance account management
-- [ ] journaling of income and expanses
+- [x] journaling of income and expanses
 
 !Attention!, please see this:
 https://www.mongodb.com/docs/manual/core/retryable-writes/
