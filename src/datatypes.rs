@@ -126,13 +126,14 @@ pub enum AccountBalanceType {
 impl std::fmt::Display for AccountBalanceType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.eq(&AccountBalanceType::Credit) {
-            write!(f, "credit balance");
+            write!(f, "credit balance")?;
             std::result::Result::Ok(())
         } else {
             if self.eq(&AccountBalanceType::Debit) {
-                write!(f, "debit balance");
+                write!(f, "debit balance")?;
                 std::result::Result::Ok(())
             } else {
+                write!(f, "unkown")?;
                 Err(std::fmt::Error)
             }
         }
