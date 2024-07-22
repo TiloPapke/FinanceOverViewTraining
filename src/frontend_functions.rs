@@ -310,7 +310,7 @@ pub async fn generate_account_tables<'a>(
     }
 
     let booking_info_result = booking_handler
-        .list_account_booking_entries_multi(search_options)
+        .list_account_booking_entries(search_options)
         .await;
     if booking_info_result.is_err() {
         return Err(anyhow::anyhow!(booking_info_result.unwrap_err()));

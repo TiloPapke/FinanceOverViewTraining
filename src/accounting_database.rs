@@ -52,7 +52,7 @@ pub trait DBFinanceAccountingFunctions {
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceJournalEntry>, String>;
 
-    async fn finance_account_booking_entry_list(
+    async fn finance_account_booking_entry_list_single(
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
@@ -61,7 +61,7 @@ pub trait DBFinanceAccountingFunctions {
         booking_time_till: Option<DateTime<Utc>>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String>;
 
-    async fn finance_account_booking_entry_list_multi(
+    async fn finance_account_booking_entry_list(
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
@@ -219,7 +219,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         Ok(journal_entries_list)
     }
 
-    async fn finance_account_booking_entry_list(
+    async fn finance_account_booking_entry_list_single(
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
@@ -362,7 +362,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         Ok(booking_entries_list)
     }
 
-    async fn finance_account_booking_entry_list_multi(
+    async fn finance_account_booking_entry_list(
         &self,
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,

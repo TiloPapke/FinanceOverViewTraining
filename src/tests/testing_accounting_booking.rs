@@ -547,23 +547,34 @@ mod test_accounting_handle {
          c) just till
          d) using from and till
         */
-        let finance_account_1_1_listing_1_result =
-            booking_handle_1.list_account_booking_entries(&finance_account_1_1.id, None, None);
-        let finance_account_1_1_listing_2_result = booking_handle_1.list_account_booking_entries(
-            &finance_account_1_1.id,
-            Some(check_date_time_1),
-            None,
-        );
-        let finance_account_1_1_listing_3_result = booking_handle_1.list_account_booking_entries(
-            &finance_account_1_1.id,
-            None,
-            Some(check_date_time_2),
-        );
-        let finance_account_1_1_listing_4_result = booking_handle_1.list_account_booking_entries(
-            &finance_account_1_1.id,
-            Some(check_date_time_1),
-            Some(check_date_time_2),
-        );
+        let finance_account_1_1_listing_1_result = booking_handle_1
+            .list_account_booking_entries(vec![FinanceAccountBookingEntryListSearchOption::new(
+                &finance_account_1_1.id,
+                None,
+                None,
+            )])
+            .await;
+        let finance_account_1_1_listing_2_result = booking_handle_1
+            .list_account_booking_entries(vec![FinanceAccountBookingEntryListSearchOption::new(
+                &finance_account_1_1.id,
+                Some(check_date_time_1),
+                None,
+            )])
+            .await;
+        let finance_account_1_1_listing_3_result = booking_handle_1
+            .list_account_booking_entries(vec![FinanceAccountBookingEntryListSearchOption::new(
+                &finance_account_1_1.id,
+                None,
+                Some(check_date_time_2),
+            )])
+            .await;
+        let finance_account_1_1_listing_4_result = booking_handle_1
+            .list_account_booking_entries(vec![FinanceAccountBookingEntryListSearchOption::new(
+                &finance_account_1_1.id,
+                Some(check_date_time_1),
+                Some(check_date_time_2),
+            )])
+            .await;
         assert!(
             finance_account_1_1_listing_1_result.is_ok(),
             "{}",
@@ -660,7 +671,7 @@ mod test_accounting_handle {
             None,
         );
         let multi_account_list_result = booking_handle_2
-            .list_account_booking_entries_multi(vec![filter_option_1, filter_option_2])
+            .list_account_booking_entries(vec![filter_option_1, filter_option_2])
             .await;
         assert!(
             multi_account_list_result.is_ok(),
@@ -710,11 +721,13 @@ mod test_accounting_handle {
             full_listing_user_1_6_result.is_err(),
             "filtering with date till before date from must fail"
         );
-        let finance_account_1_1_listing_5_result = booking_handle_1.list_account_booking_entries(
-            &finance_account_1_1.id,
-            Some(check_date_time_2),
-            Some(check_date_time_1),
-        );
+        let finance_account_1_1_listing_5_result = booking_handle_1
+            .list_account_booking_entries(vec![FinanceAccountBookingEntryListSearchOption::new(
+                &finance_account_1_1.id,
+                Some(check_date_time_2),
+                Some(check_date_time_1),
+            )])
+            .await;
         assert!(
             finance_account_1_1_listing_5_result.is_err(),
             "filtering with date till before date from must fail"
@@ -925,8 +938,13 @@ mod test_accounting_handle {
             .to_string()
             .contains(saldo_error_text));
 
-        let finance_account_1_1_listing_6_result =
-            booking_handle_1.list_account_booking_entries(&finance_account_2_1.id, None, None);
+        let finance_account_1_1_listing_6_result = booking_handle_1
+            .list_account_booking_entries(vec![FinanceAccountBookingEntryListSearchOption::new(
+                &finance_account_2_1.id,
+                None,
+                None,
+            )])
+            .await;
         assert!(
             finance_account_1_1_listing_6_result.is_err(),
             "operation should have failed"
@@ -934,7 +952,7 @@ mod test_accounting_handle {
 
         let empty_search_options = Vec::new();
         let finance_empty_listing_result = booking_handle_1
-            .list_account_booking_entries_multi(empty_search_options)
+            .list_account_booking_entries(empty_search_options)
             .await;
         assert!(
             finance_empty_listing_result.is_err(),
@@ -1290,8 +1308,11 @@ mod test_accounting_handle {
             .with_ymd_and_hms(Utc::now().year(), 1, 1, 10, 15, 25)
             .unwrap();
         for account_id in list_test_accounts_ids.iter() {
-            let account_entries_result =
-                booking_handle_1.list_account_booking_entries(&account_id, None, None);
+            let account_entries_result = booking_handle_1
+                .list_account_booking_entries(vec![
+                    FinanceAccountBookingEntryListSearchOption::new(&account_id, None, None),
+                ])
+                .await;
             assert!(
                 account_entries_result.is_ok(),
                 "{}",
@@ -1629,7 +1650,7 @@ mod test_accounting_handle {
 
         let empty_search_options = Vec::new();
         let finance_empty_listing_result = booking_handle_1
-            .list_account_booking_entries_multi(empty_search_options)
+            .list_account_booking_entries(empty_search_options)
             .await;
         assert!(
             finance_empty_listing_result.is_err(),
@@ -1934,7 +1955,7 @@ mod test_accounting_handle {
 
             let account_ids: Vec<Uuid> = accounts_per_user.iter().map(|elem| elem.id).collect();
             let balance_info_all_accounts_result =
-                booking_handle_1.calculate_balance_info_sync(&account_ids);
+                local_calculate_balance_info_sync(&booking_handle_1, &account_ids);
             assert!(
                 balance_info_all_accounts_result.is_ok(),
                 "{}",
@@ -1996,8 +2017,10 @@ mod test_accounting_handle {
                                 None,
                             ),
                         ];
-                        let booking_entries_result = booking_handle_1
-                            .list_account_booking_entries_multi_sync(search_options);
+                        let booking_entries_result = local_list_account_booking_entries_multi_sync(
+                            &booking_handle_1,
+                            search_options,
+                        );
                         if booking_entries_result.is_err() {
                             panic!(
                                 "Could not prepare MONGODB: {}",
@@ -2043,5 +2066,26 @@ mod test_accounting_handle {
             }
         });
         return true;
+    }
+
+    /* some functions are not called in synced mode in productive code */
+    fn local_calculate_balance_info_sync(
+        booking_handle_1: &FinanceBookingHandle,
+        accounts_to_calculate: &Vec<Uuid>,
+    ) -> Result<Vec<AccountBalanceInfo>, String> {
+        let return_var = futures::executor::block_on(
+            booking_handle_1.calculate_balance_info(accounts_to_calculate),
+        );
+        return return_var;
+    }
+
+    fn local_list_account_booking_entries_multi_sync(
+        booking_handle_1: &FinanceBookingHandle,
+        search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
+    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
+        let return_var = futures::executor::block_on(
+            booking_handle_1.list_account_booking_entries(search_options),
+        );
+        return return_var;
     }
 }

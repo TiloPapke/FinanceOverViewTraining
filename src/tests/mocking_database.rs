@@ -217,7 +217,7 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
         }
     }
 
-    async fn finance_account_booking_entry_list(
+    async fn finance_account_booking_entry_list_single(
         &self,
         _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
@@ -260,7 +260,7 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
         }
     }
 
-    async fn finance_account_booking_entry_list_multi(
+    async fn finance_account_booking_entry_list(
         &self,
         _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,

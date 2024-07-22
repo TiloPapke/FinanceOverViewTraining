@@ -1279,7 +1279,7 @@ pub async fn do_get_account_table_request(
 ) -> impl IntoResponse {
     let session_data = SessionData::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
+    let session = session_data.session_option.unwrap().clone();
 
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 

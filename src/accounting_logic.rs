@@ -59,23 +59,7 @@ impl<'a> FinanceBookingHandle<'a> {
         return temp_var_1;
     }
 
-    pub fn list_account_booking_entries(
-        &self,
-        finance_account_id: &Uuid,
-        booking_time_from: Option<DateTime<Utc>>,
-        booking_time_till: Option<DateTime<Utc>>,
-    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        let search_option = FinanceAccountBookingEntryListSearchOption::new(
-            finance_account_id,
-            booking_time_from,
-            booking_time_till,
-        );
-        let temp_var_1 = self.list_account_booking_entries_multi_sync(vec![search_option]);
-
-        return temp_var_1;
-    }
-
-    pub async fn list_account_booking_entries_multi(
+    pub async fn list_account_booking_entries(
         &self,
         search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
@@ -100,7 +84,7 @@ impl<'a> FinanceBookingHandle<'a> {
         }
         let temp_var_1 = self
             .db_connector
-            .finance_account_booking_entry_list_multi(
+            .finance_account_booking_entry_list(
                 &self.db_connection_settings,
                 &self.user_id,
                 search_options,
@@ -108,15 +92,6 @@ impl<'a> FinanceBookingHandle<'a> {
             .await;
 
         return temp_var_1;
-    }
-
-    pub fn list_account_booking_entries_multi_sync(
-        &self,
-        search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
-    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        let return_var =
-            executor::block_on(self.list_account_booking_entries_multi(search_options));
-        return return_var;
     }
 
     pub async fn finance_insert_booking_entry(
@@ -253,9 +228,7 @@ impl<'a> FinanceBookingHandle<'a> {
             );
             search_options.push(search_option);
         }
-        let booking_entries_multi_result = self
-            .list_account_booking_entries_multi(search_options)
-            .await;
+        let booking_entries_multi_result = self.list_account_booking_entries(search_options).await;
         if booking_entries_multi_result.is_err() {
             return Err(format!(
                 "Error getting multi booking entries: {}",
@@ -303,14 +276,6 @@ impl<'a> FinanceBookingHandle<'a> {
 
         let temp_var0 = Result::Ok(return_object);
         return temp_var0;
-    }
-
-    pub fn calculate_balance_info_sync(
-        &self,
-        accounts_to_calculate: &Vec<Uuid>,
-    ) -> Result<Vec<AccountBalanceInfo>, String> {
-        let return_var = executor::block_on(self.calculate_balance_info(accounts_to_calculate));
-        return return_var;
     }
 
     pub async fn finance_get_last_saldo_account_entries(
