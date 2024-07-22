@@ -407,11 +407,6 @@ pub async fn generate_review_journal_entries<'a>(
     }
     let account_info_list = accounts_result.unwrap();
 
-    let account_ids = account_info_list
-        .iter()
-        .map(|elem| elem.id)
-        .collect::<Vec<Uuid>>();
-
     let journal_entries_result = journal_entries_result_future.await;
     if journal_entries_result.is_err() {
         return Err(anyhow::anyhow!(journal_entries_result.unwrap_err()));

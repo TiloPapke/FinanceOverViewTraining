@@ -217,49 +217,6 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
         }
     }
 
-    async fn finance_account_booking_entry_list_single(
-        &self,
-        _conncetion_settings: &DbConnectionSetting,
-        user_id: &Uuid,
-        finance_account_id: &Uuid,
-        booking_time_from: Option<DateTime<Utc>>,
-        booking_time_till: Option<DateTime<Utc>>,
-    ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
-        let data_obj = GLOBAL_IN_MEMORY_DATA.get();
-        let data_obj2 = data_obj.unwrap();
-        let data_obj3 = data_obj2.lock().unwrap();
-        let position_option = data_obj3
-            .data_per_user
-            .iter()
-            .position(|elem| elem.user_id.eq(&user_id));
-        if let Some(position) = position_option {
-            let user_object = &data_obj3.data_per_user.get(position).unwrap();
-            let booking_entries_list = &user_object.booking_entries_per_user;
-
-            let account_list = &user_object.accounts_per_user;
-            let account_position_option = account_list
-                .iter()
-                .position(|elem| elem.id.eq(&finance_account_id));
-            if account_position_option.is_none() {
-                return Err("account not avaiable".to_string());
-            }
-
-            let mut return_object = booking_entries_list.clone();
-            return_object.retain(|elem| elem.finance_account_id.eq(&finance_account_id));
-            if booking_time_from.is_some() {
-                return_object.retain(|elem| elem.booking_time.ge(&booking_time_from.unwrap()))
-            }
-            if booking_time_till.is_some() {
-                return_object.retain(|elem| elem.booking_time.le(&booking_time_till.unwrap()))
-            }
-            drop(data_obj3);
-            Ok(return_object)
-        } else {
-            drop(data_obj3);
-            Err("User not found".to_string())
-        }
-    }
-
     async fn finance_account_booking_entry_list(
         &self,
         _conncetion_settings: &DbConnectionSetting,
