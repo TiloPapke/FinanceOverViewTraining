@@ -24,7 +24,7 @@
                     })
                     .fail(function (data) {
                         $("#response_account_type").prop('style').display = "inline";
-                        $("#response_account_type").text("Fehler: " + data.responsetext);
+                        $("#response_account_type").text("Fehler: " + data.responseText);
                     });
             }
             $.fn.createNewAccount = function (e) {
@@ -50,7 +50,7 @@
                     })
                     .fail(function (data) {
                         $("#response_account").prop('style').display = "inline";
-                        $("#response_account").text("Fehler: " + data.responsetext);
+                        $("#response_account").text("Fehler: " + data.responseText);
                     });
             }
             $("#accountTypeCreate").click(function (e) {
@@ -76,7 +76,7 @@
                 })
                 .fail(function (data) {
                     $("#response_account_type").prop('style').display = "inline";
-                    $("#response_account_type").text("Fehler: " + data.responsetext);
+                    $("#response_account_type").text("Fehler: " + data.responseText);
                 });
         }
         function updateAccount(accountId) {
@@ -95,7 +95,7 @@
                 })
                 .fail(function (data) {
                     $("#response_account").prop('style').display = "inline";
-                    $("#response_account").text("Fehler: " + data.responsetext);
+                    $("#response_account").text("Fehler: " + data.responseText);
                 });
         }
 

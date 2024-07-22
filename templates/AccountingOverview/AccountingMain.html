@@ -23,7 +23,7 @@
                     })
                     .fail(function (data) {
                         $("#response_BookingEntryRequest").prop('style').display = "inline";
-                        $("#response_BookingEntryRequest").text("Fehler: " + data.responsetext);
+                        $("#response_BookingEntryRequest").text("Fehler: " + data.responseText);
                     });
             }
             $.fn.changeAccountSelection = function (e, select_id, section_id) {
@@ -38,8 +38,14 @@
                     })
                     .fail(function (data) {
                         $("#section_account_information").prop('style').display = "inline";
-                        $("#" + section_id).text("Fehler: " + data.responsetext);
+                        $("#" + section_id).text("Fehler: " + data.responseText);
                     });
+
+                if ($('#fromCreditAccount').find(':selected').prop('disabled') || $('#toDebitAccount').find(':selected').prop('disabled') ) {
+                    document.getElementById("requestBookingEntryButton").disabled = true;
+                } else {
+                    document.getElementById("requestBookingEntryButton").disabled = false;
+                }
             }
             $("#requestBookingEntryButton").click(function (e) {
                 $.fn.requestBookingEntry(e);
@@ -62,6 +68,7 @@
     <form>
         <label>from credit account
             <select id="fromCreditAccount" name="fromCreditAccount">
+                <option disabled selected value> -- select an account -- </option>
                 {% for account in accounts %}
                 <option value="{{account.id}}">{{account.name}}</option>
                 {% endfor %}
@@ -69,6 +76,7 @@
         </label>
         <label>to debit account
             <select id="toDebitAccount" name="toDebitAccount">
+                <option disabled selected value> -- select an account -- </option>
                 {% for account in accounts %}
                 <option value="{{account.id}}">{{account.name}}</option>
                 {% endfor %}
@@ -83,7 +91,7 @@
         <label>description
             <input type="text" id="input_description" name="input_description">
         </label>
-        <button id="requestBookingEntryButton">insert booking entry</button>
+        <button id="requestBookingEntryButton" disabled>insert booking entry</button>
     </form>
     <div id="response_BookingEntryRequest" style="display: none;">
         nothing to report
