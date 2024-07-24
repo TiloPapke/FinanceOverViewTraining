@@ -154,11 +154,13 @@ pub(crate) mod test_accounting_handle {
         finance_account_type_5.description = "ERRORDescription".to_string();
         finance_account_type_5.title = "ERRORType".to_string();
         let insert_result_5 =
-            account_handle_4.finance_account_type_upsert(&mut finance_account_type_5.clone());
+            account_handle_3.finance_account_type_upsert(&mut finance_account_type_5.clone());
         assert!(
             insert_result_5.is_err(),
             "Using account type from different user must fail"
         );
+        let errmsg = insert_result_5.unwrap_err();
+        assert!(errmsg.contains("account type id not available for current user"));
     }
 
     #[tokio::test]
@@ -308,6 +310,8 @@ pub(crate) mod test_accounting_handle {
             update_result_2.is_err(),
             "Updating with wrong user must fail"
         );
+        let errmsg = update_result_2.unwrap_err();
+        assert!(errmsg.contains("account type id not available for current user"));
     }
 
     #[tokio::test]
@@ -605,6 +609,8 @@ pub(crate) mod test_accounting_handle {
             insert_e2_result.is_err(),
             "using account type from another user must fail"
         );
+        let errmsg_1 = insert_e2_result.unwrap_err();
+        assert!(errmsg_1.contains("account type id not accessible for current user"));
         let mut finance_account_2_4 = finance_account_1_1.clone();
         finance_account_2_4.finance_account_type_id = finance_account_2_1.finance_account_type_id;
         finance_account_2_4.title = "ERROR".into();
@@ -614,6 +620,8 @@ pub(crate) mod test_accounting_handle {
             insert_e3_result.is_err(),
             "using account id from another user must fail"
         );
+        let errmsg_2 = insert_e3_result.unwrap_err();
+        assert!(errmsg_2.contains("account id not accessible for current user"));
     }
 
     #[tokio::test]
@@ -842,6 +850,8 @@ pub(crate) mod test_accounting_handle {
             insert_3_result.is_err(),
             "Using account type from different user must fail"
         );
+        let errmsg_1 = insert_3_result.unwrap_err();
+        assert!(errmsg_1.contains("account type id not accessible for current user"));
 
         //try to use an account ID from another user => must fail
         let user_2_types = user_2_types_result.unwrap();
@@ -854,6 +864,8 @@ pub(crate) mod test_accounting_handle {
             insert_4_result.is_err(),
             "Using account from different user must fail"
         );
+        let errmsg_2 = insert_4_result.unwrap_err();
+        assert!(errmsg_2.contains("account id not accessible for current user"));
     }
 
     //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
