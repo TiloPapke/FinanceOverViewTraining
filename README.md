@@ -59,5 +59,6 @@ goal points for version 0.0.6
 - [ ] updating account table info when inserting booking entry
 
 goal points for version 0.0.7
-- [ ] refactoring unit tests that uses mocking database, use an init method that prepares a datastruture for alls mocking test
+- [ ] refactoring unit tests that uses mocking database, use an init method that prepares a datastruture for all mocking test
+- [ ] decision needed: should changing account type of existing accounts be allowed => yes/no? => unit tests required, kind of tests depends on decision
 - [ ] better way for validating database structure, when each new trait could have new tables

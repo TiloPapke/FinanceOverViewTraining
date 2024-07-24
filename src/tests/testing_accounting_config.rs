@@ -142,6 +142,23 @@ pub(crate) mod test_accounting_handle {
         }
 
         assert!(insert_result_4.is_err());
+
+        //using account type id from another user must fail
+        /*let finance_account_type_1 = FinanceAccountType {
+            description: "SomeTypeDescription".to_string(),
+            title: "SomeType".to_string(),
+            id: Uuid::new(),
+        };
+        */
+        let mut finance_account_type_5 = finance_account_type_1.clone();
+        finance_account_type_5.description = "ERRORDescription".to_string();
+        finance_account_type_5.title = "ERRORType".to_string();
+        let insert_result_5 =
+            account_handle_4.finance_account_type_upsert(&mut finance_account_type_5.clone());
+        assert!(
+            insert_result_5.is_err(),
+            "Using account type from different user must fail"
+        );
     }
 
     #[tokio::test]
@@ -155,7 +172,9 @@ pub(crate) mod test_accounting_handle {
             password: String::from(test_setting.backend_database_password),
             instance: String::from(test_setting.backend_database_instance),
         };
-        //
+        let mongo_db = DbHandlerMongoDB::new(&db_connection);
+
+        //first user
         let credentials = UserCredentials {
             username: test_setting.test_user_account_user_login,
             password: test_setting.test_user_account_user_password.into(),
@@ -171,10 +190,29 @@ pub(crate) mod test_accounting_handle {
         }
 
         let user_id_1 = validate_result.unwrap();
-        let mongo_db = DbHandlerMongoDB::new(&db_connection);
 
         let mut account_handle_1 =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
+
+        //second user
+        let credentials_2 = UserCredentials {
+            username: test_setting.test_user_2_account_user_login,
+            password: test_setting.test_user_2_account_user_password.into(),
+        };
+
+        let validate_result_2 = validate_credentials(&db_connection, &credentials_2).await;
+        if validate_result_2.is_err() {
+            panic!(
+                "test user 2 {} not valid: {}",
+                credentials.username,
+                validate_result_2.unwrap_err()
+            );
+        }
+
+        let user_id_2 = validate_result_2.unwrap();
+
+        let mut account_handle_2 =
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id_2, &mongo_db);
 
         //prepare data
         //First lilst
@@ -235,6 +273,41 @@ pub(crate) mod test_accounting_handle {
             &list3,
             &finance_account_type_3
         ));
+
+        let finance_account_type_4 = FinanceAccountType {
+            description: "SomeTypeDescription4_".to_string() + &Uuid::new().to_string(),
+            title: "SomeType4_".to_string() + &Uuid::new().to_string(),
+            id: Uuid::new(),
+        };
+        let list_4_result = account_handle_2.finance_account_type_list();
+        let insert_result_4 =
+            account_handle_2.finance_account_type_upsert(&mut finance_account_type_4.clone());
+        let list_5_result = account_handle_2.finance_account_type_list();
+        assert!(list_4_result.is_ok(), "{}", list_4_result.unwrap_err());
+        assert!(list_5_result.is_ok(), "{}", list_5_result.unwrap_err());
+        assert!(insert_result_4.is_ok(), "{}", insert_result_4.unwrap_err());
+
+        let list_4 = list_4_result.unwrap();
+        let list_5 = list_5_result.unwrap();
+
+        assert_eq!(list_4.len() + 1, list_5.len());
+        assert!(test_accounting_handle::account_type_list_contains_element(
+            &list_5,
+            &finance_account_type_4
+        ));
+
+        //trying to update account type using another user, musst fail
+        let mut finance_account_type_2_update = finance_account_type_2.clone();
+        finance_account_type_2_update.description =
+            "ERRORDescription2_Update".to_string() + &Uuid::new().to_string();
+        finance_account_type_2_update.title =
+            "ERRORType2_Update_".to_string() + &Uuid::new().to_string();
+        let update_result_2 =
+            account_handle_2.finance_account_type_upsert(&mut finance_account_type_3);
+        assert!(
+            update_result_2.is_err(),
+            "Updating with wrong user must fail"
+        );
     }
 
     #[tokio::test]
@@ -515,6 +588,32 @@ pub(crate) mod test_accounting_handle {
             insert_e1_result.is_err(),
             "inserting for unknown user has to fail"
         );
+
+        /* Testcase 6
+        trying to use IDs from another user must fail
+
+        Check:
+            all operations have to fail
+         */
+
+        let mut finance_account_2_3 = finance_account_1_1.clone();
+        finance_account_2_3.id = Uuid::new();
+        finance_account_2_3.title = "ERROR".into();
+        finance_account_2_3.description = "ERROR".into();
+        let insert_e2_result = account_handle_2.finance_account_upsert(&finance_account_2_3);
+        assert!(
+            insert_e2_result.is_err(),
+            "using account type from another user must fail"
+        );
+        let mut finance_account_2_4 = finance_account_1_1.clone();
+        finance_account_2_4.finance_account_type_id = finance_account_2_1.finance_account_type_id;
+        finance_account_2_4.title = "ERROR".into();
+        finance_account_2_4.description = "ERROR".into();
+        let insert_e3_result = account_handle_2.finance_account_upsert(&finance_account_2_4);
+        assert!(
+            insert_e3_result.is_err(),
+            "using account id from another user must fail"
+        );
     }
 
     #[tokio::test]
@@ -528,7 +627,10 @@ pub(crate) mod test_accounting_handle {
             password: String::from(test_setting.backend_database_password),
             instance: String::from(test_setting.backend_database_instance),
         };
-        //
+
+        let mongo_db = DbHandlerMongoDB::new(&db_connection);
+
+        //first user
         let credentials = UserCredentials {
             username: test_setting.test_user_account_user_login,
             password: test_setting.test_user_account_user_password.into(),
@@ -544,12 +646,31 @@ pub(crate) mod test_accounting_handle {
         }
 
         let user_id_1 = validate_result.unwrap();
-        let mongo_db = DbHandlerMongoDB::new(&db_connection);
 
         let mut account_handle_1 =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
 
-        //check if there are any finance account typse available
+        //second user
+        let credentials_2 = UserCredentials {
+            username: test_setting.test_user_2_account_user_login,
+            password: test_setting.test_user_2_account_user_password.into(),
+        };
+
+        let validate_result_2 = validate_credentials(&db_connection, &credentials_2).await;
+        if validate_result_2.is_err() {
+            panic!(
+                "test user 2 {} not valid: {}",
+                credentials.username,
+                validate_result_2.unwrap_err()
+            );
+        }
+
+        let user_id_2 = validate_result_2.unwrap();
+
+        let mut account_handle_2 =
+            FinanceAccountingConfigHandle::new(&db_connection, &user_id_2, &mongo_db);
+
+        //check if there are any finance account type available
         let list_fat_result = account_handle_1.finance_account_type_list();
         assert!(
             list_fat_result.is_ok(),
@@ -560,6 +681,13 @@ pub(crate) mod test_accounting_handle {
         assert!(
             available_finance_account_type.len() > 1,
             "not enough finance account types available"
+        );
+
+        let user_2_types_result = account_handle_2.finance_account_type_list();
+        assert!(
+            user_2_types_result.is_ok(),
+            "Could not load finance account type list: {}",
+            user_2_types_result.unwrap_err().to_string()
         );
 
         /* Testcase 1
@@ -703,6 +831,29 @@ pub(crate) mod test_accounting_handle {
         for account in sub_list_2 {
             assert!(account_list_contains_element(&limit_list_2, &account))
         }
+
+        //try to create an account with an account type to another user => must fail
+        let mut account_3 = account_1.clone();
+        account_3.id = Uuid::new();
+        account_3.title = "ERROR".to_string() + &account_3.id.to_string();
+        account_3.description = "ERROR".to_string() + &account_3.id.to_string();
+        let insert_3_result = account_handle_2.finance_account_upsert(&account_3);
+        assert!(
+            insert_3_result.is_err(),
+            "Using account type from different user must fail"
+        );
+
+        //try to use an account ID from another user => must fail
+        let user_2_types = user_2_types_result.unwrap();
+        let mut account_4 = account_1.clone();
+        account_4.finance_account_type_id = user_2_types[0].id;
+        account_4.title = "ERROR".to_string() + &account_4.id.to_string();
+        account_4.description = "ERROR".to_string() + &account_4.id.to_string();
+        let insert_4_result = account_handle_2.finance_account_upsert(&account_4);
+        assert!(
+            insert_4_result.is_err(),
+            "Using account from different user must fail"
+        );
     }
 
     //see https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust

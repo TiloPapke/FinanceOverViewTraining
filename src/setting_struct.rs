@@ -44,6 +44,8 @@ pub struct TestSettingStruct {
     pub backend_database_instance: String,
     pub test_user_account_user_login: String,
     pub test_user_account_user_password: String,
+    pub test_user_2_account_user_login: String,
+    pub test_user_2_account_user_password: String,
 }
 
 pub static GLOBAL_SETTING: OnceCell<SettingStruct> = OnceCell::new();
@@ -307,6 +309,9 @@ impl TestSettingStruct {
         conf.with_section(Some("TestUserAccount"))
             .set("User_Login", "someUser")
             .set("User_Password", "somePassword");
+        conf.with_section(Some("TestUser_2_Account"))
+            .set("User_Login", "someUser_2")
+            .set("User_Password", "somePassword_2");
         conf.write_to_file(&settingpath).unwrap();
     }
 
@@ -344,6 +349,14 @@ impl TestSettingStruct {
             .get_from_or(Some("TestUserAccount"), "User_Password", "")
             .parse()
             .unwrap();
+        let _test_user_2_account_user_login: String = conf
+            .get_from_or(Some("TestUser_2_Account"), "User_Login", "")
+            .parse()
+            .unwrap();
+        let _test_user_2_account_user_password: String = conf
+            .get_from_or(Some("TestUser_2_Account"), "User_Password", "")
+            .parse()
+            .unwrap();
 
         return TestSettingStruct {
             outgoing_mail_receiver: _outgoing_mail_receiver,
@@ -355,6 +368,8 @@ impl TestSettingStruct {
             backend_database_instance: _db_instance,
             test_user_account_user_login: _test_user_account_user_login,
             test_user_account_user_password: _test_user_account_user_password,
+            test_user_2_account_user_login: _test_user_2_account_user_login,
+            test_user_2_account_user_password: _test_user_2_account_user_password,
         };
     }
 }
