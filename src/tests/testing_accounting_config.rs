@@ -871,7 +871,7 @@ pub(crate) mod test_accounting_handle {
             "Using account type from different user must fail"
         );
         let errmsg_1 = insert_3_result.unwrap_err();
-        assert!(errmsg_1.contains("account type id not accessible for current user"));
+        assert!(errmsg_1.contains("could not upsert finance account because account type is not available"));
 
         //try to use an account ID from another user => must fail
         let user_2_types = user_2_types_result.unwrap();
