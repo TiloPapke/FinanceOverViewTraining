@@ -575,6 +575,14 @@ pub(crate) mod test_accounting_handle {
         assert_eq!(list5.len(), 1);
         assert!(account_list_contains_element(&list5, &finance_account_1_3));
 
+        //listing an account id from a different user
+        let list_6_result = account_handle_2
+            .finance_account_list_async(Some(&vec![finance_account_1_3.id]))
+            .await;
+        assert!(list_6_result.is_ok(), "{}", list_6_result.unwrap_err());
+        let list6 = list_6_result.unwrap();
+        assert_eq!(list6.len(), 0);
+
         /* Testcase 5
         trying to list and insert value for a new user that does not exist
 
@@ -610,7 +618,8 @@ pub(crate) mod test_accounting_handle {
             "using account type from another user must fail"
         );
         let errmsg_1 = insert_e2_result.unwrap_err();
-        assert!(errmsg_1.contains("account type id not accessible for current user"));
+        assert!(errmsg_1
+            .contains("could not upsert finance account because account type is not available"));
         let mut finance_account_2_4 = finance_account_1_1.clone();
         finance_account_2_4.finance_account_type_id = finance_account_2_1.finance_account_type_id;
         finance_account_2_4.title = "ERROR".into();
@@ -839,6 +848,17 @@ pub(crate) mod test_accounting_handle {
         for account in sub_list_2 {
             assert!(account_list_contains_element(&limit_list_2, &account))
         }
+        //listing an account id from a different user
+        let limit_list_3_result = account_handle_2
+            .finance_account_list_async(Some(&sub_ids_1))
+            .await;
+        assert!(
+            limit_list_3_result.is_ok(),
+            "{}",
+            limit_list_3_result.unwrap_err()
+        );
+        let limit_list_3 = limit_list_3_result.unwrap();
+        assert_eq!(limit_list_3.len(), 0);
 
         //try to create an account with an account type to another user => must fail
         let mut account_3 = account_1.clone();
