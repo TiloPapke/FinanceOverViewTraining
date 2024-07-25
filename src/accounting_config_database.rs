@@ -136,6 +136,25 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         let accounting_type_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES);
 
+        let check_filter = doc! {"$and":[
+        doc!{"user_id": doc!{"$ne":&user_id}},
+        doc!{"finance_account_type_id":&finance_account_type.id}
+                ]};
+        let check_find_result = accounting_type_collection
+            .count_documents(check_filter, None)
+            .await;
+        if check_find_result.is_err() {
+            let check_find_err = &check_find_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",check_find_err);
+            return Err(check_find_err.to_string());
+        }
+        let check_find = check_find_result.unwrap();
+        if check_find > 0 {
+            let err_msg = "account type id not available for current user";
+            warn!(target:"app::FinanceOverView","{}",err_msg);
+            return Err(err_msg.to_string());
+        }
+
         let filter = doc! {"finance_account_type_id":&finance_account_type.id};
         let inner_doc = doc! {
             "finance_account_type_id":&finance_account_type.id,
@@ -273,6 +292,23 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
 
         let account_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTS);
+
+        let check_filter = doc! {"$and":[
+        doc!{"user_id": doc!{"$ne":&user_id}},
+        doc!{"finance_account_id":&finance_account.id}
+                ]};
+        let check_find_result = account_collection.count_documents(check_filter, None).await;
+        if check_find_result.is_err() {
+            let check_find_err = &check_find_result.unwrap_err();
+            warn!(target:"app::FinanceOverView","{}",check_find_err);
+            return Err(check_find_err.to_string());
+        }
+        let check_find = check_find_result.unwrap();
+        if check_find > 0 {
+            let err_msg = "account id not accessible for current user";
+            warn!(target:"app::FinanceOverView","{}",err_msg);
+            return Err(err_msg.to_string());
+        }
 
         let filter = doc! {"finance_account_id":&finance_account.id};
         let inner_doc = doc! {

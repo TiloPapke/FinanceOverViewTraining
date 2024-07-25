@@ -81,7 +81,13 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             .iter()
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
-            //let current_list = &mut data_obj3.account_types_per_user.get_mut(position).unwrap();
+            let type_id_to_check = &finance_account_type.id;
+            let type_check_position_option = data_obj3.data_per_user.iter().position(|elem|elem.user_id.ne(&user_id) && elem.account_types_per_user.iter().position(|subelem|subelem.id.eq(type_id_to_check)).is_some());
+            if type_check_position_option.is_some(){
+                drop(data_obj3);
+                return Err("account type id not available for current user".to_string());
+            }
+
             let current_list = &mut data_obj3
                 .data_per_user
                 .get_mut(position)
@@ -150,6 +156,11 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             .iter()
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
+            let account_check_position_option = data_obj3.data_per_user.iter().position(|elem|elem.user_id.ne(&user_id) && elem.accounts_per_user.iter().position(|subelem|subelem.id.eq(&finance_account.id)).is_some());
+            if account_check_position_option.is_some(){
+                drop(data_obj3);
+                return Err("account id not accessible for current user".to_string());
+            }
             //let current_list = &mut data_obj3.account_per_user.get_mut(position).unwrap();
             let current_list = &mut data_obj3
                 .data_per_user
