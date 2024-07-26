@@ -118,38 +118,12 @@ pub async fn do_change_passwort(
     Form(input): Form<ChangePasswortFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let return_value = SimpleAjaxRequestResult {
-            result: "not logged in".to_string(),
-            new_expire_timestamp: session_expire_timestamp,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (headers, return_value);
-    }
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
+        let username: String = session_handler.user_name();
 
-    let username: String = session_handler.user_name();
-
-    if session_handler.is_expired() {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let return_value = SimpleAjaxRequestResult {
-            result: "Session expired".to_string(),
-            new_expire_timestamp: session_expire_timestamp,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        (headers, return_value)
-    } else {
         let change_result: String;
         let password_new_1 = input.password_new_1.clone();
         let password_new_2 = input.password_new_2.clone();
@@ -212,6 +186,17 @@ pub async fn do_change_passwort(
         let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
+    } else {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+        let return_value = SimpleAjaxRequestResult {
+            result: session_validation_result.unwrap_err(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (headers, return_value);
     }
 }
 
@@ -237,34 +222,11 @@ pub async fn do_change_reset_secret(
     Form(input): Form<ChangeResetSecretFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = ChangeResetSecretResponse {
-            result: "not logged in".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (headers, return_value);
-    }
-
-    let user_id: Uuid = session_handler.user_id();
-
-    if session_handler.is_expired() {
-        let return_value = ChangeResetSecretResponse {
-            result: "Session expired".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        (headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
+        let user_id: Uuid = session_handler.user_id();
         let change_result: String;
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
@@ -275,7 +237,7 @@ pub async fn do_change_reset_secret(
             instance: String::from(local_settings.backend_database_instance),
         };
 
-        debug!(target: "app::FinanceOverView","trying to change reset secret for user {}", user_id);
+        debug!(target: "app::FinanceOverView", "trying to change reset secret for user {}", user_id);
 
         let update_result = password_handle::update_user_reset_secret(
             &db_connection,
@@ -290,7 +252,7 @@ pub async fn do_change_reset_secret(
                 update_result.unwrap_err().to_string()
             );
         } else {
-            change_result = "reset secret change successfull".to_string();
+            change_result = "reset secret change successful".to_string();
         }
 
         session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
@@ -301,6 +263,15 @@ pub async fn do_change_reset_secret(
 
         let _new_cookie = session_handler.update_cookie().await;
 
+        (headers, return_value)
+    } else {
+        let return_value = ChangeResetSecretResponse {
+            result: session_validation_result.unwrap_err(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
         (headers, return_value)
     }
 }
@@ -317,19 +288,20 @@ pub async fn do_register_user_via_email(
     Form(input): Form<RegisterUserViaEmailFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
+    let mut headers = HeaderMap::new();
 
-    let is_logged_in: bool = session_handler.is_logged_in();
-
-    let headers = HeaderMap::new();
-
-    if is_logged_in {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "You are still logged in, please log out before registering new accounts"
                 .to_string(),
             new_expire_timestamp: session_expire_timestamp,
         };
-
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
         return (headers, return_value);
     }
 
@@ -339,47 +311,50 @@ pub async fn do_register_user_via_email(
             result: "Session expired, please try again".to_string(),
             new_expire_timestamp: session_expire_timestamp,
         };
-
-        (headers, return_value)
-    } else {
-        let register_result: String;
-        let _new_user_name = &input.username;
-        let _new_password = &input.password;
-        let _new_email = &input.email;
-
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-
-        let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
-        let register_result_2 = crate::frontend_functions::register_user_with_email_verfication(
-            &db_connection,
-            _new_user_name,
-            _new_password,
-            _new_email,
-        )
-        .await;
-
-        if register_result_2.is_err() {
-            register_result = register_result_2.unwrap_err().to_string()
-        } else {
-            register_result = "OK, please check your E-Mail".to_string();
-        };
-
-        let return_value = SimpleAjaxRequestResult {
-            result: register_result,
-            new_expire_timestamp: session_expire_timestamp,
-        };
-
-        let _new_cookie = session_handler.update_cookie().await;
-
-        (headers, return_value)
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (headers, return_value);
     }
+
+    let register_result: String;
+
+    let local_settings: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(local_settings.backend_database_url),
+        user: String::from(local_settings.backend_database_user),
+        password: String::from(local_settings.backend_database_password),
+        instance: String::from(local_settings.backend_database_instance),
+    };
+
+    debug!(target: "app::FinanceOverView", "trying to register user with email: {}", input.email);
+
+    let register_result_2 = crate::frontend_functions::register_user_with_email_verfication(
+        &db_connection,
+        &input.username,
+        &input.password,
+        &input.email,
+    )
+    .await;
+
+    if register_result_2.is_err() {
+        register_result = register_result_2.unwrap_err().to_string();
+    } else {
+        register_result = "OK, please check your E-Mail".to_string();
+    }
+
+    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+    let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+
+    let return_value = SimpleAjaxRequestResult {
+        result: register_result,
+        new_expire_timestamp: session_expire_timestamp,
+    };
+
+    let _new_cookie = session_handler.update_cookie().await;
+
+    (headers, return_value)
 }
 
 pub async fn do_request_password_reset(
@@ -387,30 +362,10 @@ pub async fn do_request_password_reset(
     Form(input): Form<PasswordResetTokenRequest>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let headers = HeaderMap::new();
 
-    if is_logged_in {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let return_value = SimpleAjaxRequestResult {
-            result: "You are logged in, please use normal password change function".to_string(),
-            new_expire_timestamp: session_expire_timestamp,
-        };
-
-        return (headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let return_value = SimpleAjaxRequestResult {
-            result: "Session expired, please try again".to_string(),
-            new_expire_timestamp: session_expire_timestamp,
-        };
-
-        (headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let request_result: String;
         session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
@@ -450,6 +405,14 @@ pub async fn do_request_password_reset(
         };
 
         let _new_cookie = session_handler.update_cookie().await;
+
+        (headers, return_value)
+    } else {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+        let return_value = SimpleAjaxRequestResult {
+            result: session_validation_result.unwrap_err(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
 
         (headers, return_value)
     }
@@ -551,33 +514,10 @@ pub async fn do_create_new_finance_account_type(
     Form(input): Form<CreateNewFinanceAccountTypeFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = CreateNewFinanceAccountTypeResponse {
-            result: "not logged in".to_string(),
-            new_id: "".into(),
-            subpage: "".into(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = CreateNewFinanceAccountTypeResponse {
-            result: "Session expired, please try again".to_string(),
-            new_id: "".into(),
-            subpage: "".into(),
-        };
-
-        (StatusCode::BAD_REQUEST, headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let create_result: String;
         let new_title = &input.title;
         let new_description = &input.description;
@@ -637,6 +577,17 @@ pub async fn do_create_new_finance_account_type(
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
+    } else {
+        let return_value = CreateNewFinanceAccountTypeResponse {
+            result: session_validation_result.unwrap_err(),
+            new_id: "".into(),
+            subpage: "".into(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 }
 
@@ -663,29 +614,10 @@ pub async fn do_update_finance_account_type(
     Form(input): Form<UpdateFinanceAccountTypeFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = UpdateFinanceAccountTypeResponse {
-            result: "not logged in".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = UpdateFinanceAccountTypeResponse {
-            result: "Session expired, please try again".to_string(),
-        };
-
-        (StatusCode::BAD_REQUEST, headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let upsert_result: String;
         let new_title = &input.title;
         let new_description = &input.description;
@@ -740,6 +672,15 @@ pub async fn do_update_finance_account_type(
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
+    } else {
+        let return_value = UpdateFinanceAccountTypeResponse {
+            result: session_validation_result.unwrap_err(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 }
 
@@ -774,33 +715,10 @@ pub async fn do_create_new_finance_account(
     Form(input): Form<CreateNewFinanceAccountFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = CreateNewFinanceAccountResponse {
-            result: "not logged in".to_string(),
-            new_id: "".into(),
-            subpage: "".into(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = CreateNewFinanceAccountResponse {
-            result: "Session expired, please try again".to_string(),
-            new_id: "".into(),
-            subpage: "".into(),
-        };
-
-        (StatusCode::BAD_REQUEST, headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let mut create_result: String;
         let new_title = &input.title;
         let new_description = &input.description;
@@ -892,6 +810,17 @@ pub async fn do_create_new_finance_account(
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
+    } else {
+        let return_value = CreateNewFinanceAccountResponse {
+            result: session_validation_result.unwrap_err(),
+            new_id: "".into(),
+            subpage: "".into(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 }
 
@@ -918,29 +847,10 @@ pub async fn do_update_finance_account(
     Form(input): Form<UpdateFinanceAccountFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = UpdateFinanceAccountResponse {
-            result: "not logged in".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = UpdateFinanceAccountResponse {
-            result: "Session expired, please try again".to_string(),
-        };
-
-        (StatusCode::BAD_REQUEST, headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let upsert_result: String;
         let new_title = &input.title;
         let new_description = &input.description;
@@ -1020,6 +930,15 @@ pub async fn do_update_finance_account(
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
+    } else {
+        let return_value = UpdateFinanceAccountResponse {
+            result: session_validation_result.unwrap_err(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 }
 
@@ -1048,29 +967,10 @@ pub async fn do_create_booking_entry(
     Form(input): Form<CreateBookingEntryFormInput>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = CreateBookingEntryResponse {
-            result: "not logged in".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = CreateBookingEntryResponse {
-            result: "session expired".to_string(),
-        };
-
-        (StatusCode::BAD_REQUEST, headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let create_result: String;
 
         session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
@@ -1146,6 +1046,15 @@ pub async fn do_create_booking_entry(
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
+    } else {
+        let return_value = CreateBookingEntryResponse {
+            result: session_validation_result.unwrap_err(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 }
 
@@ -1170,29 +1079,10 @@ pub async fn do_get_account_table_request(
     Form(input): Form<GetAccountTableRequest>,
 ) -> impl IntoResponse {
     let session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let return_value = GetAccountTableResponse {
-            result: "not logged in".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = GetAccountTableResponse {
-            result: "session expired".to_string(),
-        };
-
-        return (StatusCode::BAD_REQUEST, headers, return_value);
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -1256,5 +1146,14 @@ pub async fn do_get_account_table_request(
 
             return (return_status_code, headers, return_value);
         }
+    } else {
+        let return_value = GetAccountTableResponse {
+            result: session_validation_result.unwrap_err(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 }

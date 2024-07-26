@@ -12,6 +12,7 @@ goal points for version 0.0.5
 - [ ] calculting saldo over all finance accounts
 - [ ] export to csv (simple)
 
+version 0.0.4:
 - [x] unit tests
 - [-] hashed session id to ensure a users identity for futres calls so that a user can only change own data, rejected instead user_id stored in server side session data
 - [x] defintion of data structure for storage
@@ -60,5 +61,7 @@ goal points for version 0.0.6
 
 goal points for version 0.0.7
 - [ ] refactoring unit tests that uses mocking database, use an init method that prepares a datastruture for all mocking test
+- [ ] when inserting accounting request the response should contain a timestamp and the running number (last one only when successful request) so that consecutive request have a different response text.
+- [ ] extending unit tests: check return of html render and ajax method, especially for not being logged in and session timeout
 - [ ] decision needed: should changing account type of existing accounts be allowed => yes/no? => unit tests required, kind of tests depends on decision
 - [ ] better way for validating database structure, when each new trait could have new tables

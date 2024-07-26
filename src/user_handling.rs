@@ -32,36 +32,10 @@ pub async fn do_update_general_user_data(
     Form(input): Form<GenerallUserData>,
 ) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let return_value = SimpleAjaxRequestResult {
-            result: "not logged in".to_string(),
-            new_expire_timestamp: session_expire_timestamp,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (headers, return_value);
-    }
-
-    if session_handler.is_expired() {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let return_value = SimpleAjaxRequestResult {
-            result: "Session expired".to_string(),
-            new_expire_timestamp: session_expire_timestamp,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        (headers, return_value)
-    } else {
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -93,5 +67,16 @@ pub async fn do_update_general_user_data(
         let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
+    } else {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+        let return_value = SimpleAjaxRequestResult {
+            result: session_validation_result.unwrap_err(),
+            new_expire_timestamp: session_expire_timestamp,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return (headers, return_value);
     }
 }

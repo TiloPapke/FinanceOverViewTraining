@@ -19,9 +19,9 @@ use serde::{Deserialize, Serialize};
 
 const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 pub struct SessionDataHandler {
-    pub session_user_id: UserId,
+    pub session_user_id: UserId, //hint: this is not an user id of an user account in the final database, this is used to identify themachine client that tries to access the system
     session_option: Option<Session>,
-    pub session_store: MongodbSessionStore,
+    session_store: MongodbSessionStore,
 }
 
 impl SessionDataHandler {
@@ -131,6 +131,16 @@ impl SessionDataHandler {
         let session = self.session_option.as_mut().unwrap().to_owned();
         let destroy_result = self.session_store.destroy_session(session).await;
         return destroy_result;
+    }
+
+    pub fn valid_logged_in(&self) -> Result<(), String> {
+        if self.is_expired() {
+            return Err("Session expired".into());
+        }
+        if !self.is_logged_in() {
+            return Err("not logged in".into());
+        }
+        return Ok(());
     }
 
     async fn create_new_session(store: MongodbSessionStore) -> FreshSessionData {

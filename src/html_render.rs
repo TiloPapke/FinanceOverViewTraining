@@ -140,50 +140,11 @@ pub async fn accept_login_form(
 
 pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResponse {
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
-    if !is_logged_in {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let template = UserHomeTemplate {
-            logout_reason: "not logged in".to_string(),
-            username: "".to_string(),
-            session_expire_timestamp,
-            logged_in: false,
-            information_show: false,
-            information_text: "".to_string(),
-            user_vorname: "".to_string(),
-            user_nachname: "".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return (headers, HtmlTemplate(template));
-    }
-
-    let username: String = session_handler.user_name();
-
-    if session_handler.is_expired() {
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
-        let template = UserHomeTemplate {
-            logout_reason: "Session expired".to_string(),
-            username: "".to_string(),
-            session_expire_timestamp,
-            logged_in: false,
-            information_show: false,
-            information_text: "".to_string(),
-            user_vorname: "".to_string(),
-            user_nachname: "".to_string(),
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        (headers, HtmlTemplate(template))
-    } else {
+    let sessions_validation_result = session_handler.valid_logged_in();
+    if sessions_validation_result.is_ok() {
+        let username: String = session_handler.user_name();
         session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
@@ -233,6 +194,23 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
 
             (headers, HtmlTemplate(template))
         }
+    } else {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+        let template = UserHomeTemplate {
+            logout_reason: sessions_validation_result.unwrap_err(),
+            username: "".to_string(),
+            session_expire_timestamp,
+            logged_in: false,
+            information_show: false,
+            information_text: "".to_string(),
+            user_vorname: "".to_string(),
+            user_nachname: "".to_string(),
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        (headers, HtmlTemplate(template))
     }
 }
 
@@ -466,125 +444,113 @@ pub async fn display_accounting_config_main_page(
     debug!(target: "app::FinanceOverView","display accounting main config page");
 
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
     let empty_account_type_list: Vec<AccountTypeTemplate> = Vec::with_capacity(0);
     let empty_account_list: Vec<AccountTemplate> = Vec::with_capacity(0);
-    let mut return_account_type_list: Vec<AccountTypeTemplate> = Vec::new();
-    let mut return_account_list: Vec<AccountTemplate> = Vec::new();
 
-    if !is_logged_in {
-        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-            username: "not logged in".to_string(),
-            account_types: empty_account_type_list,
-            accounts: empty_account_list,
+    let session_validation_result = session_handler.valid_logged_in();
+
+    if session_validation_result.is_ok() {
+        let mut return_account_type_list: Vec<AccountTypeTemplate> = Vec::new();
+        let mut return_account_list: Vec<AccountTemplate> = Vec::new();
+
+        let username: String = session_handler.user_name();
+        let user_id: Uuid = session_handler.user_id();
+
+        let local_setting: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(&local_setting.backend_database_url),
+            user: String::from(local_setting.backend_database_user),
+            password: String::from(local_setting.backend_database_password),
+            instance: String::from(&local_setting.backend_database_instance),
         };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-            username: "Session expired".to_string(),
-            account_types: empty_account_type_list,
-            accounts: empty_account_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    let username: String = session_handler.user_name();
-    let user_id: Uuid = session_handler.user_id();
-
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
-
-    {
-        let accounting_config_handle =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+        let db_handler = DbHandlerMongoDB::new(&db_connection);
 
         {
-            let account_types_result: Result<Vec<crate::datatypes::FinanceAccountType>, String> =
-                accounting_config_handle.finance_account_type_list();
+            let accounting_config_handle =
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
-            if account_types_result.is_err() {
-                warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,account_types_result.unwrap_err());
-                let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-                    username: "problems while getting account types list".to_string(),
-                    account_types: empty_account_type_list,
-                    accounts: empty_account_list,
-                };
-                return HtmlTemplate(return_value);
-            }
+            {
+                let account_types_result: Result<
+                    Vec<crate::datatypes::FinanceAccountType>,
+                    String,
+                > = accounting_config_handle.finance_account_type_list();
 
-            //let available_account_types = account_types_result.unwrap();
-            for some_type in account_types_result.as_ref().unwrap() {
-                return_account_type_list.push(AccountTypeTemplate {
-                    id: some_type.id.to_string(),
-                    name: some_type.title.clone(),
-                    description: some_type.description.clone(),
-                });
-            }
+                if account_types_result.is_err() {
+                    warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,account_types_result.unwrap_err());
+                    let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+                        username: "problems while getting account types list".to_string(),
+                        account_types: empty_account_type_list,
+                        accounts: empty_account_list,
+                    };
+                    return HtmlTemplate(return_value);
+                }
 
-            let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
-                accounting_config_handle.finance_account_list(None);
+                for some_type in account_types_result.as_ref().unwrap() {
+                    return_account_type_list.push(AccountTypeTemplate {
+                        id: some_type.id.to_string(),
+                        name: some_type.title.clone(),
+                        description: some_type.description.clone(),
+                    });
+                }
 
-            if accounts_result.is_err() {
-                warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,accounts_result.unwrap_err());
-                let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-                    username: "problems while getting account list".to_string(),
-                    account_types: empty_account_type_list,
-                    accounts: empty_account_list,
-                };
-                return HtmlTemplate(return_value);
-            }
+                let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
+                    accounting_config_handle.finance_account_list(None);
 
-            let available_account_types = &account_types_result.unwrap();
-            for some_account in accounts_result.unwrap() {
-                let type_position_result = available_account_types
-                    .iter()
-                    .position(|elem| elem.id.eq(&some_account.finance_account_type_id));
-                let type_title = match type_position_result {
-                    Some(position) => &available_account_types[position].title,
-                    _ => "no title found",
-                };
-                return_account_list.push(AccountTemplate {
-                    id: some_account.id.to_string(),
-                    name: some_account.title,
-                    description: some_account.description,
-                    type_title: type_title.into(),
-                });
+                if accounts_result.is_err() {
+                    warn!(target: "app::FinanceOverView","error in display_accounting_config_main_page for user {}: {}",username,accounts_result.unwrap_err());
+                    let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+                        username: "problems while getting account list".to_string(),
+                        account_types: empty_account_type_list,
+                        accounts: empty_account_list,
+                    };
+                    return HtmlTemplate(return_value);
+                }
+
+                let available_account_types = &account_types_result.unwrap();
+                for some_account in accounts_result.unwrap() {
+                    let type_position_result = available_account_types
+                        .iter()
+                        .position(|elem| elem.id.eq(&some_account.finance_account_type_id));
+                    let type_title = match type_position_result {
+                        Some(position) => &available_account_types[position].title,
+                        _ => "no title found",
+                    };
+                    return_account_list.push(AccountTemplate {
+                        id: some_account.id.to_string(),
+                        name: some_account.title,
+                        description: some_account.description,
+                        type_title: type_title.into(),
+                    });
+                }
             }
         }
+
+        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+            username: username,
+            account_types: return_account_type_list,
+            accounts: return_account_list,
+        };
+
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        let _new_cookie = session_handler.update_cookie().await;
+
+        trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);
+
+        HtmlTemplate(return_value)
+    } else {
+        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
+            username: session_validation_result.unwrap_err(),
+            account_types: empty_account_type_list,
+            accounts: empty_account_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
     }
-
-    let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-        username: username,
-        account_types: return_account_type_list,
-        accounts: return_account_list,
-    };
-
-    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-    let _new_cookie = session_handler.update_cookie().await;
-
-    trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);
-
-    HtmlTemplate(return_value)
 }
 
 #[derive(Template)]
@@ -598,89 +564,75 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
     debug!(target: "app::FinanceOverView","display accounting main page");
 
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
     let empty_account_list: Vec<AccountTemplate> = Vec::with_capacity(0);
     let mut return_account_list: Vec<AccountTemplate> = Vec::new();
 
-    if !is_logged_in {
-        let return_value = AccountingMainTemplate {
-            username: "not logged in".to_string(),
-            accounts: empty_account_list,
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
+        let username: String = session_handler.user_name();
+        let user_id: Uuid = session_handler.user_id();
+
+        let local_setting: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(&local_setting.backend_database_url),
+            user: String::from(local_setting.backend_database_user),
+            password: String::from(local_setting.backend_database_password),
+            instance: String::from(&local_setting.backend_database_instance),
         };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    if session_handler.is_expired() {
-        let return_value = AccountingMainTemplate {
-            username: "Session expired".to_string(),
-            accounts: empty_account_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    let username: String = session_handler.user_name();
-    let user_id: Uuid = session_handler.user_id();
-
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
-
-    {
-        let accounting_config_handle =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+        let db_handler = DbHandlerMongoDB::new(&db_connection);
 
         {
-            let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
-                accounting_config_handle.finance_account_list(None);
+            let accounting_config_handle =
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
 
-            if accounts_result.is_err() {
-                warn!(target: "app::FinanceOverView","error in display_accounting_main_page for user {}: {}",username,accounts_result.unwrap_err());
-                let return_value = AccountingMainTemplate {
-                    username: "problems while getting account list".to_string(),
-                    accounts: empty_account_list,
-                };
-                return HtmlTemplate(return_value);
-            }
+            {
+                let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
+                    accounting_config_handle.finance_account_list(None);
 
-            for some_account in accounts_result.unwrap() {
-                return_account_list.push(AccountTemplate {
-                    id: some_account.id.to_string(),
-                    name: some_account.title,
-                    description: some_account.description,
-                    type_title: "not loaded".into(),
-                });
+                if accounts_result.is_err() {
+                    warn!(target: "app::FinanceOverView","error in display_accounting_main_page for user {}: {}",username,accounts_result.unwrap_err());
+                    let return_value = AccountingMainTemplate {
+                        username: "problems while getting account list".to_string(),
+                        accounts: empty_account_list,
+                    };
+                    return HtmlTemplate(return_value);
+                }
+
+                for some_account in accounts_result.unwrap() {
+                    return_account_list.push(AccountTemplate {
+                        id: some_account.id.to_string(),
+                        name: some_account.title,
+                        description: some_account.description,
+                        type_title: "not loaded".into(),
+                    });
+                }
             }
         }
+
+        let return_value = AccountingMainTemplate {
+            username: username,
+            accounts: return_account_list,
+        };
+
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        let _new_cookie = session_handler.update_cookie().await;
+
+        trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
+
+        HtmlTemplate(return_value)
+    } else {
+        let return_value = AccountingMainTemplate {
+            username: session_validation_result.unwrap_err(),
+            accounts: empty_account_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
     }
-
-    let return_value = AccountingMainTemplate {
-        username: username,
-        accounts: return_account_list,
-    };
-
-    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-    let _new_cookie = session_handler.update_cookie().await;
-
-    trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
-
-    HtmlTemplate(return_value)
 }
 
 #[derive(Debug, Clone)]
@@ -714,85 +666,71 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
     debug!(target: "app::FinanceOverView","display accounting review page");
 
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
     let empty_account_table_list: Vec<AccountTableTemplate> = Vec::with_capacity(0);
     let mut return_account_table_list: Vec<AccountTableTemplate> = Vec::new();
 
-    if !is_logged_in {
-        let return_value = AccountingAccountReviewTemplate {
-            username: "not logged in".to_string(),
-            account_tables: empty_account_table_list,
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
+        let username: String = session_handler.user_name();
+        let user_id: Uuid = session_handler.user_id();
+
+        let local_setting: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(&local_setting.backend_database_url),
+            user: String::from(local_setting.backend_database_user),
+            password: String::from(local_setting.backend_database_password),
+            instance: String::from(&local_setting.backend_database_instance),
         };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
+        let db_handler = DbHandlerMongoDB::new(&db_connection);
 
-    if session_handler.is_expired() {
-        let return_value = AccountingAccountReviewTemplate {
-            username: "Session expired".to_string(),
-            account_tables: empty_account_table_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    let username: String = session_handler.user_name();
-    let user_id: Uuid = session_handler.user_id();
-
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
-
-    {
-        let accounting_config_handle =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
-        let accounting_booking_handle =
-            FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
         {
-            let table_generate_result = generate_account_tables_sync(
-                &accounting_booking_handle,
-                &accounting_config_handle,
-                None,
-            );
-            if table_generate_result.is_err() {
-                warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
-                let return_value = AccountingAccountReviewTemplate {
-                    username: "problems while getting account tables".to_string(),
-                    account_tables: empty_account_table_list,
-                };
-                return HtmlTemplate(return_value);
+            let accounting_config_handle =
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+            let accounting_booking_handle =
+                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+            {
+                let table_generate_result = generate_account_tables_sync(
+                    &accounting_booking_handle,
+                    &accounting_config_handle,
+                    None,
+                );
+                if table_generate_result.is_err() {
+                    warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
+                    let return_value = AccountingAccountReviewTemplate {
+                        username: "problems while getting account tables".to_string(),
+                        account_tables: empty_account_table_list,
+                    };
+                    return HtmlTemplate(return_value);
+                }
+
+                return_account_table_list.append(&mut table_generate_result.unwrap());
             }
-
-            return_account_table_list.append(&mut table_generate_result.unwrap());
         }
+
+        let return_value = AccountingAccountReviewTemplate {
+            username: username,
+            account_tables: return_account_table_list,
+        };
+
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        let _new_cookie = session_handler.update_cookie().await;
+
+        trace!(target: "app::FinanceOverView","Loaded accounting review user id {}", user_id);
+
+        HtmlTemplate(return_value)
+    } else {
+        let return_value = AccountingAccountReviewTemplate {
+            username: session_validation_result.unwrap_err(),
+            account_tables: empty_account_table_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
     }
-
-    let return_value = AccountingAccountReviewTemplate {
-        username: username,
-        account_tables: return_account_table_list,
-    };
-
-    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-    let _new_cookie = session_handler.update_cookie().await;
-
-    trace!(target: "app::FinanceOverView","Loaded accounting review user id {}", user_id);
-
-    HtmlTemplate(return_value)
 }
 
 #[derive(Debug)]
@@ -820,82 +758,68 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
     debug!(target: "app::FinanceOverView","display journal review page");
 
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
-
-    let is_logged_in: bool = session_handler.is_logged_in();
-
     let mut headers = HeaderMap::new();
 
     let empty_journal_list: Vec<JournalTableRow> = Vec::with_capacity(0);
     let mut return_journal_entries: Vec<JournalTableRow> = Vec::new();
 
-    if !is_logged_in {
-        let return_value = AccountingJournalReviewTemplate {
-            username: "not logged in".to_string(),
-            journal_entries_list: empty_journal_list,
+    let session_validation_result = session_handler.valid_logged_in();
+    if session_validation_result.is_ok() {
+        let username: String = session_handler.user_name();
+        let user_id: Uuid = session_handler.user_id();
+
+        let local_setting: SettingStruct = SettingStruct::global().clone();
+        let db_connection = DbConnectionSetting {
+            url: String::from(&local_setting.backend_database_url),
+            user: String::from(local_setting.backend_database_user),
+            password: String::from(local_setting.backend_database_password),
+            instance: String::from(&local_setting.backend_database_instance),
         };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
+        let db_handler = DbHandlerMongoDB::new(&db_connection);
 
-    if session_handler.is_expired() {
-        let return_value = AccountingJournalReviewTemplate {
-            username: "Session expired".to_string(),
-            journal_entries_list: empty_journal_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    let username: String = session_handler.user_name();
-    let user_id: Uuid = session_handler.user_id();
-
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
-
-    {
-        let accounting_config_handle =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
-        let accounting_booking_handle =
-            FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
         {
-            let table_generate_result = generate_review_journal_entries_sync(
-                &accounting_booking_handle,
-                &accounting_config_handle,
-            );
-            if table_generate_result.is_err() {
-                warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
-                let return_value = AccountingJournalReviewTemplate {
-                    username: "problems while getting account tables".to_string(),
-                    journal_entries_list: empty_journal_list,
-                };
-                return HtmlTemplate(return_value);
+            let accounting_config_handle =
+                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+            let accounting_booking_handle =
+                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+            {
+                let table_generate_result = generate_review_journal_entries_sync(
+                    &accounting_booking_handle,
+                    &accounting_config_handle,
+                );
+                if table_generate_result.is_err() {
+                    warn!(target: "app::FinanceOverView","error in display_accounting_review_page for user {}: {}",username,table_generate_result.unwrap_err());
+                    let return_value = AccountingJournalReviewTemplate {
+                        username: "problems while getting account tables".to_string(),
+                        journal_entries_list: empty_journal_list,
+                    };
+                    return HtmlTemplate(return_value);
+                }
+
+                return_journal_entries.append(&mut table_generate_result.unwrap());
             }
-
-            return_journal_entries.append(&mut table_generate_result.unwrap());
         }
+
+        let return_value = AccountingJournalReviewTemplate {
+            username: username,
+            journal_entries_list: return_journal_entries,
+        };
+
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        let _new_cookie = session_handler.update_cookie().await;
+
+        trace!(target: "app::FinanceOverView","Loaded journal review user id {}", user_id);
+
+        HtmlTemplate(return_value)
+    } else {
+        let return_value = AccountingJournalReviewTemplate {
+            username: session_validation_result.unwrap_err(),
+            journal_entries_list: empty_journal_list,
+        };
+        headers.insert(
+            axum::http::header::REFRESH,
+            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
+        );
+        return HtmlTemplate(return_value);
     }
-
-    let return_value = AccountingJournalReviewTemplate {
-        username: username,
-        journal_entries_list: return_journal_entries,
-    };
-
-    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-    let _new_cookie = session_handler.update_cookie().await;
-
-    trace!(target: "app::FinanceOverView","Loaded journal review user id {}", user_id);
-
-    HtmlTemplate(return_value)
 }
