@@ -223,7 +223,7 @@ async fn https_server() {
         )
         .route(
             "/getPasswordResetToken",
-            get(html_render::display_paswword_reset_token_request_page),
+            get(html_render::display_password_reset_token_request_page),
         )
         .route(
             "/do_RequestPasswordResetToken",
@@ -231,7 +231,7 @@ async fn https_server() {
         )
         .route(
             "/reset_password",
-            get(html_render::display_paswword_reset_with_token_page),
+            get(html_render::display_password_reset_with_token_page),
         )
         .route("/do_reset_password", post(ajax_handle::do_change_password))
         .route(

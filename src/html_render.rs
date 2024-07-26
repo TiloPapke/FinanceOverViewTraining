@@ -445,7 +445,7 @@ pub struct RequestPasswortResetTokenTemplate {
     //just a dummy template, currently no addtional data is shown
 }
 
-pub async fn display_paswword_reset_token_request_page() -> impl IntoResponse {
+pub async fn display_password_reset_token_request_page() -> impl IntoResponse {
     let st: RequestPasswortResetTokenTemplate = RequestPasswortResetTokenTemplate {};
     HtmlTemplate(st)
 }
@@ -464,7 +464,7 @@ pub struct PasswordResetRequestTemplate {
     pub reset_token: String,
 }
 
-pub async fn display_paswword_reset_with_token_page(
+pub async fn display_password_reset_with_token_page(
     form: Form<PasswordResetWithTokenDisplayRequest>,
 ) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display password reset");
