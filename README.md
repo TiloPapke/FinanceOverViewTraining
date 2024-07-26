@@ -4,7 +4,7 @@ Main goal of this project is to train development using "rust". Side goal is to 
 reached mile stones:
 
 goal points for version 0.0.5
-- [ ] unit test case: check if UUID of different user account is used when updating or creating elements => reject
+- [x] unit test case: check if UUID of different user account is used when updating or creating elements => reject
 - [ ] correct spellings like display_paswword_reset_with_token_page
 - [ ] code refactoring: centralizse session handle (eg getting session data and setting new expire timestamp)
 - [ ] code refactoring: connection setting handle
