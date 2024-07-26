@@ -6,13 +6,8 @@ use crate::{
     database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
     datatypes::GenerallUserData,
     frontend_functions::save_general_userdata,
-    session_data_handle::{SessionData, SessionDataResult},
+    session_data_handle::{SessionDataHandler, SessionDataResult},
     setting_struct::SettingStruct,
-};
-
-use async_session::{
-    chrono::{DateTime, Utc},
-    SessionStore,
 };
 
 pub(crate) async fn validate_user_email(
@@ -36,23 +31,14 @@ pub async fn do_update_general_user_data(
     session_data: SessionDataResult,
     Form(input): Form<GenerallUserData>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
     if !is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "not logged in".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -64,17 +50,8 @@ pub async fn do_update_general_user_data(
         return (headers, return_value);
     }
 
-    //let username: String = session.get("user_name").unwrap();
-
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    if session_handler.is_expired() {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "Session expired".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -94,7 +71,7 @@ pub async fn do_update_general_user_data(
         };
 
         let ajax_return_result: String;
-        let username: String = session.get("user_name").unwrap();
+        let username: String = session_handler.user_name();
 
         let update_result_async = save_general_userdata(&db_connection, &username, &input);
         let update_result = update_result_async.await;
@@ -105,22 +82,15 @@ pub async fn do_update_general_user_data(
             ajax_return_result = "information stored".to_string();
         }
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let return_value = crate::ajax_handle::SimpleAjaxRequestResult {
             result: ajax_return_result,
             new_expire_timestamp: session_expire_timestamp,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }

@@ -1,8 +1,5 @@
 use askama::Template;
-use async_session::{
-    chrono::{DateTime, Utc},
-    SessionStore,
-};
+use async_session::chrono::{DateTime, Utc};
 use axum::{
     extract::Form,
     http::{HeaderMap, StatusCode},
@@ -24,7 +21,7 @@ use crate::{
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
-    session_data_handle::{SessionData, SessionDataResult},
+    session_data_handle::{SessionDataHandler, SessionDataResult},
     setting_struct::SettingStruct,
     user_handling::validate_user_email,
 };
@@ -96,12 +93,9 @@ pub async fn accept_login_form(
         instance: String::from(local_settings.backend_database_instance),
     };
 
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap();
-    let _result = session.insert("user_name", &credentials.username);
-
-    let a_store: async_mongodb_session::MongodbSessionStore = session_data.session_store;
+    let _result = session_handler.set_user_name(&credentials.username);
 
     match validate_credentials(&db_connection, &credentials).await {
         Ok(user_id) => {
@@ -124,9 +118,9 @@ pub async fn accept_login_form(
                         Redirect::to("/registration_incomplete").into_response()
                     }
                     _ => {
-                        let _result = session.insert("logged_in", true);
-                        let _result2 = session.insert("user_account_id", user_id);
-                        let _cookie3 = a_store.store_session(session).await;
+                        let _result = session_handler.set_loggin(true);
+                        let _result2 = session_handler.set_user_id(&user_id);
+                        let _cookie3 = session_handler.update_cookie().await;
                         let mongo_db = DbHandlerMongoDB::new(&db_connection);
                         let _repair_result = mongo_db
                             .repair_counter_record_for_user(&db_connection, &user_id)
@@ -145,23 +139,14 @@ pub async fn accept_login_form(
 }
 
 pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
     if !is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let template = UserHomeTemplate {
             logout_reason: "not logged in".to_string(),
             username: "".to_string(),
@@ -179,17 +164,10 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
         return (headers, HtmlTemplate(template));
     }
 
-    let username: String = session.get("user_name").unwrap();
+    let username: String = session_handler.user_name();
 
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    if session_handler.is_expired() {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let template = UserHomeTemplate {
             logout_reason: "Session expired".to_string(),
             username: "".to_string(),
@@ -206,15 +184,8 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
         );
         (headers, HtmlTemplate(template))
     } else {
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -258,7 +229,7 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
                 user_nachname: user_data.last_name,
             };
 
-            let _new_cookie = session_data.session_store.store_session(session).await;
+            let _new_cookie = session_handler.update_cookie().await;
 
             (headers, HtmlTemplate(template))
         }
@@ -266,23 +237,14 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
 }
 
 pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap();
+    let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
-    let session_expire_timestamp = format!(
-        "{} UTC",
-        (session
-            .expiry()
-            .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-            .naive_local()
-            .format("%Y-%m-%d %H:%M:%S"))
-    );
+    let is_logged_in: bool = session_handler.is_logged_in();
+    let _result = session_handler.remove_user_id();
 
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
-    let _result = session.remove("user_account_id");
-
-    let _destroy_result = session_data.session_store.destroy_session(session).await;
+    let _destroy_result = session_handler.destroy_session().await;
 
     let template = UserHomeTemplate {
         username: "".to_string(),
@@ -503,10 +465,9 @@ pub async fn display_accounting_config_main_page(
 ) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display accounting main config page");
 
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -528,7 +489,7 @@ pub async fn display_accounting_config_main_page(
         return HtmlTemplate(return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
             username: "Session expired".to_string(),
             account_types: empty_account_type_list,
@@ -541,8 +502,8 @@ pub async fn display_accounting_config_main_page(
         return HtmlTemplate(return_value);
     }
 
-    let username: String = session.get("user_name").unwrap();
-    let user_id: Uuid = session.get("user_account_id").unwrap();
+    let username: String = session_handler.user_name();
+    let user_id: Uuid = session_handler.user_id();
 
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
@@ -618,8 +579,8 @@ pub async fn display_accounting_config_main_page(
         accounts: return_account_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+    let _new_cookie = session_handler.update_cookie().await;
 
     trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);
 
@@ -636,10 +597,9 @@ pub struct AccountingMainTemplate {
 pub async fn display_accounting_main_page(session_data: SessionDataResult) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display accounting main page");
 
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -658,7 +618,7 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
         return HtmlTemplate(return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = AccountingMainTemplate {
             username: "Session expired".to_string(),
             accounts: empty_account_list,
@@ -670,8 +630,8 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
         return HtmlTemplate(return_value);
     }
 
-    let username: String = session.get("user_name").unwrap();
-    let user_id: Uuid = session.get("user_account_id").unwrap();
+    let username: String = session_handler.user_name();
+    let user_id: Uuid = session_handler.user_id();
 
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
@@ -715,8 +675,8 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
         accounts: return_account_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+    let _new_cookie = session_handler.update_cookie().await;
 
     trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
 
@@ -753,10 +713,9 @@ pub struct AccountingAccountSingleTableTemplate {
 pub async fn display_accounting_review_page(session_data: SessionDataResult) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display accounting review page");
 
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -775,7 +734,7 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         return HtmlTemplate(return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = AccountingAccountReviewTemplate {
             username: "Session expired".to_string(),
             account_tables: empty_account_table_list,
@@ -787,8 +746,8 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         return HtmlTemplate(return_value);
     }
 
-    let username: String = session.get("user_name").unwrap();
-    let user_id: Uuid = session.get("user_account_id").unwrap();
+    let username: String = session_handler.user_name();
+    let user_id: Uuid = session_handler.user_id();
 
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
@@ -828,8 +787,8 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         account_tables: return_account_table_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+    let _new_cookie = session_handler.update_cookie().await;
 
     trace!(target: "app::FinanceOverView","Loaded accounting review user id {}", user_id);
 
@@ -860,10 +819,9 @@ pub struct AccountingJournalReviewTemplate {
 pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display journal review page");
 
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -882,7 +840,7 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
         return HtmlTemplate(return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = AccountingJournalReviewTemplate {
             username: "Session expired".to_string(),
             journal_entries_list: empty_journal_list,
@@ -894,8 +852,8 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
         return HtmlTemplate(return_value);
     }
 
-    let username: String = session.get("user_name").unwrap();
-    let user_id: Uuid = session.get("user_account_id").unwrap();
+    let username: String = session_handler.user_name();
+    let user_id: Uuid = session_handler.user_id();
 
     let local_setting: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
@@ -934,8 +892,8 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
         journal_entries_list: return_journal_entries,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+    let _new_cookie = session_handler.update_cookie().await;
 
     trace!(target: "app::FinanceOverView","Loaded journal review user id {}", user_id);
 

@@ -8,11 +8,7 @@ use std::{
 };
 
 use askama::Template;
-use async_session::{
-    chrono::{DateTime, Utc},
-    serde_json::json,
-    SessionStore,
-};
+use async_session::{chrono::Utc, serde_json::json};
 use axum::{
     body::Body,
     extract::Form,
@@ -39,7 +35,7 @@ use crate::{
         AccountingAccountSingleTableTemplate, HtmlTemplate,
     },
     password_handle::{self, validate_credentials, UserCredentials},
-    session_data_handle::{SessionData, SessionDataResult},
+    session_data_handle::{SessionDataHandler, SessionDataResult},
     setting_struct::SettingStruct,
 };
 
@@ -121,23 +117,14 @@ pub async fn do_change_passwort(
     session_data: SessionDataResult,
     Form(input): Form<ChangePasswortFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
     if !is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "not logged in".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -149,17 +136,10 @@ pub async fn do_change_passwort(
         return (headers, return_value);
     }
 
-    let username: String = session.get("user_name").unwrap();
+    let username: String = session_handler.user_name();
 
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    if session_handler.is_expired() {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "Session expired".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -221,22 +201,15 @@ pub async fn do_change_passwort(
             }
         }
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let return_value = SimpleAjaxRequestResult {
             result: change_result,
             new_expire_timestamp: session_expire_timestamp,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }
@@ -263,11 +236,9 @@ pub async fn do_change_reset_secret(
     session_data: SessionDataResult,
     Form(input): Form<ChangeResetSecretFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -282,9 +253,9 @@ pub async fn do_change_reset_secret(
         return (headers, return_value);
     }
 
-    let user_id: Uuid = session.get("user_account_id").unwrap();
+    let user_id: Uuid = session_handler.user_id();
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = ChangeResetSecretResponse {
             result: "Session expired".to_string(),
         };
@@ -322,13 +293,13 @@ pub async fn do_change_reset_secret(
             change_result = "reset secret change successfull".to_string();
         }
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
 
         let return_value = ChangeResetSecretResponse {
             result: change_result,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }
@@ -345,23 +316,14 @@ pub async fn do_register_user_via_email(
     session_data: SessionDataResult,
     Form(input): Form<RegisterUserViaEmailFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let headers = HeaderMap::new();
 
     if is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "You are still logged in, please log out before registering new accounts"
                 .to_string(),
@@ -371,15 +333,8 @@ pub async fn do_register_user_via_email(
         return (headers, return_value);
     }
 
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    if session_handler.is_expired() {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "Session expired, please try again".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -392,15 +347,8 @@ pub async fn do_register_user_via_email(
         let _new_password = &input.password;
         let _new_email = &input.email;
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -428,7 +376,7 @@ pub async fn do_register_user_via_email(
             new_expire_timestamp: session_expire_timestamp,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }
@@ -438,23 +386,14 @@ pub async fn do_request_password_reset(
     session_data: SessionDataResult,
     Form(input): Form<PasswordResetTokenRequest>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let headers = HeaderMap::new();
 
     if is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "You are logged in, please use normal password change function".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -463,15 +402,8 @@ pub async fn do_request_password_reset(
         return (headers, return_value);
     }
 
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    if session_handler.is_expired() {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "Session expired, please try again".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -480,15 +412,8 @@ pub async fn do_request_password_reset(
         (headers, return_value)
     } else {
         let request_result: String;
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -524,7 +449,7 @@ pub async fn do_request_password_reset(
             new_expire_timestamp: session_expire_timestamp,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }
@@ -534,23 +459,14 @@ pub async fn do_change_password(
     session_data: SessionDataResult,
     Form(input): Form<PasswordResetRequest>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let headers = HeaderMap::new();
 
     if is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "You are logged in, please use normal password change function".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -559,15 +475,8 @@ pub async fn do_change_password(
         return (headers, return_value);
     }
 
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    if session_handler.is_expired() {
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: "Session expired, please try again".to_string(),
             new_expire_timestamp: session_expire_timestamp,
@@ -576,15 +485,8 @@ pub async fn do_change_password(
         (headers, return_value)
     } else {
         let request_result: String;
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -613,7 +515,7 @@ pub async fn do_change_password(
             new_expire_timestamp: session_expire_timestamp,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }
@@ -648,11 +550,9 @@ pub async fn do_create_new_finance_account_type(
     session_data: SessionDataResult,
     Form(input): Form<CreateNewFinanceAccountTypeFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -669,7 +569,7 @@ pub async fn do_create_new_finance_account_type(
         return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = CreateNewFinanceAccountTypeResponse {
             result: "Session expired, please try again".to_string(),
             new_id: "".into(),
@@ -688,7 +588,7 @@ pub async fn do_create_new_finance_account_type(
             description: new_description.into(),
         };
 
-        session.expire_in(std::time::Duration::from_secs(60 * 10));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -698,7 +598,7 @@ pub async fn do_create_new_finance_account_type(
             instance: String::from(local_settings.backend_database_instance),
         };
         let db_handler = DbHandlerMongoDB::new(&db_connection);
-        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
@@ -734,7 +634,7 @@ pub async fn do_create_new_finance_account_type(
             subpage: return_html,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
     }
@@ -762,11 +662,9 @@ pub async fn do_update_finance_account_type(
     session_data: SessionDataResult,
     Form(input): Form<UpdateFinanceAccountTypeFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -781,7 +679,7 @@ pub async fn do_update_finance_account_type(
         return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = UpdateFinanceAccountTypeResponse {
             result: "Session expired, please try again".to_string(),
         };
@@ -807,7 +705,7 @@ pub async fn do_update_finance_account_type(
             description: new_description.into(),
         };
 
-        session.expire_in(std::time::Duration::from_secs(60 * 10));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -817,7 +715,7 @@ pub async fn do_update_finance_account_type(
             instance: String::from(local_settings.backend_database_instance),
         };
         let db_handler = DbHandlerMongoDB::new(&db_connection);
-        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
@@ -839,7 +737,7 @@ pub async fn do_update_finance_account_type(
             result: upsert_result,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
     }
@@ -875,11 +773,9 @@ pub async fn do_create_new_finance_account(
     session_data: SessionDataResult,
     Form(input): Form<CreateNewFinanceAccountFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -896,7 +792,7 @@ pub async fn do_create_new_finance_account(
         return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = CreateNewFinanceAccountResponse {
             result: "Session expired, please try again".to_string(),
             new_id: "".into(),
@@ -930,7 +826,7 @@ pub async fn do_create_new_finance_account(
         };
         let mut available_types = Vec::new();
 
-        session.expire_in(std::time::Duration::from_secs(60 * 10));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -940,7 +836,7 @@ pub async fn do_create_new_finance_account(
             instance: String::from(local_settings.backend_database_instance),
         };
         let db_handler = DbHandlerMongoDB::new(&db_connection);
-        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
@@ -993,7 +889,7 @@ pub async fn do_create_new_finance_account(
             subpage: return_html,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
     }
@@ -1021,11 +917,9 @@ pub async fn do_update_finance_account(
     session_data: SessionDataResult,
     Form(input): Form<UpdateFinanceAccountFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -1040,7 +934,7 @@ pub async fn do_update_finance_account(
         return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = UpdateFinanceAccountResponse {
             result: "Session expired, please try again".to_string(),
         };
@@ -1060,7 +954,7 @@ pub async fn do_update_finance_account(
             return (StatusCode::BAD_REQUEST, headers, return_value);
         }
 
-        session.expire_in(std::time::Duration::from_secs(60 * 10));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -1070,7 +964,7 @@ pub async fn do_update_finance_account(
             instance: String::from(local_settings.backend_database_instance),
         };
         let db_handler = DbHandlerMongoDB::new(&db_connection);
-        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
@@ -1123,7 +1017,7 @@ pub async fn do_update_finance_account(
             result: upsert_result,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
     }
@@ -1153,11 +1047,9 @@ pub async fn do_create_booking_entry(
     session_data: SessionDataResult,
     Form(input): Form<CreateBookingEntryFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let mut session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -1172,7 +1064,7 @@ pub async fn do_create_booking_entry(
         return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = CreateBookingEntryResponse {
             result: "session expired".to_string(),
         };
@@ -1181,7 +1073,7 @@ pub async fn do_create_booking_entry(
     } else {
         let create_result: String;
 
-        session.expire_in(std::time::Duration::from_secs(60 * 10));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -1191,7 +1083,7 @@ pub async fn do_create_booking_entry(
             instance: String::from(local_settings.backend_database_instance),
         };
         let db_handler = DbHandlerMongoDB::new(&db_connection);
-        let user_id: Uuid = session.get("user_account_id").unwrap();
+        let user_id: Uuid = session_handler.user_id();
 
         let mut return_status_code = StatusCode::OK;
         {
@@ -1245,13 +1137,13 @@ pub async fn do_create_booking_entry(
             }
         }
 
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
 
         let return_value = CreateBookingEntryResponse {
             result: create_result,
         };
 
-        let _new_cookie = session_data.session_store.store_session(session).await;
+        let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
     }
@@ -1277,11 +1169,9 @@ pub async fn do_get_account_table_request(
     session_data: SessionDataResult,
     Form(input): Form<GetAccountTableRequest>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
+    let session_handler = SessionDataHandler::from_session_data_result(session_data);
 
-    let session = session_data.session_option.unwrap().clone();
-
-    let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
+    let is_logged_in: bool = session_handler.is_logged_in();
 
     let mut headers = HeaderMap::new();
 
@@ -1296,7 +1186,7 @@ pub async fn do_get_account_table_request(
         return (StatusCode::BAD_REQUEST, headers, return_value);
     }
 
-    if session.is_expired() {
+    if session_handler.is_expired() {
         let return_value = GetAccountTableResponse {
             result: "session expired".to_string(),
         };
@@ -1311,8 +1201,8 @@ pub async fn do_get_account_table_request(
             instance: String::from(local_settings.backend_database_instance),
         };
         let db_handler = DbHandlerMongoDB::new(&db_connection);
-        let user_id: Uuid = session.get("user_account_id").unwrap();
-        let username: String = session.get("user_name").unwrap();
+        let user_id: Uuid = session_handler.user_id();
+        let username: String = session_handler.user_name();
 
         let return_status_code = StatusCode::OK;
         {
