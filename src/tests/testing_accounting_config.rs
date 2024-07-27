@@ -19,12 +19,6 @@ pub(crate) mod test_accounting_handle {
 
     #[tokio::test]
     async fn test_accounting_type_config_handling_with_mock() {
-        let dummy_connection_settings = DbConnectionSetting {
-            instance: "".into(),
-            password: "".into(),
-            url: "".into(),
-            user: "".into(),
-        };
         let user_id_1 = Uuid::new();
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
@@ -45,26 +39,10 @@ pub(crate) mod test_accounting_handle {
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
-        let account_handle_1 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_1,
-            &in_memory_db,
-        );
-        let mut account_handle_2 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_2,
-            &in_memory_db,
-        );
-        let mut account_handle_3 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_3,
-            &in_memory_db,
-        );
-        let mut account_handle_4 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_4,
-            &in_memory_db,
-        );
+        let account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &in_memory_db);
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, &in_memory_db);
+        let mut account_handle_3 = FinanceAccountingConfigHandle::new(&user_id_3, &in_memory_db);
+        let mut account_handle_4 = FinanceAccountingConfigHandle::new(&user_id_4, &in_memory_db);
 
         //prepare data
         //empty list
@@ -193,8 +171,7 @@ pub(crate) mod test_accounting_handle {
 
         let user_id_1 = validate_result.unwrap();
 
-        let mut account_handle_1 =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &mongo_db);
 
         //second user
         let credentials_2 = UserCredentials {
@@ -213,8 +190,7 @@ pub(crate) mod test_accounting_handle {
 
         let user_id_2 = validate_result_2.unwrap();
 
-        let mut account_handle_2 =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id_2, &mongo_db);
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, &mongo_db);
 
         //prepare data
         //First lilst
@@ -316,13 +292,6 @@ pub(crate) mod test_accounting_handle {
 
     #[tokio::test]
     async fn test_accounting_config_handle_with_mock() {
-        let dummy_connection_settings = DbConnectionSetting {
-            instance: "".into(),
-            password: "".into(),
-            url: "".into(),
-            user: "".into(),
-        };
-
         /* test preparations:
            3 users a, b and c
            user a has:
@@ -338,21 +307,9 @@ pub(crate) mod test_accounting_handle {
         let user_id_3 = Uuid::new();
 
         let mut account_handle_1: FinanceAccountingConfigHandle =
-            FinanceAccountingConfigHandle::new(
-                &dummy_connection_settings,
-                &user_id_1,
-                &in_memory_db,
-            );
-        let mut account_handle_2 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_2,
-            &in_memory_db,
-        );
-        let mut account_handle_3 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_3,
-            &in_memory_db,
-        );
+            FinanceAccountingConfigHandle::new(&user_id_1, &in_memory_db);
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, &in_memory_db);
+        let mut account_handle_3 = FinanceAccountingConfigHandle::new(&user_id_3, &in_memory_db);
 
         let entry_object1 =
             InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
@@ -664,8 +621,7 @@ pub(crate) mod test_accounting_handle {
 
         let user_id_1 = validate_result.unwrap();
 
-        let mut account_handle_1 =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &mongo_db);
 
         //second user
         let credentials_2 = UserCredentials {
@@ -684,8 +640,7 @@ pub(crate) mod test_accounting_handle {
 
         let user_id_2 = validate_result_2.unwrap();
 
-        let mut account_handle_2 =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id_2, &mongo_db);
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, &mongo_db);
 
         //check if there are any finance account type available
         let list_fat_result = account_handle_1.finance_account_type_list();
@@ -871,7 +826,8 @@ pub(crate) mod test_accounting_handle {
             "Using account type from different user must fail"
         );
         let errmsg_1 = insert_3_result.unwrap_err();
-        assert!(errmsg_1.contains("could not upsert finance account because account type is not available"));
+        assert!(errmsg_1
+            .contains("could not upsert finance account because account type is not available"));
 
         //try to use an account ID from another user => must fail
         let user_2_types = user_2_types_result.unwrap();

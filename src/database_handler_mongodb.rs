@@ -36,6 +36,7 @@ pub enum EmailVerificationStatus {
 
 pub struct DbHandlerMongoDB {
     internal_mongodb_client: Option<Client>,
+    internal_instance: String,
 }
 
 impl DbHandlerMongoDB {
@@ -54,6 +55,7 @@ impl DbHandlerMongoDB {
             DbHandlerMongoDB::create_client_connection_sync(connection_settings).unwrap();
         return DbHandlerMongoDB {
             internal_mongodb_client: Some(db_client),
+            internal_instance: connection_settings.instance.clone(),
         };
     }
 
@@ -62,6 +64,10 @@ impl DbHandlerMongoDB {
             return Ok(self.internal_mongodb_client.clone().unwrap());
         }
         return Err("no DB client prepared".into());
+    }
+
+    pub(crate) fn get_internal_instance(&self) -> &String {
+        return &self.internal_instance;
     }
 
     pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {

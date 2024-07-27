@@ -47,7 +47,6 @@ pub static GLOBAL_IN_MEMORY_DATA: OnceCell<Mutex<InMemoryDatabaseData>> = OnceCe
 impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDatabaseHandler {
     async fn finance_account_type_list(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccountType>, String> {
         let data_obj = GLOBAL_IN_MEMORY_DATA.get().unwrap();
@@ -69,7 +68,6 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 
     async fn finance_account_type_upsert(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
     ) -> Result<(), String> {
@@ -82,8 +80,15 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
             let type_id_to_check = &finance_account_type.id;
-            let type_check_position_option = data_obj3.data_per_user.iter().position(|elem|elem.user_id.ne(&user_id) && elem.account_types_per_user.iter().position(|subelem|subelem.id.eq(type_id_to_check)).is_some());
-            if type_check_position_option.is_some(){
+            let type_check_position_option = data_obj3.data_per_user.iter().position(|elem| {
+                elem.user_id.ne(&user_id)
+                    && elem
+                        .account_types_per_user
+                        .iter()
+                        .position(|subelem| subelem.id.eq(type_id_to_check))
+                        .is_some()
+            });
+            if type_check_position_option.is_some() {
                 drop(data_obj3);
                 return Err("account type id not available for current user".to_string());
             }
@@ -115,7 +120,6 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
     }
     async fn finance_account_list(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         limit_account_ids: Option<&Vec<Uuid>>,
     ) -> Result<Vec<FinanceAccount>, String> {
@@ -144,7 +148,6 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 
     async fn finance_account_upsert(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account: &FinanceAccount,
     ) -> Result<(), String> {
@@ -156,8 +159,15 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
             .iter()
             .position(|elem| elem.user_id.eq(&user_id));
         if let Some(position) = position_option {
-            let account_check_position_option = data_obj3.data_per_user.iter().position(|elem|elem.user_id.ne(&user_id) && elem.accounts_per_user.iter().position(|subelem|subelem.id.eq(&finance_account.id)).is_some());
-            if account_check_position_option.is_some(){
+            let account_check_position_option = data_obj3.data_per_user.iter().position(|elem| {
+                elem.user_id.ne(&user_id)
+                    && elem
+                        .accounts_per_user
+                        .iter()
+                        .position(|subelem| subelem.id.eq(&finance_account.id))
+                        .is_some()
+            });
+            if account_check_position_option.is_some() {
                 drop(data_obj3);
                 return Err("account id not accessible for current user".to_string());
             }

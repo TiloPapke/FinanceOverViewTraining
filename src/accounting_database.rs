@@ -233,8 +233,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
             .map(|elem| elem.finance_account_id)
             .collect::<Vec<Uuid>>();
 
-        let accounting_handle =
-            FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
+        let accounting_handle = FinanceAccountingConfigHandle::new(&user_id, self);
         let account_list_exists_result = accounting_handle
             .finance_account_list_async(Some(&account_ids_to_check))
             .await;
@@ -386,8 +385,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let accounting_handle =
-            FinanceAccountingConfigHandle::new(&conncetion_settings, &user_id, self);
+        let accounting_handle = FinanceAccountingConfigHandle::new(&user_id, self);
         let account_list_result = accounting_handle
             .finance_account_list_async(Some(&vec![
                 action_to_insert.credit_finance_account_id,

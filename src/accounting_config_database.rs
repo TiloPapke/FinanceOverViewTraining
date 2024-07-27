@@ -9,7 +9,7 @@ use mongodb::{
 
 use crate::{
     convert_tools::ConvertTools,
-    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    database_handler_mongodb::DbHandlerMongoDB,
     datatypes::{FinanceAccount, FinanceAccountType},
 };
 
@@ -17,24 +17,20 @@ use crate::{
 pub trait DBFinanceConfigFunctions {
     async fn finance_account_type_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccountType>, String>;
     async fn finance_account_type_upsert(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
     ) -> Result<(), String>;
     async fn finance_account_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         limit_account_ids: Option<&Vec<Uuid>>,
     ) -> Result<Vec<FinanceAccount>, String>;
     async fn finance_account_upsert(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account: &FinanceAccount,
     ) -> Result<(), String>;
@@ -44,7 +40,6 @@ pub trait DBFinanceConfigFunctions {
 impl DBFinanceConfigFunctions for DbHandlerMongoDB {
     async fn finance_account_type_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
     ) -> Result<Vec<FinanceAccountType>, String> {
         // Get a handle to the deployment.
@@ -56,7 +51,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(self.get_internal_instance());
 
         let accounting_type_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES);
@@ -118,7 +113,6 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
 
     async fn finance_account_type_upsert(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account_type: &FinanceAccountType,
     ) -> Result<(), String> {
@@ -131,7 +125,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(self.get_internal_instance());
 
         let accounting_type_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTING_TYPES);
@@ -189,7 +183,6 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
 
     async fn finance_account_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         limit_account_ids: Option<&Vec<Uuid>>,
     ) -> Result<Vec<FinanceAccount>, String> {
@@ -202,7 +195,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(self.get_internal_instance());
 
         let account_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTS);
@@ -275,7 +268,6 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
 
     async fn finance_account_upsert(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         finance_account: &FinanceAccount,
     ) -> Result<(), String> {
@@ -288,7 +280,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(self.get_internal_instance());
 
         let account_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_ACCOUNTS);

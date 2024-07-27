@@ -538,7 +538,7 @@ pub async fn do_create_new_finance_account_type(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&user_id, &db_handler);
 
             let register_result_2 =
                 accounting_config_handle.finance_account_type_upsert(&mut new_account_type);
@@ -646,7 +646,7 @@ pub async fn do_update_finance_account_type(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&user_id, &db_handler);
 
             let upsert_result_2 =
                 accounting_config_handle.finance_account_type_upsert(&mut old_account_type);
@@ -752,7 +752,7 @@ pub async fn do_create_new_finance_account(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&user_id, &db_handler);
 
             let register_result_2 =
                 accounting_config_handle.finance_account_upsert(&mut new_account);
@@ -871,7 +871,7 @@ pub async fn do_update_finance_account(
         let mut return_status_code = StatusCode::OK;
         {
             let mut accounting_config_handle =
-                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+                FinanceAccountingConfigHandle::new(&user_id, &db_handler);
 
             let available_accounts_result = accounting_config_handle.finance_account_list(None);
             if available_accounts_result.is_err() {
@@ -1097,8 +1097,7 @@ pub async fn do_get_account_table_request(
                 return (StatusCode::BAD_REQUEST, headers, return_value);
             }
 
-            let account_config_handle =
-                FinanceAccountingConfigHandle::new(&db_connection, &user_id, &db_handler);
+            let account_config_handle = FinanceAccountingConfigHandle::new(&user_id, &db_handler);
 
             let accounting_booking_handle =
                 FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);

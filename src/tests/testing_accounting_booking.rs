@@ -51,21 +51,9 @@ mod test_accounting_handle {
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
-        let mut account_handle_1 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_1,
-            &in_memory_db,
-        );
-        let mut account_handle_2 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_2,
-            &in_memory_db,
-        );
-        let mut account_handle_3 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_3,
-            &in_memory_db,
-        );
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &in_memory_db);
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, &in_memory_db);
+        let mut account_handle_3 = FinanceAccountingConfigHandle::new(&user_id_3, &in_memory_db);
 
         let booking_handle_1 =
             FinanceBookingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
@@ -981,11 +969,7 @@ mod test_accounting_handle {
 
         let in_memory_db = InMemoryDatabaseHandler {};
 
-        let mut account_handle_1 = FinanceAccountingConfigHandle::new(
-            &dummy_connection_settings,
-            &user_id_1,
-            &in_memory_db,
-        );
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &in_memory_db);
 
         let booking_handle_1 =
             FinanceBookingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
@@ -1243,8 +1227,7 @@ mod test_accounting_handle {
         let user_id_1 = validate_result.unwrap();
         let mongo_db = DbHandlerMongoDB::new(&db_connection);
 
-        let account_handle_1 =
-            FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
+        let account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &mongo_db);
         let booking_handle_1 = FinanceBookingHandle::new(&db_connection, &user_id_1, &mongo_db);
 
         let repair_result = mongo_db
