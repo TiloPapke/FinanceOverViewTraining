@@ -14,7 +14,7 @@ use mongodb::{
 use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
     convert_tools::ConvertTools,
-    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    database_handler_mongodb::DbHandlerMongoDB,
     datatypes::{
         BookingEntryType, FinanceAccountBookingEntry, FinanceBookingRequest, FinanceBookingResult,
         FinanceJournalEntry,
@@ -46,7 +46,6 @@ impl FinanceAccountBookingEntryListSearchOption {
 pub trait DBFinanceAccountingFunctions {
     async fn finance_journal_entry_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
@@ -54,21 +53,18 @@ pub trait DBFinanceAccountingFunctions {
 
     async fn finance_account_booking_entry_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String>;
 
     async fn finance_insert_booking_entry(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String>;
 
     async fn finance_get_last_saldo_account_entries(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String>;
@@ -78,7 +74,6 @@ pub trait DBFinanceAccountingFunctions {
 impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
     async fn finance_journal_entry_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
@@ -92,7 +87,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(self.get_internal_instance());
 
         let journal_diary_entries_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY);
@@ -212,7 +207,6 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
 
     async fn finance_account_booking_entry_list(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
@@ -225,7 +219,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(self.get_internal_instance());
 
         //extract account id
         let account_ids_to_check = search_options
@@ -372,7 +366,6 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
 
     async fn finance_insert_booking_entry(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
@@ -436,10 +429,9 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         }
 
         loop {
-            let execute_result =
-                DbHandlerMongoDB::execute_finance_insert_booking_entry_with_transaction(
+            let execute_result = self
+                .execute_finance_insert_booking_entry_with_transaction(
                     &mut session,
-                    &conncetion_settings.instance,
                     &user_id,
                     action_to_insert.clone(),
                 )
@@ -466,7 +458,6 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
 
     async fn finance_get_last_saldo_account_entries(
         &self,
-        conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
@@ -480,7 +471,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         }
         let client = client_create_result.unwrap();
 
-        let db_instance = client.database(&conncetion_settings.instance);
+        let db_instance = client.database(&self.get_internal_instance());
 
         let booking_entries_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);
@@ -620,13 +611,13 @@ impl DbHandlerMongoDB {
     /// see https://docs.rs/mongodb/2.8.2/mongodb/struct.ClientSession.html
     /// see https://www.mongodb.com/docs/v2.2/reference/operator/update/inc/
     async fn execute_finance_insert_booking_entry_with_transaction(
+        &self,
         session: &mut ClientSession,
-        db_instance_name: &String,
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, mongodb::error::Error> {
         let client = session.client();
-        let db_instance = client.database(&db_instance_name);
+        let db_instance = client.database(self.get_internal_instance());
 
         let booking_entries_collection: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_BOOKING_ENTRIES);

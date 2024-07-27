@@ -688,8 +688,7 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         {
             let accounting_config_handle =
                 FinanceAccountingConfigHandle::new(&user_id, &db_handler);
-            let accounting_booking_handle =
-                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+            let accounting_booking_handle = FinanceBookingHandle::new(&user_id, &db_handler);
             {
                 let table_generate_result = generate_account_tables_sync(
                     &accounting_booking_handle,
@@ -780,8 +779,7 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
         {
             let accounting_config_handle =
                 FinanceAccountingConfigHandle::new(&user_id, &db_handler);
-            let accounting_booking_handle =
-                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+            let accounting_booking_handle = FinanceBookingHandle::new(&user_id, &db_handler);
             {
                 let table_generate_result = generate_review_journal_entries_sync(
                     &accounting_booking_handle,

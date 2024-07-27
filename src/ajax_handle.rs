@@ -1002,8 +1002,7 @@ pub async fn do_create_booking_entry(
             }
             let current_time = Utc::now();
 
-            let booking_config_handle =
-                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+            let booking_config_handle = FinanceBookingHandle::new(&user_id, &db_handler);
 
             let action_to_insert = FinanceBookingRequest {
                 is_simple_entry: true,
@@ -1099,8 +1098,7 @@ pub async fn do_get_account_table_request(
 
             let account_config_handle = FinanceAccountingConfigHandle::new(&user_id, &db_handler);
 
-            let accounting_booking_handle =
-                FinanceBookingHandle::new(&db_connection, &user_id, &db_handler);
+            let accounting_booking_handle = FinanceBookingHandle::new(&user_id, &db_handler);
 
             let table_generate_result = generate_account_tables_sync(
                 &accounting_booking_handle,

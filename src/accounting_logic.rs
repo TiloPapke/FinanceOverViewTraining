@@ -8,7 +8,6 @@ use crate::{
     accounting_database::{
         DBFinanceAccountingFunctions, FinanceAccountBookingEntryListSearchOption,
     },
-    database_handler_mongodb::DbConnectionSetting,
     datatypes::{
         AccountBalanceInfo, AccountBalanceType, BookingEntryType, FinanceAccountBookingEntry,
         FinanceBookingRequest, FinanceBookingResult, FinanceJournalEntry,
@@ -16,19 +15,13 @@ use crate::{
 };
 
 pub struct FinanceBookingHandle<'a> {
-    db_connection_settings: &'a DbConnectionSetting,
     user_id: &'a Uuid,
     db_connector: &'a dyn DBFinanceAccountingFunctions,
 }
 
 impl<'a> FinanceBookingHandle<'a> {
-    pub fn new(
-        connection_settings: &'a DbConnectionSetting,
-        user_id: &'a Uuid,
-        db_connector: &'a dyn DBFinanceAccountingFunctions,
-    ) -> Self {
+    pub fn new(user_id: &'a Uuid, db_connector: &'a dyn DBFinanceAccountingFunctions) -> Self {
         Self {
-            db_connection_settings: connection_settings,
             user_id,
             db_connector,
         }
@@ -48,12 +41,7 @@ impl<'a> FinanceBookingHandle<'a> {
         }
         let temp_var_1 = self
             .db_connector
-            .finance_journal_entry_list(
-                &self.db_connection_settings,
-                &self.user_id,
-                booking_time_from,
-                booking_time_till,
-            )
+            .finance_journal_entry_list(&self.user_id, booking_time_from, booking_time_till)
             .await;
 
         return temp_var_1;
@@ -84,11 +72,7 @@ impl<'a> FinanceBookingHandle<'a> {
         }
         let temp_var_1 = self
             .db_connector
-            .finance_account_booking_entry_list(
-                &self.db_connection_settings,
-                &self.user_id,
-                search_options,
-            )
+            .finance_account_booking_entry_list(&self.user_id, search_options)
             .await;
 
         return temp_var_1;
@@ -175,11 +159,9 @@ impl<'a> FinanceBookingHandle<'a> {
             }
         }
 
-        let temp_var_0 = self.db_connector.finance_insert_booking_entry(
-            &self.db_connection_settings,
-            &self.user_id,
-            action_to_insert.clone(),
-        );
+        let temp_var_0 = self
+            .db_connector
+            .finance_insert_booking_entry(&self.user_id, action_to_insert.clone());
         let temp_var_1 = temp_var_0.await;
         return temp_var_1;
     }
@@ -284,11 +266,7 @@ impl<'a> FinanceBookingHandle<'a> {
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
         let value = self
             .db_connector
-            .finance_get_last_saldo_account_entries(
-                &self.db_connection_settings,
-                &self.user_id,
-                list_account_ids,
-            )
+            .finance_get_last_saldo_account_entries(&self.user_id, list_account_ids)
             .await;
         return value;
     }

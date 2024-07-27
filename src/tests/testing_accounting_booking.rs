@@ -29,12 +29,7 @@ mod test_accounting_handle {
     #[tokio::test]
     async fn test_accounting_booking_creating_with_mock() {
         /* this test is "just" for testing the creation of entries, for validation of calculation please see other tests */
-        let dummy_connection_settings = DbConnectionSetting {
-            instance: "".into(),
-            password: "".into(),
-            url: "".into(),
-            user: "".into(),
-        };
+
         let user_id_1 = Uuid::new();
         let user_id_2 = Uuid::new();
         let user_id_3 = Uuid::new();
@@ -55,12 +50,9 @@ mod test_accounting_handle {
         let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, &in_memory_db);
         let mut account_handle_3 = FinanceAccountingConfigHandle::new(&user_id_3, &in_memory_db);
 
-        let booking_handle_1 =
-            FinanceBookingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
-        let booking_handle_2 =
-            FinanceBookingHandle::new(&dummy_connection_settings, &user_id_2, &in_memory_db);
-        let booking_handle_3 =
-            FinanceBookingHandle::new(&dummy_connection_settings, &user_id_3, &in_memory_db);
+        let booking_handle_1 = FinanceBookingHandle::new(&user_id_1, &in_memory_db);
+        let booking_handle_2 = FinanceBookingHandle::new(&user_id_2, &in_memory_db);
+        let booking_handle_3 = FinanceBookingHandle::new(&user_id_3, &in_memory_db);
 
         let mut finance_account_type_1_1 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
@@ -953,12 +945,6 @@ mod test_accounting_handle {
 
     #[tokio::test]
     async fn test_accounting_booking_calculate_with_mock() {
-        let dummy_connection_settings = DbConnectionSetting {
-            instance: "".into(),
-            password: "".into(),
-            url: "".into(),
-            user: "".into(),
-        };
         let user_id_1 = Uuid::new();
 
         let entry_object1 =
@@ -971,8 +957,7 @@ mod test_accounting_handle {
 
         let mut account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &in_memory_db);
 
-        let booking_handle_1 =
-            FinanceBookingHandle::new(&dummy_connection_settings, &user_id_1, &in_memory_db);
+        let booking_handle_1 = FinanceBookingHandle::new(&user_id_1, &in_memory_db);
 
         let mut finance_account_type_1_1 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
@@ -1228,7 +1213,7 @@ mod test_accounting_handle {
         let mongo_db = DbHandlerMongoDB::new(&db_connection);
 
         let account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &mongo_db);
-        let booking_handle_1 = FinanceBookingHandle::new(&db_connection, &user_id_1, &mongo_db);
+        let booking_handle_1 = FinanceBookingHandle::new(&user_id_1, &mongo_db);
 
         let repair_result = mongo_db
             .repair_counter_record_for_user(&db_connection, &user_id_1)

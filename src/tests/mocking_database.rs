@@ -1,8 +1,6 @@
 #[cfg(test)]
 use crate::accounting_database::FinanceAccountBookingEntryListSearchOption;
 #[cfg(test)]
-use crate::database_handler_mongodb::DbConnectionSetting;
-#[cfg(test)]
 use crate::datatypes::BookingEntryType;
 #[cfg(test)]
 use crate::datatypes::FinanceAccount;
@@ -204,7 +202,6 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDatabaseHandler {
     async fn finance_journal_entry_list(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         booking_time_from: Option<DateTime<Utc>>,
         booking_time_till: Option<DateTime<Utc>>,
@@ -240,7 +237,6 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
 
     async fn finance_account_booking_entry_list(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         search_options: Vec<FinanceAccountBookingEntryListSearchOption>,
     ) -> Result<Vec<FinanceAccountBookingEntry>, String> {
@@ -299,7 +295,6 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
 
     async fn finance_insert_booking_entry(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         action_to_insert: FinanceBookingRequest,
     ) -> Result<FinanceBookingResult, String> {
@@ -402,7 +397,6 @@ impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDataba
 
     async fn finance_get_last_saldo_account_entries(
         &self,
-        _conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
         list_account_ids: Option<Vec<Uuid>>,
     ) -> Result<HashMap<Uuid, FinanceAccountBookingEntry>, String> {
