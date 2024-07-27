@@ -176,14 +176,13 @@ pub async fn do_change_passwort(
         }
 
         session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+        let _new_cookie = session_handler.update_cookie().await;
 
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: change_result,
             new_expire_timestamp: session_expire_timestamp,
         };
-
-        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     } else {
@@ -255,12 +254,11 @@ pub async fn do_change_reset_secret(
             change_result = "reset secret change successful".to_string();
         }
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-
         let return_value = ChangeResetSecretResponse {
             result: change_result,
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
         let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
@@ -345,14 +343,13 @@ pub async fn do_register_user_via_email(
     }
 
     session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-    let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+    let _new_cookie = session_handler.update_cookie().await;
 
+    let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
     let return_value = SimpleAjaxRequestResult {
         result: register_result,
         new_expire_timestamp: session_expire_timestamp,
     };
-
-    let _new_cookie = session_handler.update_cookie().await;
 
     (headers, return_value)
 }
@@ -367,8 +364,6 @@ pub async fn do_request_password_reset(
     let session_validation_result = session_handler.valid_logged_in();
     if session_validation_result.is_ok() {
         let request_result: String;
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -399,12 +394,14 @@ pub async fn do_request_password_reset(
             }
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let _new_cookie = session_handler.update_cookie().await;
+
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: request_result,
             new_expire_timestamp: session_expire_timestamp,
         };
-
-        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     } else {
@@ -448,8 +445,7 @@ pub async fn do_change_password(
         (headers, return_value)
     } else {
         let request_result: String;
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -473,12 +469,14 @@ pub async fn do_change_password(
             }
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        let _new_cookie = session_handler.update_cookie().await;
+
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = SimpleAjaxRequestResult {
             result: request_result,
             new_expire_timestamp: session_expire_timestamp,
         };
-
-        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     }
@@ -528,8 +526,6 @@ pub async fn do_create_new_finance_account_type(
             description: new_description.into(),
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -574,6 +570,7 @@ pub async fn do_create_new_finance_account_type(
             subpage: return_html,
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -637,8 +634,6 @@ pub async fn do_update_finance_account_type(
             description: new_description.into(),
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -669,6 +664,7 @@ pub async fn do_update_finance_account_type(
             result: upsert_result,
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -744,8 +740,6 @@ pub async fn do_create_new_finance_account(
         };
         let mut available_types = Vec::new();
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
-
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
             url: String::from(local_settings.backend_database_url),
@@ -807,6 +801,7 @@ pub async fn do_create_new_finance_account(
             subpage: return_html,
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -863,8 +858,6 @@ pub async fn do_update_finance_account(
 
             return (StatusCode::BAD_REQUEST, headers, return_value);
         }
-
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -927,6 +920,7 @@ pub async fn do_update_finance_account(
             result: upsert_result,
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -972,8 +966,6 @@ pub async fn do_create_booking_entry(
     let session_validation_result = session_handler.valid_logged_in();
     if session_validation_result.is_ok() {
         let create_result: String;
-
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
         let db_connection = DbConnectionSetting {
@@ -1024,7 +1016,6 @@ pub async fn do_create_booking_entry(
                 description: input.description,
             };
 
-            //let create_result_response_async =  booking_config_handle.finance_insert_booking_entry(&action_to_insert).await;
             let create_result_response =
                 booking_config_handle.finance_insert_booking_entry_sync(&action_to_insert);
             {
@@ -1037,12 +1028,11 @@ pub async fn do_create_booking_entry(
             }
         }
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-
         let return_value = CreateBookingEntryResponse {
             result: create_result,
         };
 
+        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)

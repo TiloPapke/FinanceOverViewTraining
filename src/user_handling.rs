@@ -57,14 +57,13 @@ pub async fn do_update_general_user_data(
         }
 
         session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+        let _new_cookie = session_handler.update_cookie().await;
 
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
         let return_value = crate::ajax_handle::SimpleAjaxRequestResult {
             result: ajax_return_result,
             new_expire_timestamp: session_expire_timestamp,
         };
-
-        let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
     } else {
