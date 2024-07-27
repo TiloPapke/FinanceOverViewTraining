@@ -6,7 +6,7 @@ reached mile stones:
 goal points for version 0.0.5
 - [x] unit test case: check if UUID of different user account is used when updating or creating elements => reject
 - [x] correct spellings like display_paswword_reset_with_token_page (now: display_password_reset_with_token_page)
-- [ ] code refactoring: centralizse session handle (eg getting session data and setting new expire timestamp)
+- [x] code refactoring: centralizse session handle (eg getting session data and setting new expire timestamp)
 - [ ] code refactoring: connection setting handle
 - [ ] define timeout for session in server settings
 - [ ] calculting saldo over all finance accounts
