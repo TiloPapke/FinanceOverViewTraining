@@ -37,12 +37,7 @@ pub async fn do_update_general_user_data(
     let session_validation_result = session_handler.valid_logged_in();
     if session_validation_result.is_ok() {
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
 
         let ajax_return_result: String;
         let username: String = session_handler.user_name();

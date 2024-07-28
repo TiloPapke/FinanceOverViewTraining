@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use ini::Ini;
 use once_cell::sync::OnceCell;
 
+use crate::database_handler_mongodb::DbConnectionSetting;
+
 #[derive(Clone)]
 pub struct SettingStruct {
     pub web_server_ip_part1: u8,
@@ -13,6 +15,7 @@ pub struct SettingStruct {
     pub web_server_port_https: u16,
     pub web_server_cert_cert_path: String,
     pub web_server_cert_key_path: String,
+    pub web_server_session_timeout_seconds: u64,
     pub backend_database_url: String,
     pub backend_database_user: String,
     pub backend_database_password: String,
@@ -73,7 +76,8 @@ impl SettingStruct {
             .set("port_http", "3000")
             .set("port_https", "3300")
             .set("cert_cert_path", "config/self-signed-certs/cert.pem")
-            .set("cert_key_path", "config/self-signed-certs/key.pem");
+            .set("cert_key_path", "config/self-signed-certs/key.pem")
+            .set("session_timeout_seconds", "600");
         conf.with_section(Some("BackendDatabase"))
             .set("DB_URL", "mongodb://localhost:27017")
             .set("DB_User", "Administrator")
@@ -150,6 +154,10 @@ impl SettingStruct {
         let _web_server_cert_key_path: String = conf
             .get_from_or(Some("WebServer"), "cert_key_path", "")
             .to_string();
+        let _web_session_timeout_seconds: u64 = conf
+            .get_from_or(Some("WebServer"), "session_timeout_seconds", "600")
+            .parse()
+            .unwrap();
         let _db_url: String = conf
             .get_from_or(Some("BackendDatabase"), "DB_URL", "")
             .to_string();
@@ -255,6 +263,7 @@ impl SettingStruct {
             web_server_port_https: _web_server_port_https,
             web_server_cert_cert_path: _web_server_cert_cert_path,
             web_server_cert_key_path: _web_server_cert_key_path,
+            web_server_session_timeout_seconds: _web_session_timeout_seconds,
             backend_database_url: _db_url,
             backend_database_user: _db_user,
             backend_database_password: _db_password,
@@ -278,6 +287,16 @@ impl SettingStruct {
             frontend_password_reset_token_time_limit_minutes:
                 _frontend_password_reset_token_time_limit_minutes,
         };
+    }
+
+    pub fn get_default_db_connection_setting(&self) -> DbConnectionSetting {
+        let db_connection = DbConnectionSetting {
+            url: String::from(&self.backend_database_url),
+            user: String::from(&self.backend_database_user),
+            password: String::from(&self.backend_database_password),
+            instance: String::from(&self.backend_database_instance),
+        };
+        return db_connection;
     }
 }
 

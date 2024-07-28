@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
     accounting_logic::FinanceBookingHandle,
-    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB, EmailVerificationStatus},
+    database_handler_mongodb::{DbHandlerMongoDB, EmailVerificationStatus},
     frontend_functions::{
         generate_account_tables_sync, generate_review_journal_entries_sync,
         get_general_userdata_fromdatabase,
@@ -86,12 +86,7 @@ pub async fn accept_login_form(
         password: input.password.clone(),
     };
     let local_settings: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(local_settings.backend_database_url),
-        user: String::from(local_settings.backend_database_user),
-        password: String::from(local_settings.backend_database_password),
-        instance: String::from(local_settings.backend_database_instance),
-    };
+    let db_connection = local_settings.get_default_db_connection_setting();
 
     let mut session_handler = SessionDataHandler::from_session_data_result(session_data);
 
@@ -100,12 +95,7 @@ pub async fn accept_login_form(
     match validate_credentials(&db_connection, &credentials).await {
         Ok(user_id) => {
             let local_settings: SettingStruct = SettingStruct::global().clone();
-            let db_connection = DbConnectionSetting {
-                url: String::from(local_settings.backend_database_url),
-                user: String::from(local_settings.backend_database_user),
-                password: String::from(local_settings.backend_database_password),
-                instance: String::from(local_settings.backend_database_instance),
-            };
+            let db_connection = local_settings.get_default_db_connection_setting();
             let mail_check_result =
                 check_email_status_by_name(&db_connection, &credentials.username).await;
             if mail_check_result.is_err() {
@@ -149,12 +139,7 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let user_data_get_result_async =
             get_general_userdata_fromdatabase(&db_connection, &username);
 
@@ -297,12 +282,7 @@ pub async fn create_login_handler(form: Form<LoginFormInput>) -> impl IntoRespon
     };
 
     let local_settings: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(local_settings.backend_database_url),
-        user: String::from(local_settings.backend_database_user),
-        password: String::from(local_settings.backend_database_password),
-        instance: String::from(local_settings.backend_database_instance),
-    };
+    let db_connection = local_settings.get_default_db_connection_setting();
 
     let create_result = create_credentials(&db_connection, &new_user_credentials).await;
     if create_result.is_err() {
@@ -351,12 +331,7 @@ pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> 
     };
 
     let local_settings: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(local_settings.backend_database_url),
-        user: String::from(local_settings.backend_database_user),
-        password: String::from(local_settings.backend_database_password),
-        instance: String::from(local_settings.backend_database_instance),
-    };
+    let db_connection = local_settings.get_default_db_connection_setting();
     let check_result = validate_user_email(&db_connection, &form.user_name, &form.token).await;
 
     if check_result.is_err() {
@@ -458,13 +433,8 @@ pub async fn display_accounting_config_main_page(
         let username: String = session_handler.user_name();
         let user_id: Uuid = session_handler.user_id();
 
-        let local_setting: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(&local_setting.backend_database_url),
-            user: String::from(local_setting.backend_database_user),
-            password: String::from(local_setting.backend_database_password),
-            instance: String::from(&local_setting.backend_database_instance),
-        };
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
 
         {
@@ -574,13 +544,8 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
         let username: String = session_handler.user_name();
         let user_id: Uuid = session_handler.user_id();
 
-        let local_setting: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(&local_setting.backend_database_url),
-            user: String::from(local_setting.backend_database_user),
-            password: String::from(local_setting.backend_database_password),
-            instance: String::from(&local_setting.backend_database_instance),
-        };
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
 
         {
@@ -676,13 +641,8 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         let username: String = session_handler.user_name();
         let user_id: Uuid = session_handler.user_id();
 
-        let local_setting: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(&local_setting.backend_database_url),
-            user: String::from(local_setting.backend_database_user),
-            password: String::from(local_setting.backend_database_password),
-            instance: String::from(&local_setting.backend_database_instance),
-        };
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
 
         {
@@ -767,13 +727,8 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
         let username: String = session_handler.user_name();
         let user_id: Uuid = session_handler.user_id();
 
-        let local_setting: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(&local_setting.backend_database_url),
-            user: String::from(local_setting.backend_database_user),
-            password: String::from(local_setting.backend_database_password),
-            instance: String::from(&local_setting.backend_database_instance),
-        };
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
 
         {

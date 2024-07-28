@@ -65,3 +65,6 @@ goal points for version 0.0.7
 - [ ] extending unit tests: check return of html render and ajax method, especially for not being logged in and session timeout
 - [ ] decision needed: should changing account type of existing accounts be allowed => yes/no? => unit tests required, kind of tests depends on decision
 - [ ] better way for validating database structure, when each new trait could have new tables
+
+goal points for version 0.0.7
+- [ ] ipv6 configuration

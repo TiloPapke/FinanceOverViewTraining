@@ -46,7 +46,7 @@ use std::{
 };
 
 use crate::{
-    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    database_handler_mongodb::DbHandlerMongoDB,
     html_render::{
         invalid_handler, registration_incomplete_handler, HtmlTemplate, MainPageTemplate,
     },
@@ -94,15 +94,15 @@ async fn main() {
         return;
     }
 
-    let local_setting = SettingStruct::load_from_file(&server_settings_file);
+    let local_settings = SettingStruct::load_from_file(&server_settings_file);
 
     setting_struct::GLOBAL_SETTING
-        .set(local_setting.clone())
+        .set(local_settings.clone())
         .ok();
 
     //real logger configuration from settings
     let log4rs_update_result =
-        log4rs::config::load_config_file(local_setting.log_config_path, Default::default());
+        log4rs::config::load_config_file(&local_settings.log_config_path, Default::default());
     if log4rs_update_result.is_err() {
         println!(
             "Could not load log settings, {}",
@@ -119,12 +119,7 @@ async fn main() {
     trace!(target:"app::FinanceOverView","checking TRACE log");
 
     //check database
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
+    let db_connection = local_settings.get_default_db_connection_setting();
 
     if !DbHandlerMongoDB::validate_db_structure(&db_connection) {
         error!(target: "app::FinanceOverView","Could not validate backend structure, quitting");
@@ -140,17 +135,17 @@ async fn main() {
 }
 
 async fn http_server() {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let local_settings: SettingStruct = SettingStruct::global().clone();
     let app = Router::new().route("/", get(http_handler));
 
     let addr = SocketAddr::from((
         [
-            local_setting.web_server_ip_part1,
-            local_setting.web_server_ip_part2,
-            local_setting.web_server_ip_part3,
-            local_setting.web_server_ip_part4,
+            local_settings.web_server_ip_part1,
+            local_settings.web_server_ip_part2,
+            local_settings.web_server_ip_part3,
+            local_settings.web_server_ip_part4,
         ],
-        local_setting.web_server_port_http,
+        local_settings.web_server_port_http,
     ));
     info!(target: "app::FinanceOverView","http listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
@@ -158,13 +153,8 @@ async fn http_server() {
 }
 
 async fn https_server() {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(&local_setting.backend_database_url),
-        user: String::from(local_setting.backend_database_user),
-        password: String::from(local_setting.backend_database_password),
-        instance: String::from(&local_setting.backend_database_instance),
-    };
+    let local_settings: SettingStruct = SettingStruct::global().clone();
+    let db_connection = local_settings.get_default_db_connection_setting();
 
     // Get a handle to the deployment.
     let mgdb_client_create_result =
@@ -278,8 +268,8 @@ async fn https_server() {
         .layer(Extension(server_session_store));
 
     let config_result = RustlsConfig::from_pem_file(
-        local_setting.web_server_cert_cert_path,
-        local_setting.web_server_cert_key_path,
+        local_settings.web_server_cert_cert_path,
+        local_settings.web_server_cert_key_path,
     )
     .await;
 
@@ -296,12 +286,12 @@ async fn https_server() {
 
     let addr = SocketAddr::from((
         [
-            local_setting.web_server_ip_part1,
-            local_setting.web_server_ip_part2,
-            local_setting.web_server_ip_part3,
-            local_setting.web_server_ip_part4,
+            local_settings.web_server_ip_part1,
+            local_settings.web_server_ip_part2,
+            local_settings.web_server_ip_part3,
+            local_settings.web_server_ip_part4,
         ],
-        local_setting.web_server_port_https,
+        local_settings.web_server_port_https,
     ));
     info!(target: "app::FinanceOverView","https listening on {}", addr);
     axum_server::bind_rustls(addr, config)
@@ -311,24 +301,24 @@ async fn https_server() {
 }
 
 async fn http_handler(uri: Uri) -> Redirect {
-    let local_setting: SettingStruct = SettingStruct::global().clone();
+    let local_settings: SettingStruct = SettingStruct::global().clone();
     let host_check = uri.host();
     let host_info; //see https://github.com/rust-lang/rust/issues/49171
     if host_check.is_some() {
         host_info = format!(
             "{}:{}",
             host_check.unwrap(),
-            local_setting.web_server_port_https
+            local_settings.web_server_port_https
         );
     } else {
         let addr = SocketAddr::from((
             [
-                local_setting.web_server_ip_part1,
-                local_setting.web_server_ip_part2,
-                local_setting.web_server_ip_part3,
-                local_setting.web_server_ip_part4,
+                local_settings.web_server_ip_part1,
+                local_settings.web_server_ip_part2,
+                local_settings.web_server_ip_part3,
+                local_settings.web_server_ip_part4,
             ],
-            local_setting.web_server_port_https,
+            local_settings.web_server_port_https,
         ));
         host_info = addr.to_string();
     }
@@ -356,12 +346,7 @@ async fn https_handler(session_data: SessionDataResult) -> impl IntoResponse {
     );
 
     let local_settings: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(local_settings.backend_database_url),
-        user: String::from(local_settings.backend_database_user),
-        password: String::from(local_settings.backend_database_password),
-        instance: String::from(local_settings.backend_database_instance),
-    };
+    let db_connection = local_settings.get_default_db_connection_setting();
     let current_route = "main";
     let mut current_count = 1;
     let mut current_document = Document::new();

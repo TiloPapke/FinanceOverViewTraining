@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
     accounting_logic::FinanceBookingHandle,
-    database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
+    database_handler_mongodb::DbHandlerMongoDB,
     datatypes::{
         FinanceAccount, FinanceAccountType, FinanceBookingRequest, PasswordResetRequest,
         PasswordResetTokenRequest,
@@ -138,12 +138,7 @@ pub async fn do_change_passwort(
                 password: input.password_old.clone(),
             };
             let local_settings: SettingStruct = SettingStruct::global().clone();
-            let db_connection = DbConnectionSetting {
-                url: String::from(local_settings.backend_database_url),
-                user: String::from(local_settings.backend_database_user),
-                password: String::from(local_settings.backend_database_password),
-                instance: String::from(local_settings.backend_database_instance),
-            };
+            let db_connection = local_settings.get_default_db_connection_setting();
 
             match validate_credentials(&db_connection, &credentials).await {
                 Ok(user_id) => {
@@ -229,12 +224,7 @@ pub async fn do_change_reset_secret(
         let change_result: String;
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
 
         debug!(target: "app::FinanceOverView", "trying to change reset secret for user {}", user_id);
 
@@ -319,12 +309,7 @@ pub async fn do_register_user_via_email(
     let register_result: String;
 
     let local_settings: SettingStruct = SettingStruct::global().clone();
-    let db_connection = DbConnectionSetting {
-        url: String::from(local_settings.backend_database_url),
-        user: String::from(local_settings.backend_database_user),
-        password: String::from(local_settings.backend_database_password),
-        instance: String::from(local_settings.backend_database_instance),
-    };
+    let db_connection = local_settings.get_default_db_connection_setting();
 
     debug!(target: "app::FinanceOverView", "trying to register user with email: {}", input.email);
 
@@ -366,12 +351,7 @@ pub async fn do_request_password_reset(
         let request_result: String;
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let password_reset_request_result =
             crate::password_handle::request_password_reset_token(&db_connection, input.borrow())
                 .await;
@@ -447,12 +427,7 @@ pub async fn do_change_password(
         let request_result: String;
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let password_change_result =
             crate::password_handle::reset_password_with_token(&db_connection, input.borrow()).await;
 
@@ -527,12 +502,7 @@ pub async fn do_create_new_finance_account_type(
         };
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
         let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
@@ -635,12 +605,7 @@ pub async fn do_update_finance_account_type(
         };
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
         let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
@@ -741,12 +706,7 @@ pub async fn do_create_new_finance_account(
         let mut available_types = Vec::new();
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
         let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
@@ -860,12 +820,7 @@ pub async fn do_update_finance_account(
         }
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
         let user_id: Uuid = session_handler.user_id();
         let mut return_status_code = StatusCode::OK;
@@ -968,12 +923,7 @@ pub async fn do_create_booking_entry(
         let create_result: String;
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
         let user_id: Uuid = session_handler.user_id();
 
@@ -1073,12 +1023,7 @@ pub async fn do_get_account_table_request(
     let session_validation_result = session_handler.valid_logged_in();
     if session_validation_result.is_ok() {
         let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
-        };
+        let db_connection = local_settings.get_default_db_connection_setting();
         let db_handler = DbHandlerMongoDB::new(&db_connection);
         let user_id: Uuid = session_handler.user_id();
         let username: String = session_handler.user_name();
