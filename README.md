@@ -8,7 +8,7 @@ goal points for version 0.0.5
 - [x] correct spellings like display_paswword_reset_with_token_page (now: display_password_reset_with_token_page)
 - [x] code refactoring: centralizse session handle (eg getting session data and setting new expire timestamp)
 - [x] code refactoring: connection setting handle
-- [ ] define timeout for session in server settings
+- [x] define timeout for session in server settings
 - [ ] calculting saldo over all finance accounts
 - [ ] export to csv (simple)
 

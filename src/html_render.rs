@@ -135,10 +135,12 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
     let sessions_validation_result = session_handler.valid_logged_in();
     if sessions_validation_result.is_ok() {
         let username: String = session_handler.user_name();
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
-        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
+
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
+        let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
+
         let db_connection = local_settings.get_default_db_connection_setting();
         let user_data_get_result_async =
             get_general_userdata_fromdatabase(&db_connection, &username);
@@ -503,7 +505,7 @@ pub async fn display_accounting_config_main_page(
             accounts: return_account_list,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);
@@ -581,7 +583,7 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
             accounts: return_account_list,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
@@ -673,7 +675,7 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
             account_tables: return_account_table_list,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         trace!(target: "app::FinanceOverView","Loaded accounting review user id {}", user_id);
@@ -758,7 +760,7 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
             journal_entries_list: return_journal_entries,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         trace!(target: "app::FinanceOverView","Loaded journal review user id {}", user_id);

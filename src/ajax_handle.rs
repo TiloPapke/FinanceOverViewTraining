@@ -122,6 +122,8 @@ pub async fn do_change_passwort(
 
     let session_validation_result = session_handler.valid_logged_in();
     if session_validation_result.is_ok() {
+        let local_settings: SettingStruct = SettingStruct::global().clone();
+
         let username: String = session_handler.user_name();
 
         let change_result: String;
@@ -137,7 +139,6 @@ pub async fn do_change_passwort(
                 username: username.clone(),
                 password: input.password_old.clone(),
             };
-            let local_settings: SettingStruct = SettingStruct::global().clone();
             let db_connection = local_settings.get_default_db_connection_setting();
 
             match validate_credentials(&db_connection, &credentials).await {
@@ -170,7 +171,7 @@ pub async fn do_change_passwort(
             }
         }
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
@@ -248,7 +249,7 @@ pub async fn do_change_reset_secret(
             result: change_result,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         (headers, return_value)
@@ -327,7 +328,7 @@ pub async fn do_register_user_via_email(
         register_result = "OK, please check your E-Mail".to_string();
     }
 
-    session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+    session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
     let _new_cookie = session_handler.update_cookie().await;
 
     let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
@@ -374,7 +375,7 @@ pub async fn do_request_password_reset(
             }
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
@@ -444,7 +445,7 @@ pub async fn do_change_password(
             }
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
@@ -540,7 +541,7 @@ pub async fn do_create_new_finance_account_type(
             subpage: return_html,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -629,7 +630,7 @@ pub async fn do_update_finance_account_type(
             result: upsert_result,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -761,7 +762,7 @@ pub async fn do_create_new_finance_account(
             subpage: return_html,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -875,7 +876,7 @@ pub async fn do_update_finance_account(
             result: upsert_result,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 10)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)
@@ -981,7 +982,7 @@ pub async fn do_create_booking_entry(
             result: create_result,
         };
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         (return_status_code, headers, return_value)

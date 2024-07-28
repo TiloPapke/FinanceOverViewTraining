@@ -298,6 +298,12 @@ impl SettingStruct {
         };
         return db_connection;
     }
+
+    pub fn get_default_session_timeout_seconds(&self) -> Option<std::time::Duration> {
+        return Some(std::time::Duration::from_secs(
+            self.web_server_session_timeout_seconds * 1,
+        ));
+    }
 }
 
 impl TestSettingStruct {

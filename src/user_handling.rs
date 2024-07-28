@@ -51,7 +51,7 @@ pub async fn do_update_general_user_data(
             ajax_return_result = "information stored".to_string();
         }
 
-        session_handler.set_expire(Some(std::time::Duration::from_secs(60 * 1)));
+        session_handler.set_expire(local_settings.get_default_session_timeout_seconds());
         let _new_cookie = session_handler.update_cookie().await;
 
         let session_expire_timestamp = format!("{}", session_handler.get_utc_expire_timestamp());
