@@ -958,8 +958,8 @@ pub async fn do_create_booking_entry(
             let action_to_insert = FinanceBookingRequest {
                 is_simple_entry: true,
                 is_saldo: false,
-                debit_finance_account_id: credit_account_id_parse.unwrap(),
-                credit_finance_account_id: debit_account_id_parse.unwrap(),
+                debit_finance_account_id: debit_account_id_parse.unwrap(),
+                credit_finance_account_id: credit_account_id_parse.unwrap(),
                 booking_time: current_time,
                 amount: input.amount,
                 title: input.title,
