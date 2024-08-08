@@ -21,3 +21,11 @@ datastructure
 required checks before calculation:
 * each account has as parent_account_id, except one top account
 * no circular references allowed
+* any given parent_account_id belongs to an accounting table of the current user
+
+functions of trait "accounting_saldo_handling" OR extending "DBFinanceConfigFunctions"(1) and "DBFinanceAccountingFunctions" (2)
+* loading hierachy (1)
+* checking hierarchy (1)
+* adding/changing parent_account_id of accounts and account types (1)
+* calculating saldo for single accounts (2)
+* applying hierachy to all acounts (2)

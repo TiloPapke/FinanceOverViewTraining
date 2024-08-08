@@ -68,3 +68,4 @@ goal points for version 0.0.7
 
 goal points for version 0.0.7
 - [ ] ipv6 configuration
+- [ ] allow to set own booking date and time through the user interface
