@@ -495,6 +495,7 @@ impl InMemoryDatabaseData {
             id: object_to_clone.id,
             title: object_to_clone.title.to_owned(),
             description: object_to_clone.description.to_owned(),
+            parent_account_id: None,
         };
         return return_obj;
     }
@@ -518,6 +519,7 @@ impl InMemoryDatabaseData {
             finance_account_type_id: object_to_clone.finance_account_type_id,
             title: object_to_clone.title.to_owned(),
             description: object_to_clone.description.to_owned(),
+            parent_account_id: None,
         };
         return return_obj;
     }

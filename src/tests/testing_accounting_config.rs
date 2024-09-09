@@ -52,6 +52,7 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription".to_string(),
             title: "SomeType".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let insert_result_1 =
             account_handle_2.finance_account_type_upsert(&mut finance_account_type_1.clone());
@@ -60,11 +61,13 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription2".to_string(),
             title: "SomeType2".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let finance_account_type_3 = FinanceAccountType {
             description: "SomeTypeDescription3".to_string(),
             title: "SomeType3".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let insert_result_2 =
             account_handle_3.finance_account_type_upsert(&mut finance_account_type_2.clone());
@@ -79,6 +82,7 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription4".to_string(),
             title: "SomeType4".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let insert_result_4 =
             account_handle_4.finance_account_type_upsert(&mut finance_account_type_4.clone());
@@ -200,6 +204,7 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription_".to_string() + &Uuid::new().to_string(),
             title: "SomeType_".to_string() + &Uuid::new().to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let insert_result_1 =
             account_handle_1.finance_account_type_upsert(&mut finance_account_type_1.clone());
@@ -207,6 +212,7 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription2_".to_string() + &Uuid::new().to_string(),
             title: "SomeType2_".to_string() + &Uuid::new().to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let insert_result_2 =
             account_handle_1.finance_account_type_upsert(&mut finance_account_type_2.clone());
@@ -256,6 +262,7 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription4_".to_string() + &Uuid::new().to_string(),
             title: "SomeType4_".to_string() + &Uuid::new().to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let list_4_result = account_handle_2.finance_account_type_list();
         let insert_result_4 =
@@ -328,16 +335,19 @@ pub(crate) mod test_accounting_handle {
             description: "SomeTypeDescription_a_1".to_string(),
             title: "SomeType_a_1".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let finance_account_type_a_2 = FinanceAccountType {
             description: "SomeTypeDescription_a_2".to_string(),
             title: "SomeType_a_2".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let finance_account_type_b_1 = FinanceAccountType {
             description: "SomeTypeDescription_b_1".to_string(),
             title: "SomeType_b_1".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let insert_result_fat_a1 =
             account_handle_1.finance_account_type_upsert(&mut finance_account_type_a_1.clone());
@@ -367,18 +377,21 @@ pub(crate) mod test_accounting_handle {
             finance_account_type_id: finance_account_type_a_1.id,
             title: "account_1_1".into(),
             description: "description_1_1".into(),
+            parent_account_id: None,
         };
         let finance_account_1_2 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_a_2.id,
             title: "account_1_2".into(),
             description: "description_1_2".into(),
+            parent_account_id: None,
         };
         let finance_account_1_3 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_a_1.id,
             title: "account_1_3".into(),
             description: "description_1_3".into(),
+            parent_account_id: None,
         };
         let list_0_result = account_handle_1.finance_account_list(None);
         let insert_1_result = account_handle_1.finance_account_upsert(&finance_account_1_1);
@@ -427,17 +440,20 @@ pub(crate) mod test_accounting_handle {
             finance_account_type_id: finance_account_type_b_1.id,
             title: "account_2_1".into(),
             description: "description_2_1".into(),
+            parent_account_id: None,
         };
         let finance_account_type_b_2 = FinanceAccountType {
             description: "SomeTypeDescription_b_2".to_string(),
             title: "SomeType_b_2".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let finance_account_2_2 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_b_2.id,
             title: "account_2_2".into(),
             description: "description_2_2".into(),
+            parent_account_id: None,
         };
         let list_2_0_result = account_handle_2.finance_account_list(None);
         let insert_2_1_result = account_handle_2.finance_account_upsert(&finance_account_2_1);
@@ -476,6 +492,7 @@ pub(crate) mod test_accounting_handle {
             finance_account_type_id: finance_account_1_2.finance_account_type_id,
             title: "Update_1_2".into(),
             description: "Another description for 1_2".into(),
+            parent_account_id: None,
         };
         let upsert_result = account_handle_1.finance_account_upsert(&finance_account_1_2_update);
         let list_update_result = account_handle_1.finance_account_list(None);
@@ -676,12 +693,14 @@ pub(crate) mod test_accounting_handle {
             finance_account_type_id: available_finance_account_type[0].id,
             title: "SomeTitle".to_string() + &id1.to_string(),
             description: "some Decription for ".to_string() + &id1.to_string(),
+            parent_account_id: None,
         };
         let account_2 = FinanceAccount {
             id: id2,
             finance_account_type_id: available_finance_account_type[0].id,
             title: "SomeTitle".to_string() + &id2.to_string(),
             description: "some Decription for ".to_string() + &id2.to_string(),
+            parent_account_id: None,
         };
         let list_accounts_0_result = account_handle_1.finance_account_list(None);
         let insert_1_result = account_handle_1.finance_account_upsert(&account_1);
@@ -731,6 +750,7 @@ pub(crate) mod test_accounting_handle {
             finance_account_type_id: account_2.finance_account_type_id,
             title: "Updated".to_string() + &account_2.id.to_string(),
             description: "changed description".to_string() + &account_2.id.to_string(),
+            parent_account_id: None,
         };
         let insert_updated_result = account_handle_1.finance_account_upsert(&account_updated);
         let list_updated_result = account_handle_1.finance_account_list(None);

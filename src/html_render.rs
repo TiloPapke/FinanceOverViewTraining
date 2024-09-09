@@ -392,6 +392,14 @@ pub async fn display_password_reset_with_token_page(
     HtmlTemplate(st)
 }
 
+//Struture for parent account options
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ParentAccountOption {
+    pub id: Uuid,
+    pub name: String,
+}
+pub const PARENT_ACCOUNT_ID_EMPTY_WEB_STRING: &str = "-none-";
+
 #[derive(Template)]
 #[template(path = "AccountingConfig/AccountingConfig_main.html")]
 pub struct AccountingMainConfigTemplate {
@@ -405,6 +413,9 @@ pub struct AccountTypeTemplate {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub parent_account_id: String,
+    pub parent_account_name: String,
+    pub parent_account_options: Vec<ParentAccountOption>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -413,6 +424,9 @@ pub struct AccountTemplate {
     pub name: String,
     pub description: String,
     pub type_title: String,
+    pub parent_account_id: String,
+    pub parent_account_name: String,
+    pub parent_account_options: Vec<ParentAccountOption>,
 }
 
 pub async fn display_accounting_config_main_page(
@@ -464,6 +478,9 @@ pub async fn display_accounting_config_main_page(
                         id: some_type.id.to_string(),
                         name: some_type.title.clone(),
                         description: some_type.description.clone(),
+                        parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
+                        parent_account_name: "".to_string(),
+                        parent_account_options: Vec::new(),
                     });
                 }
 
@@ -494,6 +511,9 @@ pub async fn display_accounting_config_main_page(
                         name: some_account.title,
                         description: some_account.description,
                         type_title: type_title.into(),
+                        parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
+                        parent_account_name: "".to_string(),
+                        parent_account_options: Vec::new(),
                     });
                 }
             }
@@ -573,6 +593,9 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
                         name: some_account.title,
                         description: some_account.description,
                         type_title: "not loaded".into(),
+                        parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
+                        parent_account_name: "".to_string(),
+                        parent_account_options: Vec::new(),
                     });
                 }
             }

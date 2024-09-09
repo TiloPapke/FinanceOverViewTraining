@@ -29,3 +29,4 @@ functions of trait "accounting_saldo_handling" OR extending "DBFinanceConfigFunc
 * adding/changing parent_account_id of accounts and account types (1)
 * calculating saldo for single accounts (2)
 * applying hierachy to all acounts (2)
+=> extending existing traits, DBFinanceConfigFunctions describse what is there and DBFinanceAccountingFunctions describse what to do with it.

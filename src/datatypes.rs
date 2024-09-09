@@ -33,6 +33,7 @@ pub struct FinanceAccountType {
     pub id: Uuid,
     pub title: String,
     pub description: String,
+    pub parent_account_id: Option<Uuid>,
 }
 
 #[derive(PartialEq, Deserialize, Debug, Clone)]
@@ -41,6 +42,7 @@ pub struct FinanceAccount {
     pub finance_account_type_id: Uuid,
     pub title: String,
     pub description: String,
+    pub parent_account_id: Option<Uuid>,
 }
 
 #[derive(PartialEq, Deserialize, Debug, Clone)]

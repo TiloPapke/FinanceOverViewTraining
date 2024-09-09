@@ -32,7 +32,7 @@ use crate::{
     frontend_functions::{generate_account_tables_sync, send_password_reset_email},
     html_render::{
         AccountTableTemplate, AccountTemplate, AccountTypeTemplate,
-        AccountingAccountSingleTableTemplate, HtmlTemplate,
+        AccountingAccountSingleTableTemplate, HtmlTemplate, PARENT_ACCOUNT_ID_EMPTY_WEB_STRING,
     },
     password_handle::{self, validate_credentials, UserCredentials},
     session_data_handle::{SessionDataHandler, SessionDataResult},
@@ -500,6 +500,7 @@ pub async fn do_create_new_finance_account_type(
             id: new_uuid,
             title: new_title.into(),
             description: new_description.into(),
+            parent_account_id: None,
         };
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
@@ -527,6 +528,9 @@ pub async fn do_create_new_finance_account_type(
             id: new_account_type.id.to_string(),
             name: new_account_type.title,
             description: new_account_type.description,
+            parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
+            parent_account_name: "".to_string(),
+            parent_account_options: Vec::new(),
         };
         let response_html_result = HtmlTemplate(AccountTypeCreateResponseTemplate {
             account_type: new_account_type_template,
@@ -603,6 +607,7 @@ pub async fn do_update_finance_account_type(
             id: old_uuid.unwrap(),
             title: new_title.into(),
             description: new_description.into(),
+            parent_account_id: None,
         };
 
         let local_settings: SettingStruct = SettingStruct::global().clone();
@@ -703,6 +708,7 @@ pub async fn do_create_new_finance_account(
             title: new_title.into(),
             description: new_description.into(),
             finance_account_type_id: new_finance_account_type_id_result.unwrap(),
+            parent_account_id: None,
         };
         let mut available_types = Vec::new();
 
@@ -748,6 +754,9 @@ pub async fn do_create_new_finance_account(
             name: new_account.title,
             description: new_account.description,
             type_title: type_title.into(),
+            parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
+            parent_account_name: "".to_string(),
+            parent_account_options: Vec::new(),
         };
         let response_html_result = HtmlTemplate(AccountCreateResponseTemplate {
             account: new_account_template,
@@ -858,6 +867,7 @@ pub async fn do_update_finance_account(
                     .finance_account_type_id,
                 title: new_title.into(),
                 description: new_description.into(),
+                parent_account_id: None,
             };
 
             let upsert_result_2 =

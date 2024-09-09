@@ -8,6 +8,7 @@
                 var formData = {
                     title: $("#newAccountTypeTitle").val(),
                     description: $("#newAccountTypeDescription").val(),
+                    description: $("#newAccountTypeParentAccountId").val(),
                 };
 
                 $.post("request_create_new_account_type", formData, function (data, status) { })
@@ -21,6 +22,7 @@
 
                         document.getElementById('newAccountTypeTitle').value = '';
                         document.getElementById('newAccountTypeDescription').value = '';
+                        document.getElementById('newAccountTypeParentAccountId').value = '-none-';
                     })
                     .fail(function (data) {
                         $("#response_account_type").prop('style').display = "inline";
@@ -34,6 +36,7 @@
                     title: $("#newAccountTitle").val(),
                     description: $("#newAccountDescription").val(),
                     account_type_id: $("#newAccountType").val(),
+                    parent_account_id: $("#newAccountParentAccountID").val(),
                 };
 
                 $.post("request_create_new_account", formData, function (data, status) { })
@@ -47,6 +50,7 @@
 
                         document.getElementById('newAccountTitle').value = '';
                         document.getElementById('newAccountDescription').value = '';
+                        document.getElementById('newAccountParentAccountId').value = '-none-';
                     })
                     .fail(function (data) {
                         $("#response_account").prop('style').display = "inline";
@@ -63,11 +67,13 @@
         function updateAccountType(accountTypeId) {
             var val1 = document.getElementById('accountType_title_' + accountTypeId).textContent;
             var val2 = document.getElementById('accountType_description_' + accountTypeId).textContent;
+            var val3 = document.getElementById('accountType_parent_account_id_' + accountTypeId).textContent;
 
             var formData = {
                 account_type_id: accountTypeId,
                 title: val1,
                 description: val2,
+                parent_account_id: val3
             };
             $.post("request_update_account_type", formData, function (data, status) { })
                 .done(function (data) {
@@ -82,11 +88,13 @@
         function updateAccount(accountId) {
             var val1 = document.getElementById('account_title_' + accountId).textContent;
             var val2 = document.getElementById('account_description_' + accountId).textContent;
+            var val3 = document.getElementById('account_parent_account_id_' + accountId).textContent;
 
             var formData = {
                 account_id: accountId,
                 title: val1,
                 description: val2,
+                parent_account_id: val3
             };
             $.post("request_update_account", formData, function (data, status) { })
                 .done(function (data) {
@@ -133,6 +141,7 @@
             <td style="display:none;">IDs</td>
             <td>Name</td>
             <td>Description</td>
+            <td>Parent</td>
             <td></td>
         </tr>
         {% for account_type in account_types %}
@@ -145,6 +154,15 @@
                         placeholder="title for new account type"></td>
                 <td id="accountType_description_new"><input type="text" id="newAccountTypeDescription"
                         placeholder="description of new account type"></td>
+                <td id="accountType_parent_account_id_new">
+                    <select id="newAccountTypeParentAccountID" name="newAccountTypeParentAccountID">
+                        <option value="-none-">-none-</option>
+                        {% for account in accounts %}
+                        <option value="{{account.id}}">{{account.name}}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+
                 <td><button id="accountTypeCreate">Create</button></td>
             </tr>
         </form>
@@ -160,6 +178,7 @@
             <td>Name</td>
             <td>Description</td>
             <td>Type</td>
+            <td>Parent account</td>
             <td></td>
         </tr>
         {% for account in accounts %}
@@ -177,6 +196,14 @@
                     <select id="newAccountType" name="newAccountType">
                         {% for account_type in account_types %}
                         <option value="{{account_type.id}}">{{account_type.name}}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td id="account_parent_account_id_new">
+                    <select id="newAccountParentAccountID" name="newAccountParentAccountID">
+                        <option value="-none-">-none-</option>
+                        {% for account in accounts %}
+                        <option value="{{account.id}}">{{account.name}}</option>
                         {% endfor %}
                     </select>
                 </td>

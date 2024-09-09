@@ -101,6 +101,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
                 id: some_uuid_parse_result.unwrap(),
                 title: stored_title.unwrap().into(),
                 description: stored_description.unwrap().into(),
+                parent_account_id: None,
             };
 
             result_list.push(accounting_type);
@@ -256,6 +257,7 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
                 finance_account_type_id: stored_account_type_id.unwrap(),
                 title: stored_title.unwrap().into(),
                 description: stored_description.unwrap().into(),
+                parent_account_id: None,
             };
 
             result_list.push(accounting_type);

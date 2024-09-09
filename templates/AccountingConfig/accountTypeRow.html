@@ -2,6 +2,16 @@
     <td id="accountType_id_{{account_type.id}}" style="display:none;">{{account_type.id}}</td>
     <td id="accountType_title_{{account_type.id}}" contentEditable="true">{{account_type.name}}</td>
     <td id="accountType_description_{{account_type.id}}" contentEditable="true">{{account_type.description}}</td>
+    <td><select id="accountType_parent_account_id" name="accountType_parent_account_id">
+            {% if account_type.parent_account_id != "-none-" %}
+            <option value="{{account_type.parent_account_id}}">{{account_type.parent_account_name}}</option>
+            {% endif %}
+            <option value="-none-">-none-</option>
+            {% for account_option in account_type.parent_account_options %}
+            <option value="{{account_option.id}}">{{account_option.name}}</option>
+            {% endfor %}
+        </select>
+    </td>
     <td><button id="accountType_Update_{{account_type.id}}"
             onclick="updateAccountType('{{account_type.id}}')">Update</button></td>
 </tr>

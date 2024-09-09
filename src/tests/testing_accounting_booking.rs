@@ -58,68 +58,80 @@ mod test_accounting_handle {
             description: "SomeTypeDescription_1_1".to_string(),
             title: "SomeType_1_1".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let mut finance_account_type_1_2 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
             title: "SomeType_1_2".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let mut finance_account_type_2_1 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
             title: "SomeType_2_1".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let mut finance_account_type_2_2 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
             title: "SomeType_1_2".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let mut finance_account_type_3_1 = FinanceAccountType {
             description: "SomeTypeDescription_3_1".to_string(),
             title: "SomeType_3_1".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let finance_account_1_1 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_1_1.id,
             title: "account_1_1".into(),
             description: "description_1_1".into(),
+            parent_account_id: None,
         };
         let finance_account_1_2 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_1_2.id,
             title: "account_1_2".into(),
             description: "description_1_2".into(),
+            parent_account_id: None,
         };
         let finance_account_2_1 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_2_1.id,
             title: "account_2_1".into(),
             description: "description_2_1".into(),
+            parent_account_id: None,
         };
         let finance_account_2_2 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_2_2.id,
             title: "account_2_2".into(),
             description: "description_2_2".into(),
+            parent_account_id: None,
         };
         let finance_account_2_3 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_2_2.id,
             title: "account_2_3".into(),
             description: "description_2_3".into(),
+            parent_account_id: None,
         };
         let finance_account_3_1 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_3_1.id,
             title: "account_3_1".into(),
             description: "description_3_1".into(),
+            parent_account_id: None,
         };
         let finance_account_3_2 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_3_1.id,
             title: "account_3_2".into(),
             description: "description_3_2".into(),
+            parent_account_id: None,
         };
         let insert_finance_account_type_1_1_result =
             account_handle_1.finance_account_type_upsert(&mut finance_account_type_1_1);
@@ -717,6 +729,7 @@ mod test_accounting_handle {
             finance_account_type_id: finance_account_type_2_2.id,
             title: "account_2_4".into(),
             description: "description_2_4".into(),
+            parent_account_id: None,
         };
         let insert_finance_account_2_4_result =
             account_handle_2.finance_account_upsert(&finance_account_2_4);
@@ -963,11 +976,13 @@ mod test_accounting_handle {
             description: "SomeTypeDescription_1_1".to_string(),
             title: "SomeType_1_1".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
         let mut finance_account_type_1_2 = FinanceAccountType {
             description: "SomeTypeDescription_1_1".to_string(),
             title: "SomeType_1_2".to_string(),
             id: Uuid::new(),
+            parent_account_id: None,
         };
 
         let insert_finance_account_type_1_1_result =
@@ -980,18 +995,21 @@ mod test_accounting_handle {
             finance_account_type_id: finance_account_type_1_1.id,
             title: "account_1_1".into(),
             description: "description_1_1".into(),
+            parent_account_id: None,
         };
         let finance_account_1_2 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_1_2.id,
             title: "account_1_2".into(),
             description: "description_1_2".into(),
+            parent_account_id: None,
         };
         let finance_account_1_3 = FinanceAccount {
             id: Uuid::new(),
             finance_account_type_id: finance_account_type_1_2.id,
             title: "account_1_3".into(),
             description: "description_1_3".into(),
+            parent_account_id: None,
         };
 
         let insert_finance_account_1_1_result =
@@ -1569,6 +1587,7 @@ mod test_accounting_handle {
             finance_account_type_id: accounts_per_user[0].finance_account_type_id,
             description: format!("description for invalid account, test run {}", test_run_id),
             title: "invalid account".into(),
+            parent_account_id: None,
         };
         let booking_time_6 = booking_time_5 + Duration::hours(1);
         let amount_a_i = std::cmp::max(
