@@ -18,6 +18,7 @@ use crate::{
         generate_account_tables_sync, generate_review_journal_entries_sync,
         get_general_userdata_fromdatabase,
     },
+    mdb_convert_tools::MdbConvertTools,
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
@@ -473,17 +474,6 @@ pub async fn display_accounting_config_main_page(
                     return HtmlTemplate(return_value);
                 }
 
-                for some_type in account_types_result.as_ref().unwrap() {
-                    return_account_type_list.push(AccountTypeTemplate {
-                        id: some_type.id.to_string(),
-                        name: some_type.title.clone(),
-                        description: some_type.description.clone(),
-                        parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
-                        parent_account_name: "".to_string(),
-                        parent_account_options: Vec::new(),
-                    });
-                }
-
                 let accounts_result: Result<Vec<crate::datatypes::FinanceAccount>, String> =
                     accounting_config_handle.finance_account_list(None);
 
@@ -497,8 +487,29 @@ pub async fn display_accounting_config_main_page(
                     return HtmlTemplate(return_value);
                 }
 
+                let accounts_list = accounts_result.unwrap();
+                let parent_account_options =
+                    MdbConvertTools::get_parent_option_list_from_account_list(&accounts_list);
+
+                for some_type in account_types_result.as_ref().unwrap() {
+                    return_account_type_list.push(AccountTypeTemplate {
+                        id: some_type.id.to_string(),
+                        name: some_type.title.clone(),
+                        description: some_type.description.clone(),
+                        parent_account_id: MdbConvertTools::get_clean_parent_account_id_for_web(
+                            &some_type.parent_account_id,
+                        ),
+                        parent_account_name:
+                            MdbConvertTools::get_account_name_from_account_list_via_account_id(
+                                &accounts_list,
+                                &some_type.parent_account_id,
+                            ),
+                        parent_account_options: parent_account_options.clone(),
+                    });
+                }
+
                 let available_account_types = &account_types_result.unwrap();
-                for some_account in accounts_result.unwrap() {
+                for some_account in &accounts_list {
                     let type_position_result = available_account_types
                         .iter()
                         .position(|elem| elem.id.eq(&some_account.finance_account_type_id));
@@ -508,12 +519,18 @@ pub async fn display_accounting_config_main_page(
                     };
                     return_account_list.push(AccountTemplate {
                         id: some_account.id.to_string(),
-                        name: some_account.title,
-                        description: some_account.description,
+                        name: some_account.title.clone(),
+                        description: some_account.description.clone(),
                         type_title: type_title.into(),
-                        parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
-                        parent_account_name: "".to_string(),
-                        parent_account_options: Vec::new(),
+                        parent_account_id: MdbConvertTools::get_clean_parent_account_id_for_web(
+                            &some_account.parent_account_id,
+                        ),
+                        parent_account_name:
+                            MdbConvertTools::get_account_name_from_account_list_via_account_id(
+                                &accounts_list,
+                                &some_account.parent_account_id,
+                            ),
+                        parent_account_options: parent_account_options.clone(),
                     });
                 }
             }
@@ -587,14 +604,22 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
                     return HtmlTemplate(return_value);
                 }
 
-                for some_account in accounts_result.unwrap() {
+                let accounts_list = accounts_result.unwrap();
+
+                for some_account in &accounts_list {
                     return_account_list.push(AccountTemplate {
                         id: some_account.id.to_string(),
-                        name: some_account.title,
-                        description: some_account.description,
+                        name: some_account.title.clone(),
+                        description: some_account.description.clone(),
                         type_title: "not loaded".into(),
-                        parent_account_id: PARENT_ACCOUNT_ID_EMPTY_WEB_STRING.to_string(),
-                        parent_account_name: "".to_string(),
+                        parent_account_id: MdbConvertTools::get_clean_parent_account_id_for_web(
+                            &some_account.parent_account_id,
+                        ),
+                        parent_account_name:
+                            MdbConvertTools::get_account_name_from_account_list_via_account_id(
+                                &accounts_list,
+                                &some_account.parent_account_id,
+                            ),
                         parent_account_options: Vec::new(),
                     });
                 }
