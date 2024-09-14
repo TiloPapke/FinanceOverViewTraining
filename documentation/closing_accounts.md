@@ -25,8 +25,9 @@ required checks before calculation:
 
 functions of trait "accounting_saldo_handling" OR extending "DBFinanceConfigFunctions"(1) and "DBFinanceAccountingFunctions" (2)
 * loading hierachy (1)
-* checking hierarchy (1)
+* checking hierarchy ~~(1)~~(3)
 * adding/changing parent_account_id of accounts and account types (1)
-* calculating saldo for single accounts (2)
-* applying hierachy to all acounts (2)
+* calculating saldo for single accounts ~~(2)~~(3)
+* applying hierachy to all acounts ~~(2)~~(3)
 => extending existing traits, DBFinanceConfigFunctions describse what is there and DBFinanceAccountingFunctions describse what to do with it.
+=> new trait class "BackendAccountingFunctions" for functions that are unrelated to the actual database
