@@ -6,6 +6,7 @@ pub(crate) mod test_accounting_handle {
     use mongodb::bson::Uuid;
 
     use crate::{
+        accounting_config_database::DBFinanceConfigFunctions,
         accounting_config_logic::FinanceAccountingConfigHandle,
         database_handler_mongodb::{DbConnectionSetting, DbHandlerMongoDB},
         datatypes::{FinanceAccount, FinanceAccountType},
@@ -187,7 +188,7 @@ pub(crate) mod test_accounting_handle {
         if validate_result_2.is_err() {
             panic!(
                 "test user 2 {} not valid: {}",
-                credentials.username,
+                credentials_2.username,
                 validate_result_2.unwrap_err()
             );
         }
@@ -654,6 +655,7 @@ pub(crate) mod test_accounting_handle {
                 validate_result_2.unwrap_err()
             );
         }
+        init_prepare_account_types_user_2(&credentials_2, &db_connection, &mongo_db).await;
 
         let user_id_2 = validate_result_2.unwrap();
 
@@ -672,11 +674,20 @@ pub(crate) mod test_accounting_handle {
             "not enough finance account types available"
         );
 
-        let user_2_types_result = account_handle_2.finance_account_type_list();
+        let user_2_available_finance_account_type_result =
+            account_handle_2.finance_account_type_list();
         assert!(
-            user_2_types_result.is_ok(),
+            user_2_available_finance_account_type_result.is_ok(),
             "Could not load finance account type list: {}",
-            user_2_types_result.unwrap_err().to_string()
+            user_2_available_finance_account_type_result
+                .unwrap_err()
+                .to_string()
+        );
+        let user_2_available_finance_account_type =
+            user_2_available_finance_account_type_result.unwrap();
+        assert!(
+            user_2_available_finance_account_type.len() > 0,
+            "not enough finance account types for second available"
         );
 
         /* Testcase 1
@@ -850,9 +861,8 @@ pub(crate) mod test_accounting_handle {
             .contains("could not upsert finance account because account type is not available"));
 
         //try to use an account ID from another user => must fail
-        let user_2_types = user_2_types_result.unwrap();
         let mut account_4 = account_1.clone();
-        account_4.finance_account_type_id = user_2_types[0].id;
+        account_4.finance_account_type_id = user_2_available_finance_account_type[0].id;
         account_4.title = "ERROR".to_string() + &account_4.id.to_string();
         account_4.description = "ERROR".to_string() + &account_4.id.to_string();
         let insert_4_result = account_handle_2.finance_account_upsert(&account_4);
@@ -923,6 +933,101 @@ pub(crate) mod test_accounting_handle {
             return list_to_check[position].eq(element_to_check);
         }
         return false;
+    }
+
+    async fn init_prepare_account_types_user_2(
+        credentials: &UserCredentials,
+        db_connection_settings: &DbConnectionSetting,
+        db_connector: &dyn DBFinanceConfigFunctions,
+    ) {
+        let validate_result_user_2 =
+            validate_credentials(&db_connection_settings, &credentials).await;
+        if validate_result_user_2.is_err() {
+            panic!(
+                "prepare account types user 2: test user 2 {} not valid: {}",
+                credentials.username,
+                validate_result_user_2.unwrap_err()
+            );
+        }
+
+        let user_id_2 = validate_result_user_2.unwrap();
+
+        let mut account_handle_2 = FinanceAccountingConfigHandle::new(&user_id_2, db_connector);
+
+        let user_2_available_finance_account_type_result =
+            account_handle_2.finance_account_type_list();
+
+        assert!(
+            user_2_available_finance_account_type_result.is_ok(),
+            "Could not load finance account type list: {}",
+            user_2_available_finance_account_type_result
+                .unwrap_err()
+                .to_string()
+        );
+        let user_2_available_finance_account_type =
+            user_2_available_finance_account_type_result.unwrap();
+
+        if user_2_available_finance_account_type.len() < 1 {
+            let finance_account_type_u2_a_1 = FinanceAccountType {
+                description: "SomeTypeDescription_u2_a_1".to_string(),
+                title: "SomeType_u2_a_1".to_string(),
+                id: Uuid::new(),
+                parent_account_id: None,
+            };
+            let insert_result_1_1 = account_handle_2
+                .finance_account_type_upsert(&mut finance_account_type_u2_a_1.clone());
+            assert!(
+                insert_result_1_1.is_ok(),
+                "{}",
+                insert_result_1_1.unwrap_err()
+            );
+
+            let finance_account_u2_1_1 = FinanceAccount {
+                id: Uuid::new(),
+                finance_account_type_id: finance_account_type_u2_a_1.id,
+                title: "account_u2_1_1".into(),
+                description: "description_1_1".into(),
+                parent_account_id: None,
+            };
+            let insert_1_2_result =
+                account_handle_2.finance_account_upsert(&finance_account_u2_1_1);
+            assert!(
+                insert_1_2_result.is_ok(),
+                "{}",
+                insert_1_2_result.unwrap_err()
+            );
+        }
+
+        if user_2_available_finance_account_type.len() < 2 {
+            let finance_account_type_u2_a_2 = FinanceAccountType {
+                description: "SomeTypeDescription_u2_a_2".to_string(),
+                title: "SomeType_u2_a_2".to_string(),
+                id: Uuid::new(),
+                parent_account_id: None,
+            };
+            let insert_result_2_1 = account_handle_2
+                .finance_account_type_upsert(&mut finance_account_type_u2_a_2.clone());
+            assert!(
+                insert_result_2_1.is_ok(),
+                "{}",
+                insert_result_2_1.unwrap_err()
+            );
+
+            let finance_account_u2_1_2 = FinanceAccount {
+                id: Uuid::new(),
+                finance_account_type_id: finance_account_type_u2_a_2.id,
+                title: "account_u2_1_2".into(),
+                description: "description_u2_1_2".into(),
+                parent_account_id: None,
+            };
+            let insert_2_2_result =
+                account_handle_2.finance_account_upsert(&finance_account_u2_1_2);
+            assert!(
+                insert_2_2_result.is_ok(),
+                "{}",
+                insert_2_2_result.unwrap_err()
+            );
+        }
     }
 
     fn account_list_contains_element(
