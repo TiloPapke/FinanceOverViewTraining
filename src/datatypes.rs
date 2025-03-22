@@ -45,6 +45,12 @@ pub struct FinanceAccount {
     pub parent_account_id: Option<Uuid>,
 }
 
+pub struct FinanceAccountHierarchyNode{
+    pub id: Uuid,
+    pub parent_account_id: Option<Uuid>,
+    pub sub_account_id:Vec<Uuid>,
+}
+
 #[derive(PartialEq, Deserialize, Debug, Clone)]
 pub struct FinanceJournalEntry {
     pub id: Uuid,

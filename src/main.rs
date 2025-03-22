@@ -2,6 +2,7 @@ mod accounting_config_database;
 mod accounting_config_logic;
 mod accounting_database;
 mod accounting_logic;
+mod backend_accounting_functions;
 mod ajax_handle;
 mod convert_tools;
 mod database_handler_mongodb;
