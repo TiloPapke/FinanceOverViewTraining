@@ -1,14 +1,43 @@
 #[cfg(test)]
 
 pub(crate) mod test_accounting_handle {
+    use mongodb::bson::Uuid;
 
+    use crate::{
+        accounting_config_logic::FinanceAccountingConfigHandle,
+        accounting_logic::FinanceBookingHandle,
+        backend_accounting_functions::BackendAccountingFunctions,
+        tests::mocking_database::{InMemoryDatabaseData, InMemoryDatabaseHandler},
+    };
+
+    #[tokio::test]
     async fn test_extract_hierarchy() {
-        panic!("no checks for test_extract_hierarchy defined");
+        let user_id_1 = Uuid::new();
 
+        let entry_object1 =
+            InMemoryDatabaseData::create_in_memory_database_entry_object(&user_id_1);
+
+        let _insert_result =
+            InMemoryDatabaseData::insert_in_memory_database(Vec::from([entry_object1]));
+
+        let in_memory_db = InMemoryDatabaseHandler {};
+
+        let mut account_handle_1 = FinanceAccountingConfigHandle::new(&user_id_1, &in_memory_db);
+
+        let booking_handle_1 = FinanceBookingHandle::new(&user_id_1, &in_memory_db);
+
+        let backend_accounting_functions = BackendAccountingFunctions::new(&in_memory_db);
         /* Test 1 extract hierarchy for user with no account defined
         checks:
         * extract is fine
          */
+
+        let extract_result_1 = backend_accounting_functions.extract_hierachy();
+
+        assert!(
+            extract_result_1.is_ok(),
+            "extracting hierarchy from user with no accounts must be ok"
+        );
 
         /* Test 2 extract hierarchy for user with one account defined
         checks:
@@ -49,8 +78,11 @@ pub(crate) mod test_accounting_handle {
         checks:
         * extract is fine
          */
+
+        panic!("not all checks for test_extract_hierarchy defined");
     }
 
+    #[tokio::test]
     async fn test_check_hierarchy() {
         /* Test 1 check hierarchy for user with no account defined
         checks:
@@ -99,6 +131,7 @@ pub(crate) mod test_accounting_handle {
         panic!("no checks for test_check_hierarchy defined");
     }
 
+    #[tokio::test]
     async fn test_hierarchy_closing_validation() {
         /* Test group A Config:
         A>B, C>D, B>E D>E */

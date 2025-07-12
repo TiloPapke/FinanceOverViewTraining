@@ -2,8 +2,8 @@ mod accounting_config_database;
 mod accounting_config_logic;
 mod accounting_database;
 mod accounting_logic;
-mod backend_accounting_functions;
 mod ajax_handle;
+mod backend_accounting_functions;
 mod convert_tools;
 mod database_handler_mongodb;
 pub mod datatypes;
@@ -22,6 +22,7 @@ mod tests {
     mod testing_convert_tools;
     mod testing_email_smtp;
     mod testing_email_validation;
+    mod testing_hierarchy_functions;
 }
 
 use async_mongodb_session::MongodbSessionStore;
