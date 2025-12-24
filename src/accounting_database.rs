@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_session::chrono::{DateTime, Utc};
-use axum::async_trait;
+use async_trait::async_trait;
 use futures::StreamExt;
 use log::{debug, warn};
 use mongodb::{

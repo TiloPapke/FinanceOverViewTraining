@@ -274,7 +274,7 @@ async fn https_server() {
             "/do_show_journal_view",
             get(html_render::display_journal_page),
         )
-        .route("/js_code/*path", get(ajax_handle::get_js_files))
+        .route("/js_code/{*path}", get(ajax_handle::get_js_files))
         .layer(Extension(server_session_store));
 
     let config_result = RustlsConfig::from_pem_file(

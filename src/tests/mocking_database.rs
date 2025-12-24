@@ -43,7 +43,7 @@ pub struct InMemoryDatabaseData {
 pub static GLOBAL_IN_MEMORY_DATA: OnceCell<Mutex<InMemoryDatabaseData>> = OnceCell::new();
 
 #[cfg(test)]
-#[axum::async_trait(?Send)]
+#[async_trait::async_trait(?Send)]
 impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDatabaseHandler {
     async fn finance_account_type_list(
         &self,
@@ -179,7 +179,7 @@ impl crate::accounting_config_database::DBFinanceConfigFunctions for InMemoryDat
 }
 
 #[cfg(test)]
-#[axum::async_trait(?Send)]
+#[async_trait::async_trait(?Send)]
 impl crate::accounting_database::DBFinanceAccountingFunctions for InMemoryDatabaseHandler {
     async fn finance_journal_entry_list(
         &self,

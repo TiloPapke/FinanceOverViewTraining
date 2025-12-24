@@ -1,6 +1,5 @@
 use async_mongodb_session::MongodbSessionStore;
 use async_session::{Session, SessionStore};
-use axum::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http;
 use axum::http::request::Parts;
@@ -50,7 +49,6 @@ pub enum SessionDataResult {
     CreatedSessionData(FreshSessionData),
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for SessionDataResult
 where
     S: Send + Sync,

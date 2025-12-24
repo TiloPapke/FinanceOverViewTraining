@@ -6,20 +6,20 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.82"
+anyhow = "1.0.100"
 argon2 = "0.5.3"
-askama = "0.12.1"
+askama = "0.15.0"
 
 #forcing others to higher version
 #time = "0.3.44"
 
 async-mongodb-session = "3.0.0"
 async-session = "3.0.0"
-async-trait = "0.1.80" # see https://stackoverflow.com/questions/65921581/how-can-i-define-an-async-method-in-a-trait and https://crates.io/crates/async-trait
+async-trait = "0.1.89" # see https://stackoverflow.com/questions/65921581/how-can-i-define-an-async-method-in-a-trait and https://crates.io/crates/async-trait
 
-axum = { version = "0.7.5"}
-axum-extra = { version = "0.9.3", features = ["typed-header", "cookie"] }
-axum-server = {version = "0.6", features = ["tls-rustls"] }
+axum = { version = "0.8.8"}
+axum-extra = { version = "0.12.3", features = ["typed-header", "cookie"] }
+axum-server = {version = "0.8", features = ["tls-rustls"] }
 
 futures = "0.3"
 
