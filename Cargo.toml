@@ -10,6 +10,9 @@ anyhow = "1.0.82"
 argon2 = "0.5.3"
 askama = "0.12.1"
 
+#forcing others to higher version
+#time = "0.3.44"
+
 async-mongodb-session = "3.0.0"
 async-session = "3.0.0"
 async-trait = "0.1.80" # see https://stackoverflow.com/questions/65921581/how-can-i-define-an-async-method-in-a-trait and https://crates.io/crates/async-trait
