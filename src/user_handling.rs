@@ -1,5 +1,5 @@
 use axum::{http::HeaderMap, response::IntoResponse, Form};
-use secrecy::Secret;
+use secrecy::SecretBox;
 
 use crate::{
     ajax_handle::SimpleAjaxRequestResult,
@@ -18,7 +18,7 @@ use async_session::{
 pub(crate) async fn validate_user_email(
     db_connection: &DbConnectionSetting,
     user_name: &String,
-    email_secret: &Secret<String>,
+    email_secret: &SecretBox<String>,
 ) -> Result<EmailVerificationStatus, String> {
     let validate_result =
         DbHandlerMongoDB::verify_email_by_name(&db_connection, user_name, email_secret).await;

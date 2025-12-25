@@ -23,7 +23,6 @@ mod tests {
     mod testing_email_validation;
 }
 
-use async_mongodb_session::MongodbSessionStore;
 use axum::{
     http::{self, HeaderMap, Uri},
     response::{IntoResponse, Redirect},
@@ -31,6 +30,7 @@ use axum::{
     Extension, Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
+use axum_session::SessionStore;
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
@@ -192,7 +192,7 @@ async fn https_server() {
         return;
     }
 
-    let app = Router::new()
+    let app: Router = Router::new()
         .route("/", get(https_handler))
         .route("/invalid", get(invalid_handler))
         .route(

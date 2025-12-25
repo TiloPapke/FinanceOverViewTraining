@@ -7,7 +7,7 @@ use log::{debug, warn};
 use mongodb::{
     bson::{doc, Document, Uuid},
     error::{TRANSIENT_TRANSACTION_ERROR, UNKNOWN_TRANSACTION_COMMIT_RESULT},
-    options::{Acknowledgment, FindOptions, ReadConcern, TransactionOptions, WriteConcern},
+    options::{Acknowledgment, ReadConcern, WriteConcern},
     ClientSession, Collection,
 };
 
@@ -116,7 +116,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         };
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
-        let projection = doc! {
+        let projection_doc = doc! {
         "finance_journal_diary_id":<i32>::from(1),
         "is_simple_entry":<i32>::from(1),
         "is_saldo":<i32>::from(1),
@@ -127,9 +127,11 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         "amount":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
-        let options = FindOptions::builder().projection(projection).build();
 
-        let query_execute_result = journal_diary_entries_collection.find(filter, options).await;
+        let query_execute_result = journal_diary_entries_collection
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -281,7 +283,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         "$or":  sub_filter_docs};
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
-        let projection = doc! {"booking_entry_id":<i32>::from(1),
+        let projection_doc = doc! {"booking_entry_id":<i32>::from(1),
         "finance_account_id":<i32>::from(1),
         "finance_journal_diary_id":<i32>::from(1),
         "booking_type":<i32>::from(1),
@@ -289,9 +291,11 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         "amount":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
-        let options = FindOptions::builder().projection(projection).build();
 
-        let query_execute_result = booking_entries_collection.find(filter, options).await;
+        let query_execute_result = booking_entries_collection
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -415,7 +419,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
             return Err("debit account is not available".into());
         }
 
-        let session_result = client.start_session(None).await;
+        let session_result = client.start_session().await;
         if session_result.is_err() {
             return Err(format!(
                 "problem getting session: {}",
@@ -423,13 +427,12 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
             ));
         }
 
-        let options = TransactionOptions::builder()
+        let mut session = session_result.unwrap();
+        let transaction_start_result = session
+            .start_transaction()
             .read_concern(ReadConcern::majority())
             .write_concern(WriteConcern::builder().w(Acknowledgment::Majority).build())
-            .build();
-
-        let mut session = session_result.unwrap();
-        let transaction_start_result = session.start_transaction(options).await;
+            .await;
         if transaction_start_result.is_err() {
             return Err(format!(
                 "problem starting transaction: {}",
@@ -492,7 +495,7 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         let filter = doc! {"user_id":user_id_value};
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
-        let projection = doc! {"booking_entry_id":<i32>::from(1),
+        let projection_doc = doc! {"booking_entry_id":<i32>::from(1),
         "finance_account_id":<i32>::from(1),
         "finance_journal_diary_id":<i32>::from(1),
         "booking_type":<i32>::from(1),
@@ -500,9 +503,11 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         "amount":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
-        let options = FindOptions::builder().projection(projection).build();
 
-        let query_execute_result = booking_entries_collection.find(filter, options).await;
+        let query_execute_result = booking_entries_collection
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -642,12 +647,11 @@ impl DbHandlerMongoDB {
         let user_id_value = mongodb::bson::Binary::from_uuid(user_id.clone());
 
         let increasing_journal_max_result = counter_entries_collection
-            .update_one_with_session(
+            .update_one(
                 doc! {"user_id": user_id_value.clone()},
                 doc! {"$inc": doc! {"booking_journal_max_number":1}},
-                None,
-                session,
             )
+            .session(&mut *session)
             .await?;
 
         if increasing_journal_max_result.modified_count.ne(&1) {
@@ -660,10 +664,25 @@ impl DbHandlerMongoDB {
         let filter = doc! {"user_id":user_id_value.clone()};
 
         let max_number_execute_result = counter_entries_collection
-            .find_one_with_session(filter, None, session)
+            .find(filter)
+            .session(&mut *session)
             .await?;
-        let counter_document = max_number_execute_result.unwrap();
-        let new_running_number_result = counter_document.get_i64("booking_journal_max_number");
+        let mut counter_document = max_number_execute_result;
+        let first_result = counter_document.advance(&mut *session).await;
+        if first_result.is_err() {
+            return Err(mongodb::error::Error::custom(format!(
+                "could not get info for new max number: {}",
+                first_result.unwrap_err()
+            )));
+        }
+        if !first_result.unwrap() {
+            return Err(mongodb::error::Error::custom(
+                "could not get load info for new max number",
+            ));
+        }
+        let new_running_number_result = counter_document
+            .current()
+            .get_i64("booking_journal_max_number");
         if new_running_number_result.is_err() {
             return Err(mongodb::error::Error::custom(format!(
                 "could not get new max number: {}",
@@ -724,23 +743,20 @@ impl DbHandlerMongoDB {
             mongodb::bson::Binary::from_uuid(action_to_insert.credit_finance_account_id);
 
         let journal_insert_result = journal_diary_entries_collection
-            .insert_one_with_session(
-                doc! {
-                    "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
-                    "user_id": user_id_value.clone(),
-                    "is_simple_entry": action_to_insert.is_simple_entry,
-                    "is_saldo":action_to_insert.is_saldo,
-                    "debit_finance_account_id":debit_finance_account_id_value.clone(),
-                    "credit_finance_account_id":credit_finance_account_id_value.clone(),
-                    "running_number":new_running_number as i64,
-                    "booking_time":action_to_insert.booking_time,
-                    "amount":action_to_insert.amount as i64,
-                    "title":action_to_insert.title.clone(),
-                    "description":action_to_insert.description.clone()
-                },
-                None,
-                session,
-            )
+            .insert_one(doc! {
+                "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
+                "user_id": user_id_value.clone(),
+                "is_simple_entry": action_to_insert.is_simple_entry,
+                "is_saldo":action_to_insert.is_saldo,
+                "debit_finance_account_id":debit_finance_account_id_value.clone(),
+                "credit_finance_account_id":credit_finance_account_id_value.clone(),
+                "running_number":new_running_number as i64,
+                "booking_time":action_to_insert.booking_time,
+                "amount":action_to_insert.amount as i64,
+                "title":action_to_insert.title.clone(),
+                "description":action_to_insert.description.clone()
+            })
+            .session(&mut *session)
             .await;
 
         if journal_insert_result.is_err() {
@@ -751,21 +767,18 @@ impl DbHandlerMongoDB {
         }
 
         let booking_insert_1_result = booking_entries_collection
-            .insert_one_with_session(
-                doc! {
-                    "booking_entry_id":mongodb::bson::Binary::from_uuid(new_debit_account_entry.id),
-                    "user_id": user_id_value.clone(),
-                    "finance_account_id":debit_finance_account_id_value.clone(),
-                    "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
-                    "booking_type":debit_booking_type.to_int(),
-                    "booking_time":action_to_insert.booking_time,
-                    "amount":action_to_insert.amount  as i64,
-                    "title":action_to_insert.title.clone(),
-                    "description":action_to_insert.description.clone()
-                },
-                None,
-                session,
-            )
+            .insert_one(doc! {
+                "booking_entry_id":mongodb::bson::Binary::from_uuid(new_debit_account_entry.id),
+                "user_id": user_id_value.clone(),
+                "finance_account_id":debit_finance_account_id_value.clone(),
+                "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
+                "booking_type":debit_booking_type.to_int(),
+                "booking_time":action_to_insert.booking_time,
+                "amount":action_to_insert.amount  as i64,
+                "title":action_to_insert.title.clone(),
+                "description":action_to_insert.description.clone()
+            })
+            .session(&mut *session)
             .await;
 
         if booking_insert_1_result.is_err() {
@@ -775,17 +788,20 @@ impl DbHandlerMongoDB {
             )));
         }
 
-        let booking_insert_2_result=booking_entries_collection.insert_one_with_session(doc! {
-    "booking_entry_id":mongodb::bson::Binary::from_uuid(new_credit_account_entry.id),
-    "user_id": user_id_value.clone(),
-    "finance_account_id":credit_finance_account_id_value.clone(),
-    "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
-    "booking_type":credit_booking_type.to_int(),
-    "booking_time":action_to_insert.booking_time,
-    "amount":action_to_insert.amount  as i64,
-    "title":action_to_insert.title.clone(),
-    "description":action_to_insert.description.clone()
-}, None, session).await;
+        let booking_insert_2_result = booking_entries_collection
+            .insert_one(doc! {
+                "booking_entry_id":mongodb::bson::Binary::from_uuid(new_credit_account_entry.id),
+                "user_id": user_id_value.clone(),
+                "finance_account_id":credit_finance_account_id_value.clone(),
+                "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
+                "booking_type":credit_booking_type.to_int(),
+                "booking_time":action_to_insert.booking_time,
+                "amount":action_to_insert.amount  as i64,
+                "title":action_to_insert.title.clone(),
+                "description":action_to_insert.description.clone()
+            })
+            .session(&mut *session)
+            .await;
 
         if booking_insert_2_result.is_err() {
             return Err(mongodb::error::Error::custom(format!(

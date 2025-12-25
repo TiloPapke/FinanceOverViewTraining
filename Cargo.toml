@@ -13,29 +13,29 @@ askama = "0.15.0"
 #forcing others to higher version
 #time = "0.3.44"
 
-async-mongodb-session = "3.0.0"
 async-session = "3.0.0"
 async-trait = "0.1.89" # see https://stackoverflow.com/questions/65921581/how-can-i-define-an-async-method-in-a-trait and https://crates.io/crates/async-trait
 
 axum = { version = "0.8.8"}
 axum-extra = { version = "0.12.3", features = ["typed-header", "cookie"] }
 axum-server = {version = "0.8", features = ["tls-rustls"] }
+axum_session = "=0.17.1"
 
 futures = "0.3"
 
 log = "0.4.29"
 log4rs = "1.4.0"
-mail-send = "0.4.7"
-once_cell = { version = "1.19.0"}
-rand = "0.8.5"
-regex-automata = "0.4.6"
-rust-ini = {version = "0.21.0"}
-secrecy = {version = "0.8.0", features = ["serde", "alloc"] }
+mail-send = "0.5.2"
+once_cell = { version = "1.21.3"}
+rand = "0.8.5" # can not go higher because of async-mongodb-session = "3.0.0" and async-session = "3.0.0"
+regex-automata = "0.4.13"
+rust-ini = {version = "0.21.3"}
+secrecy = {version = "0.10.3", features = ["serde"] }
 serde ="1"
-tokio = { version = "1.36", features = ["full"] }
+tokio = { version = "1.48", features = ["full"] }
 
 
 [dependencies.mongodb]
-version = "=2.8.2"
-default-features = false
-features = ["async-std-runtime", "bson-uuid-0_8"]
+version = "3.4.1"
+default-features = true
+features = ["sync"]

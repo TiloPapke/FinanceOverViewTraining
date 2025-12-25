@@ -22,7 +22,7 @@ use axum::{
 };
 use log::{debug, warn};
 use mongodb::bson::Uuid;
-use secrecy::Secret;
+use secrecy::{ExposeSecret, SecretBox};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -100,9 +100,9 @@ pub async fn get_js_files(js_uri: Uri) -> impl IntoResponse {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct ChangePasswortFormInput {
-    pub password_new_1: Secret<String>,
-    pub password_new_2: Secret<String>,
-    pub password_old: Secret<String>,
+    pub password_new_1: SecretBox<String>,
+    pub password_new_2: SecretBox<String>,
+    pub password_old: SecretBox<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -171,8 +171,8 @@ pub async fn do_change_passwort(
         (headers, return_value)
     } else {
         let change_result: String;
-        let password_new_1 = input.password_new_1.clone();
-        let password_new_2 = input.password_new_2.clone();
+        let password_new_1 = SecretBox::new(Box::new(input.password_new_1.expose_secret().clone()));
+        let password_new_2 = SecretBox::new(Box::new(input.password_new_2.expose_secret().clone()));
 
         let compare_result = password_handle::compare_password(&password_new_1, &password_new_2);
 
@@ -181,7 +181,7 @@ pub async fn do_change_passwort(
         } else {
             let credentials = UserCredentials {
                 username: username.clone(),
-                password: input.password_old.clone(),
+                password: SecretBox::new(Box::new(input.password_old.expose_secret().clone())),
             };
             let local_settings: SettingStruct = SettingStruct::global().clone();
             let db_connection = DbConnectionSetting {
@@ -197,7 +197,7 @@ pub async fn do_change_passwort(
 
                     let credentials_new = UserCredentials {
                         username: username.clone(),
-                        password: password_new_1.clone(),
+                        password: SecretBox::new(Box::new(password_new_1.expose_secret().clone())),
                     };
 
                     let update_result =
@@ -245,7 +245,7 @@ pub async fn do_change_passwort(
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct ChangeResetSecretFormInput {
-    pub new_reset_secret: Secret<String>,
+    pub new_reset_secret: SecretBox<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -337,7 +337,7 @@ pub async fn do_change_reset_secret(
 #[derive(Deserialize, Debug)]
 pub struct RegisterUserViaEmailFormInput {
     pub username: String,
-    pub password: Secret<String>,
+    pub password: SecretBox<String>,
     pub email: String,
 }
 

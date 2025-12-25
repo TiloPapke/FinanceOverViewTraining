@@ -4,7 +4,7 @@ use anyhow::Error;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use mongodb::bson::Uuid;
-use secrecy::{ExposeSecret, Secret};
+use secrecy::{ExposeSecret, SecretBox};
 
 use crate::database_handler_mongodb::EmailVerificationStatus;
 use crate::datatypes::{
@@ -18,20 +18,20 @@ use crate::{
 pub struct UserCredentials {
     // These two fields were not marked as `pub` before!
     pub username: String,
-    pub password: Secret<String>,
+    pub password: SecretBox<String>,
 }
 
 pub struct UserCredentialsHashed {
     // These two fields were not marked as `pub` before!
     pub username: String,
-    pub password_hash: Secret<String>,
+    pub password_hash: SecretBox<String>,
 }
 
 #[derive(Debug)]
 pub struct StoredCredentials {
     // These two fields were not marked as `pub` before!
     pub user_id: Uuid,
-    pub password_hash: Secret<String>,
+    pub password_hash: SecretBox<String>,
 }
 
 pub async fn validate_credentials(
@@ -77,8 +77,8 @@ async fn get_stored_credentials(
 }
 
 pub(crate) fn verify_password_hash(
-    expected_password_hash: &Secret<String>,
-    password_candidate: &Secret<String>,
+    expected_password_hash: &SecretBox<String>,
+    password_candidate: &SecretBox<String>,
 ) -> Result<(), Error> {
     let expected_password_hash_2 = PasswordHash::new(&expected_password_hash.expose_secret());
     if expected_password_hash_2.is_err() {
@@ -99,8 +99,8 @@ pub(crate) fn verify_password_hash(
 }
 
 pub fn compare_password(
-    password_1: &Secret<String>,
-    password_2: &Secret<String>,
+    password_1: &SecretBox<String>,
+    password_2: &SecretBox<String>,
 ) -> Result<(), Error> {
     if password_1.expose_secret() != password_2.expose_secret() {
         return Err(anyhow::anyhow!("new passwords do not match"));
@@ -157,7 +157,7 @@ pub(crate) async fn insert_user(
 
     let some_credentials_hashed = UserCredentialsHashed {
         username: some_credentials.username.clone(),
-        password_hash: Secret::new(user_password_hashed),
+        password_hash: SecretBox::new(Box::new(user_password_hashed)),
     };
 
     let insert_result =
@@ -182,7 +182,7 @@ pub async fn update_user_password(
 
     let some_credentials_hashed: UserCredentialsHashed = UserCredentialsHashed {
         username: some_credentials.username.clone(),
-        password_hash: Secret::new(user_password_hashed),
+        password_hash: SecretBox::new(Box::new(user_password_hashed)),
     };
 
     let update_result =
@@ -198,15 +198,15 @@ pub async fn update_user_password(
 pub async fn update_user_reset_secret(
     db_connection: &DbConnectionSetting,
     user_id: &Uuid,
-    reset_secret: &Secret<String>,
+    reset_secret: &SecretBox<String>,
 ) -> Result<bool, Error> {
     let salt = SaltString::generate(&mut rand::thread_rng());
-    let reset_secret_hashed = Secret::new(
+    let reset_secret_hashed = SecretBox::new(Box::new(
         Argon2::default()
             .hash_password(reset_secret.expose_secret().as_bytes(), &salt)
             .unwrap()
             .to_string(),
-    );
+    ));
 
     let update_result =
         DbHandlerMongoDB::update_user_reset_secret(&db_connection, user_id, &reset_secret_hashed)
@@ -272,7 +272,7 @@ pub async fn reset_password_with_token(
         &db_connection,
         &request_data.username,
         &request_data.reset_token,
-        &Secret::new(user_password_hashed),
+        &SecretBox::new(Box::new(user_password_hashed)),
     )
     .await;
 

@@ -1,15 +1,15 @@
 use argon2::{Argon2, PasswordHasher};
 use async_session::chrono::Duration;
-use futures::{executor, StreamExt};
+use futures::StreamExt;
 use log::{debug, info, trace, warn};
 use mongodb::{
     bson::{doc, uuid, Document, Uuid},
-    options::{ClientOptions, Credential, FindOptions},
+    options::{ClientOptions, Credential},
     results::{InsertOneResult, UpdateResult},
-    Client, Collection, Cursor,
+    sync, Client, Collection,
 };
 
-use secrecy::{ExposeSecret, Secret};
+use secrecy::{ExposeSecret, SecretBox};
 
 use crate::{
     convert_tools::ConvertTools, datatypes::GenerallUserData, mail_handle::validate_email_format,
@@ -75,7 +75,7 @@ impl DbHandlerMongoDB {
         let client = client_create_result.unwrap();
 
         // List the names of the databases in that deployment.
-        let query_result = executor::block_on(client.list_database_names(None, None));
+        let query_result = client.list_database_names().run();
         if query_result.is_err() {
             warn!(target: "app::FinanceOverView","error listing databases: {}",query_result.unwrap_err());
             return false;
@@ -108,7 +108,7 @@ impl DbHandlerMongoDB {
             &DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY,
         ];
 
-        let query_result_collections = executor::block_on(db_instance.list_collection_names(None));
+        let query_result_collections = db_instance.list_collection_names().run();
         if query_result_collections.is_err() {
             warn!(target: "app::FinanceOverView","error listing collections: {}",query_result_collections.unwrap_err());
             return false;
@@ -120,8 +120,7 @@ impl DbHandlerMongoDB {
                 trace!(target: "app::FinanceOverView","found collection {}",required_collection);
             } else {
                 info!(target: "app::FinanceOverView","collection {} not found, trying to create it",required_collection);
-                let create_result =
-                    executor::block_on(db_instance.create_collection(required_collection, None));
+                let create_result = db_instance.create_collection(required_collection).run();
                 if create_result.is_err() {
                     warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",required_collection, conncetion_settings.instance, create_result.unwrap_err());
                     return false;
@@ -148,19 +147,18 @@ impl DbHandlerMongoDB {
         conncetion_settings: &DbConnectionSetting,
         table_to_query: &String,
         filter_info: Document,
-    ) -> Result<Cursor<Document>, String> {
+    ) -> Result<sync::Cursor<Document>, String> {
         let client_create_result =
             DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
         if client_create_result.is_err() {
             return Result::Err(client_create_result.unwrap_err().to_string());
         }
         let client = client_create_result.unwrap();
-        let some_cursor_result = executor::block_on(
-            client
-                .database(&conncetion_settings.instance)
-                .collection(table_to_query)
-                .find(filter_info, None),
-        );
+        let some_cursor_result = client
+            .database(&conncetion_settings.instance)
+            .collection(table_to_query)
+            .find(filter_info)
+            .run();
         if some_cursor_result.is_err() {
             return Result::Err(some_cursor_result.unwrap_err().to_string());
         }
@@ -183,8 +181,7 @@ impl DbHandlerMongoDB {
             .database(&conncetion_settings.instance)
             .collection(table_to_insert);
 
-        let insert_result_execute_result =
-            executor::block_on(some_collections.insert_one(new_document, None));
+        let insert_result_execute_result = some_collections.insert_one(new_document).run();
         if insert_result_execute_result.is_err() {
             return Result::Err(insert_result_execute_result.unwrap_err().to_string());
         }
@@ -209,7 +206,7 @@ impl DbHandlerMongoDB {
             .collection(table_to_insert);
 
         let update_result_execute_result =
-            executor::block_on(some_collections.update_one(query_info, update_info, None));
+            some_collections.update_one(query_info, update_info).run();
         if update_result_execute_result.is_err() {
             return Result::Err(update_result_execute_result.unwrap_err().to_string());
         }
@@ -222,7 +219,7 @@ impl DbHandlerMongoDB {
         conncetion_settings: &DbConnectionSetting,
     ) -> Result<Client, String> {
         // Parse a connection string into an options struct.
-        let v = executor::block_on(ClientOptions::parse(conncetion_settings.url.clone()));
+        let v = ClientOptions::parse(conncetion_settings.url.clone()).run();
         if v.is_err() {
             return Result::Err(v.unwrap_err().to_string());
         }
@@ -285,12 +282,14 @@ impl DbHandlerMongoDB {
         let db_instance = client.database(&conncetion_settings.instance);
 
         let filter = doc! {"user_name":&user_name};
-        let projection = doc! {"user_name":<i32>::from(1)};
-        let options = FindOptions::builder().projection(projection).build();
+        let projection_doc = doc! {"user_name":<i32>::from(1)};
 
         let data_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-        let query_execute_result = data_collcetion.find(filter, options).await;
+        let query_execute_result = data_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -346,7 +345,7 @@ impl DbHandlerMongoDB {
         "user_name":&some_credentials.username,
         "password_hash": &some_credentials.password_hash.expose_secret()};
 
-        let insert_result = user_collcetion.insert_one(insert_doc, None).await;
+        let insert_result = user_collcetion.insert_one(insert_doc).await;
         if insert_result.is_err() {
             let insert_err = &insert_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",insert_err);
@@ -383,9 +382,7 @@ impl DbHandlerMongoDB {
         //otherwise we get "update document must have first key starting with '$"
         let update_doc = doc! {"$set": inner_update_doc};
 
-        let update_result = user_collcetion
-            .update_one(filter_doc, update_doc, None)
-            .await;
+        let update_result = user_collcetion.update_one(filter_doc, update_doc).await;
         if update_result.is_err() {
             let update_err = &update_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",update_err);
@@ -418,13 +415,14 @@ impl DbHandlerMongoDB {
 
         let filter = doc! {"user_name":&user_name};
 
-        let projection = doc! {"user_name":<i32>::from(1),
+        let projection_doc = doc! {"user_name":<i32>::from(1),
         "user_id":<i32>::from(1),
         "password_hash":<i32>::from(1)};
 
-        let options = FindOptions::builder().projection(projection).build();
-
-        let query_execute_result = user_collcetion.find(filter, options).await;
+        let query_execute_result = user_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -466,8 +464,9 @@ impl DbHandlerMongoDB {
             return Err("Could not parse UUID".to_string());
         }
 
-        let some_password_hash =
-            secrecy::Secret::<String>::new(stored_password_hash_read.unwrap().to_string());
+        let some_password_hash = secrecy::SecretBox::<String>::new(Box::new(
+            stored_password_hash_read.unwrap().to_string(),
+        ));
 
         let some_cred = StoredCredentials {
             user_id: some_uuid_parse_result.unwrap(),
@@ -534,9 +533,7 @@ impl DbHandlerMongoDB {
         //otherwise we get "update document must have first key starting with '$"
         let update_doc = doc! {"$set": inner_update_doc};
 
-        let update_result = user_collcetion
-            .update_one(filter_doc, update_doc, None)
-            .await;
+        let update_result = user_collcetion.update_one(filter_doc, update_doc).await;
         if update_result.is_err() {
             let update_err = &update_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",update_err);
@@ -566,14 +563,16 @@ impl DbHandlerMongoDB {
         let db_instance = client.database(&conncetion_settings.instance);
 
         let filter = doc! {"user_name":&user_name};
-        let projection = doc! {"user_name":<i32>::from(1),
+        let projection_doc = doc! {"user_name":<i32>::from(1),
         "mail_validated":<i32>::from(1),
         "user_email":<i32>::from(1)};
-        let options = FindOptions::builder().projection(projection).build();
 
         let data_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-        let query_execute_result = data_collcetion.find(filter, options).await;
+        let query_execute_result = data_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -629,7 +628,7 @@ impl DbHandlerMongoDB {
     pub async fn verify_email_by_name(
         conncetion_settings: &DbConnectionSetting,
         user_name: &String,
-        email_validation_string: &Secret<String>,
+        email_validation_string: &SecretBox<String>,
     ) -> Result<EmailVerificationStatus, String> {
         let client_create_result =
             DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
@@ -645,17 +644,19 @@ impl DbHandlerMongoDB {
         let filter = doc! {
             "user_name":user_name
         };
-        let projection = doc! {"user_name":<i32>::from(1),
+        let projection_doc = doc! {"user_name":<i32>::from(1),
             "mail_validated":<i32>::from(1),
             "mail_validation_token":<i32>::from(1),
             "user_email":<i32>::from(1),
             "user_id":<i32>::from(1),
         };
-        let options = FindOptions::builder().projection(projection).build();
 
         let data_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-        let query_execute_result = data_collcetion.find(filter, options).await;
+        let query_execute_result = data_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -716,9 +717,8 @@ impl DbHandlerMongoDB {
 
                             let user_collcetion: Collection<Document> =
                                 db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-                            let update_result = user_collcetion
-                                .update_one(filter_doc, update_doc, None)
-                                .await;
+                            let update_result =
+                                user_collcetion.update_one(filter_doc, update_doc).await;
                             if update_result.is_err() {
                                 let update_err = &update_result.unwrap_err();
                                 warn!(target:"app::FinanceOverView","{}",update_err);
@@ -774,15 +774,17 @@ impl DbHandlerMongoDB {
         let filter = doc! {
             "user_name":user_name
         };
-        let projection = doc! {"user_name":<i32>::from(1),
+        let projection_doc = doc! {"user_name":<i32>::from(1),
             "first_name":<i32>::from(1),
             "last_name":<i32>::from(1),
         };
-        let options = FindOptions::builder().projection(projection).build();
 
         let data_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-        let query_execute_result = data_collcetion.find(filter, options).await;
+        let query_execute_result = data_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -868,9 +870,7 @@ impl DbHandlerMongoDB {
         //otherwise we get "update document must have first key starting with '$"
         let update_doc = doc! {"$set": inner_update_doc};
 
-        let update_result = user_collcetion
-            .update_one(filter_doc, update_doc, None)
-            .await;
+        let update_result = user_collcetion.update_one(filter_doc, update_doc).await;
         if update_result.is_err() {
             let update_err = &update_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",update_err);
@@ -886,7 +886,7 @@ impl DbHandlerMongoDB {
     pub async fn update_user_reset_secret(
         conncetion_settings: &DbConnectionSetting,
         user_id: &Uuid,
-        reset_secret_hash: &Secret<String>,
+        reset_secret_hash: &SecretBox<String>,
     ) -> Result<bool, String> {
         // Get a handle to the deployment.
         let client_create_result =
@@ -909,9 +909,7 @@ impl DbHandlerMongoDB {
         //otherwise we get "update document must have first key starting with '$"
         let update_doc = doc! {"$set": inner_update_doc};
 
-        let update_result = user_collcetion
-            .update_one(filter_doc, update_doc, None)
-            .await;
+        let update_result = user_collcetion.update_one(filter_doc, update_doc).await;
         if update_result.is_err() {
             let update_err = &update_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",update_err);
@@ -927,7 +925,7 @@ impl DbHandlerMongoDB {
     pub async fn generate_passwort_reset_token(
         conncetion_settings: &DbConnectionSetting,
         user_name: &String,
-        reset_secret: &Secret<String>,
+        reset_secret: &SecretBox<String>,
         passwort_reset_time_limit_minutes: &u16,
     ) -> Result<PasswordResetTokenRequestResult, String> {
         let client_create_result =
@@ -944,16 +942,18 @@ impl DbHandlerMongoDB {
         let filter = doc! {
             "user_name":user_name
         };
-        let projection = doc! {
+        let projection_doc = doc! {
             "user_name":<i32>::from(1),
             "user_email":<i32>::from(1),
             "reset_secret_hash":<i32>::from(1),
         };
-        let options = FindOptions::builder().projection(projection).build();
 
         let data_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-        let query_execute_result = data_collcetion.find(filter, options).await;
+        let query_execute_result = data_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -980,9 +980,9 @@ impl DbHandlerMongoDB {
             if stored_name.unwrap().eq(user_name) {
                 let stored_reset_secret_raw = inner_doc.get_str("reset_secret_hash");
                 if stored_reset_secret_raw.is_ok() {
-                    let transformed_stored_serect = secrecy::Secret::<String>::new(
+                    let transformed_stored_serect = secrecy::SecretBox::<String>::new(Box::new(
                         stored_reset_secret_raw.unwrap().to_string(),
-                    );
+                    ));
                     let verify_serect_result =
                         verify_password_hash(&transformed_stored_serect, &reset_secret);
                     if verify_serect_result.is_ok() {
@@ -1009,8 +1009,7 @@ impl DbHandlerMongoDB {
                         //otherwise we get "update document must have first key starting with '$"
                         let update_doc = doc! {"$set": inner_update_doc};
 
-                        let update_result =
-                            data_collcetion.update_one(filter2, update_doc, None).await;
+                        let update_result = data_collcetion.update_one(filter2, update_doc).await;
                         if update_result.is_err() {
                             let update_err = &update_result.unwrap_err();
                             warn!(target:"app::FinanceOverView","{}",update_err);
@@ -1042,7 +1041,7 @@ impl DbHandlerMongoDB {
         conncetion_settings: &DbConnectionSetting,
         user_name: &String,
         reset_token: &String,
-        new_password: &Secret<String>,
+        new_password: &SecretBox<String>,
     ) -> Result<bool, String> {
         let client_create_result =
             DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
@@ -1058,15 +1057,17 @@ impl DbHandlerMongoDB {
         let filter = doc! {
             "user_name":user_name
         };
-        let projection = doc! {"user_name":<i32>::from(1),
+        let projection_doc = doc! {"user_name":<i32>::from(1),
             "password_reset_token_value":<i32>::from(1),
             "password_reset_token_timestamp":<i32>::from(1),
         };
-        let options = FindOptions::builder().projection(projection).build();
 
         let data_collcetion: Collection<Document> =
             db_instance.collection(DbHandlerMongoDB::COLLECTION_NAME_USER_LIST);
-        let query_execute_result = data_collcetion.find(filter, options).await;
+        let query_execute_result = data_collcetion
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -1113,7 +1114,7 @@ impl DbHandlerMongoDB {
                 //otherwise we get "update document must have first key starting with '$"
                 let update_doc = doc! {"$set": inner_update_doc};
 
-                let update_result = data_collcetion.update_one(filter2, update_doc, None).await;
+                let update_result = data_collcetion.update_one(filter2, update_doc).await;
                 if update_result.is_err() {
                     let update_err = &update_result.unwrap_err();
                     warn!(target:"app::FinanceOverView","{}",update_err);
@@ -1155,7 +1156,7 @@ impl DbHandlerMongoDB {
         let user_id_value = mongodb::bson::Binary::from_uuid(user_id.clone());
         let filter = doc! {"user_id":&user_id_value};
 
-        let find_result = counter_collection.find_one(filter.clone(), None).await;
+        let find_result = counter_collection.find_one(filter.clone()).await;
         if find_result.is_err() {
             let error_var = find_result.unwrap_err();
             return Err(format!("Error getting record: {}", error_var));
@@ -1172,7 +1173,7 @@ impl DbHandlerMongoDB {
             "counter_entry_id":mongodb::bson::Binary::from_uuid(Uuid::new()),
             "booking_journal_max_number": journal_max_number_result.unwrap()};
 
-            let insert_result = counter_collection.insert_one(base_doc, None).await;
+            let insert_result = counter_collection.insert_one(base_doc).await;
             if insert_result.is_err() {
                 return Err(format!(
                     "Error inserting base counter record: {}",
@@ -1199,7 +1200,7 @@ impl DbHandlerMongoDB {
             );
 
             let update_result = counter_collection
-                .update_one(filter.clone(), updated_info, None)
+                .update_one(filter.clone(), updated_info)
                 .await;
             if update_result.is_err() {
                 return Err(format!(
@@ -1245,8 +1246,7 @@ impl DbHandlerMongoDB {
             doc! {"$match": doc! {"user_id":user_id_value}},
             doc! {"$group": doc! {"_id": "user_id", "max_journal_number": doc! {"$max": "running_number"}}},
         ];
-        let max_current_number_result =
-            journal_collection.aggregate(aggregate_pipeline, None).await;
+        let max_current_number_result = journal_collection.aggregate(aggregate_pipeline).await;
         if max_current_number_result.is_err() {
             return Err(format!(
                 "Error getting max running from journal: {}",

@@ -4,6 +4,7 @@ pub(crate) mod test_accounting_handle {
     use std::path::{Path, PathBuf};
 
     use mongodb::bson::Uuid;
+    use secrecy::SecretBox;
 
     use crate::{
         accounting_config_logic::FinanceAccountingConfigHandle,
@@ -158,7 +159,7 @@ pub(crate) mod test_accounting_handle {
         //
         let credentials = UserCredentials {
             username: test_setting.test_user_account_user_login,
-            password: test_setting.test_user_account_user_password.into(),
+            password: SecretBox::new(Box::new(test_setting.test_user_account_user_password)),
         };
 
         let validate_result = validate_credentials(&db_connection, &credentials).await;
@@ -531,7 +532,7 @@ pub(crate) mod test_accounting_handle {
         //
         let credentials = UserCredentials {
             username: test_setting.test_user_account_user_login,
-            password: test_setting.test_user_account_user_password.into(),
+            password: SecretBox::new(Box::new(test_setting.test_user_account_user_password)),
         };
 
         let validate_result = validate_credentials(&db_connection, &credentials).await;

@@ -1,5 +1,4 @@
-use async_mongodb_session::MongodbSessionStore;
-use async_session::{Session, SessionStore};
+use async_session::Session;
 use axum::extract::FromRequestParts;
 use axum::http;
 use axum::http::request::Parts;
@@ -9,6 +8,7 @@ use axum::http::StatusCode;
 use axum::Extension;
 use axum::RequestPartsExt;
 use axum_extra::{headers::Cookie, TypedHeader};
+use axum_session::SessionStore;
 use log::trace;
 use mongodb::bson::Uuid;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 pub struct SessionData {
     pub session_user_id: UserId,
     pub session_option: Option<Session>,
-    pub session_store: MongodbSessionStore,
+    pub session_store: SessionStore,
 }
 
 impl SessionData {

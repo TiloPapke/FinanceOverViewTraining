@@ -10,7 +10,7 @@ use axum::{
 };
 use log::{debug, trace, warn};
 use mongodb::bson::Uuid;
-use secrecy::{ExposeSecret, Secret};
+use secrecy::{ExposeSecret, SecretBox};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -41,7 +41,7 @@ pub struct MainPageTemplate {
 #[allow(dead_code)]
 pub struct LoginFormInput {
     username: String,
-    password: Secret<String>,
+    password: SecretBox<String>,
 }
 
 #[derive(Template)]
@@ -86,7 +86,7 @@ pub async fn accept_login_form(
 ) -> impl IntoResponse {
     let credentials = UserCredentials {
         username: input.username.clone(),
-        password: input.password.clone(),
+        password: SecretBox::new(Box::new(input.password.expose_secret().clone())),
     };
     let local_settings: SettingStruct = SettingStruct::global().clone();
     let db_connection = DbConnectionSetting {
@@ -353,7 +353,7 @@ pub async fn create_login_handler(form: Form<LoginFormInput>) -> impl IntoRespon
 
     let new_user_credentials = UserCredentials {
         username: form.username.to_string(),
-        password: form.password.clone(),
+        password: SecretBox::new(Box::new(form.password.expose_secret().clone())),
     };
 
     let local_settings: SettingStruct = SettingStruct::global().clone();
@@ -390,7 +390,7 @@ pub async fn register_user_handler() -> impl IntoResponse {
 #[allow(dead_code)]
 pub struct ValidateUserEmailInput {
     user_name: String,
-    token: Secret<String>,
+    token: SecretBox<String>,
 }
 
 #[derive(Template)]
@@ -454,7 +454,7 @@ pub async fn display_paswword_reset_token_request_page() -> impl IntoResponse {
 #[allow(dead_code)]
 pub struct PasswordResetWithTokenDisplayRequest {
     user_name: String,
-    token: Secret<String>,
+    token: SecretBox<String>,
 }
 
 #[derive(Template)]

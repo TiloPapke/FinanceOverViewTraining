@@ -3,7 +3,7 @@ use futures::StreamExt;
 use log::{debug, warn};
 use mongodb::{
     bson::{doc, Document, Uuid},
-    options::{FindOptions, UpdateOptions},
+    options::FindOptions,
     Collection,
 };
 
@@ -69,9 +69,9 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         let projection = doc! {"finance_account_type_id":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
-        let options = FindOptions::builder().projection(projection).build();
+        let _options = FindOptions::builder().projection(projection).build(); //TODO Find a way for projection
 
-        let query_execute_result = accounting_type_collection.find(filter, options).await;
+        let query_execute_result = accounting_type_collection.find(filter).await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -144,16 +144,17 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
             "description": &finance_account_type.description,
         };
         let upsert_doc = doc! {"$set": inner_doc  };
-        let opts = UpdateOptions::builder().upsert(true).build();
 
         let upsert_result = accounting_type_collection
-            .update_one(filter, upsert_doc, opts)
+            .update_one(filter, upsert_doc)
+            .upsert(true)
             .await;
         if upsert_result.is_err() {
             let upsert_err = &upsert_result.unwrap_err();
             warn!(target:"app::FinanceOverView","{}",upsert_err);
             return Err(upsert_err.to_string());
         }
+
         let upsert_info = upsert_result.unwrap();
 
         if (upsert_info.matched_count > 1) || (upsert_info.modified_count > 1) {
@@ -197,13 +198,15 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
         }
 
         debug!(target:"app::FinanceOverView","Filter document: {}",&filter);
-        let projection = doc! {"finance_account_id":<i32>::from(1),
+        let projection_doc = doc! {"finance_account_id":<i32>::from(1),
         "finance_account_type_id":<i32>::from(1),
         "title":<i32>::from(1),
         "description":<i32>::from(1),};
-        let options = FindOptions::builder().projection(projection).build();
 
-        let query_execute_result = account_collection.find(filter, options).await;
+        let query_execute_result = account_collection
+            .find(filter)
+            .projection(projection_doc)
+            .await;
 
         if query_execute_result.is_err() {
             return Result::Err(query_execute_result.unwrap_err().to_string());
@@ -283,10 +286,10 @@ impl DBFinanceConfigFunctions for DbHandlerMongoDB {
             "description": &finance_account.description,
         };
         let upsert_doc = doc! {"$set": inner_doc  };
-        let opts = UpdateOptions::builder().upsert(true).build();
 
         let upsert_result = account_collection
-            .update_one(filter, upsert_doc, opts)
+            .update_one(filter, upsert_doc)
+            .upsert(true)
             .await;
         if upsert_result.is_err() {
             let upsert_err = &upsert_result.unwrap_err();

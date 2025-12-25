@@ -11,7 +11,7 @@ pub struct GenerallUserData {
 #[derive(Deserialize, Debug)]
 pub struct PasswordResetTokenRequest {
     pub user_name: String,
-    pub reset_secret: secrecy::Secret<String>,
+    pub reset_secret: secrecy::SecretBox<String>,
 }
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub struct PasswordResetTokenRequestResult {
 pub struct PasswordResetRequest {
     pub username: String,
     pub reset_token: String,
-    pub new_password: secrecy::Secret<String>,
+    pub new_password: secrecy::SecretBox<String>,
 }
 
 #[derive(PartialEq, Deserialize, Debug, Clone)]

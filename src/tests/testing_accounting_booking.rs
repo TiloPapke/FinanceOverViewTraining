@@ -7,6 +7,7 @@ mod test_accounting_handle {
 
     use async_session::chrono::{Datelike, Duration, TimeZone, Utc};
     use mongodb::bson::Uuid;
+    use secrecy::SecretBox;
 
     use crate::{
         accounting_config_logic::FinanceAccountingConfigHandle,
@@ -1228,7 +1229,7 @@ mod test_accounting_handle {
         //
         let credentials = UserCredentials {
             username: test_setting.test_user_account_user_login,
-            password: test_setting.test_user_account_user_password.into(),
+            password: SecretBox::new(Box::new(test_setting.test_user_account_user_password)),
         };
 
         let validate_result = validate_credentials(&db_connection, &credentials).await;

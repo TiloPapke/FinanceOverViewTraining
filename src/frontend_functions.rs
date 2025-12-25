@@ -5,7 +5,7 @@ use async_session::chrono::Utc;
 use futures::executor;
 use log::error;
 use mongodb::bson::Uuid;
-use secrecy::Secret;
+use secrecy::SecretBox;
 
 use crate::{
     accounting_config_logic::FinanceAccountingConfigHandle,
@@ -24,7 +24,7 @@ use crate::{
 pub async fn register_user_with_email_verfication(
     db_connection: &DbConnectionSetting,
     user_name: &String,
-    user_password: &Secret<String>,
+    user_password: &SecretBox<String>,
     user_email: &String,
 ) -> Result<String, Error> {
     let check_mail_result = validate_email_format(user_email);
@@ -41,7 +41,9 @@ pub async fn register_user_with_email_verfication(
 
     let new_user_credentials = crate::password_handle::UserCredentials {
         username: user_name.to_string(),
-        password: user_password.clone(),
+        password: SecretBox::new(Box::new(
+            secrecy::ExposeSecret::expose_secret(user_password).clone(),
+        )),
     };
 
     //create_credentials checks if user is already there
