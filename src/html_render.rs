@@ -1,13 +1,11 @@
 use askama::Template;
-use async_session::{
-    chrono::{DateTime, Utc},
-    SessionStore,
-};
+use async_session::chrono::{DateTime, Utc};
 use axum::{
     extract::Form,
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
+use axum_session_mongo::SessionMongoSession;
 use log::{debug, trace, warn};
 use mongodb::bson::Uuid;
 use secrecy::{ExposeSecret, SecretBox};
@@ -24,7 +22,6 @@ use crate::{
     password_handle::{
         check_email_status_by_name, create_credentials, validate_credentials, UserCredentials,
     },
-    session_data_handle::{SessionData, SessionDataResult},
     setting_struct::SettingStruct,
     user_handling::validate_user_email,
 };
@@ -81,7 +78,7 @@ where
 }
 
 pub async fn accept_login_form(
-    session_data: SessionDataResult,
+    session: SessionMongoSession,
     input: Form<LoginFormInput>,
 ) -> impl IntoResponse {
     let credentials = UserCredentials {
@@ -96,12 +93,7 @@ pub async fn accept_login_form(
         instance: String::from(local_settings.backend_database_instance),
     };
 
-    let session_data = SessionData::from_session_data_result(session_data);
-
-    let mut session = session_data.session_option.unwrap();
-    let _result = session.insert("user_name", &credentials.username);
-
-    let a_store: async_mongodb_session::MongodbSessionStore = session_data.session_store;
+    session.set("user_name", &credentials.username);
 
     match validate_credentials(&db_connection, &credentials).await {
         Ok(user_id) => {
@@ -124,9 +116,9 @@ pub async fn accept_login_form(
                         Redirect::to("/registration_incomplete").into_response()
                     }
                     _ => {
-                        let _result = session.insert("logged_in", true);
-                        let _result2 = session.insert("user_account_id", user_id);
-                        let _cookie3 = a_store.store_session(session).await;
+                        session.set("logged_in", true);
+                        session.set("user_account_id", user_id);
+                        session.update();
                         let mongo_db = DbHandlerMongoDB::new(&db_connection);
                         let _repair_result = mongo_db
                             .repair_counter_record_for_user(&db_connection, &user_id)
@@ -144,24 +136,17 @@ pub async fn accept_login_form(
     }
 }
 
-pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
-
-    let mut session = session_data.session_option.unwrap();
-
+pub async fn user_home_handler(session: SessionMongoSession) -> impl IntoResponse {
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 
     let mut headers = HeaderMap::new();
 
+    let session_expire_timestamp = format!(
+        "{} UTC",
+        Utc::now().naive_local().format("%Y-%m-%d %H:%M:%S")
+    );
+
     if !is_logged_in {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
         let template = UserHomeTemplate {
             logout_reason: "not logged in".to_string(),
             username: "".to_string(),
@@ -181,18 +166,21 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
 
     let username: String = session.get("user_name").unwrap();
 
-    if session.is_expired() {
-        let session_expire_timestamp = format!(
-            "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
-        );
+    let local_settings: SettingStruct = SettingStruct::global().clone();
+    let db_connection = DbConnectionSetting {
+        url: String::from(local_settings.backend_database_url),
+        user: String::from(local_settings.backend_database_user),
+        password: String::from(local_settings.backend_database_password),
+        instance: String::from(local_settings.backend_database_instance),
+    };
+    let user_data_get_result_async = get_general_userdata_fromdatabase(&db_connection, &username);
+
+    let user_data_result = user_data_get_result_async.await;
+
+    if user_data_result.is_err() {
         let template = UserHomeTemplate {
-            logout_reason: "Session expired".to_string(),
-            username: "".to_string(),
+            logout_reason: "error calling database".to_string(),
+            username: username.to_string(),
             session_expire_timestamp,
             logged_in: false,
             information_show: false,
@@ -206,83 +194,40 @@ pub async fn user_home_handler(session_data: SessionDataResult) -> impl IntoResp
         );
         (headers, HtmlTemplate(template))
     } else {
-        session.expire_in(std::time::Duration::from_secs(60 * 1));
+        let user_data = user_data_result.unwrap();
+
         let session_expire_timestamp = format!(
             "{} UTC",
-            (session
-                .expiry()
-                .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-                .naive_local()
-                .format("%Y-%m-%d %H:%M:%S"))
+            Utc::now().naive_local().format("%Y-%m-%d %H:%M:%S")
         );
 
-        let local_settings: SettingStruct = SettingStruct::global().clone();
-        let db_connection = DbConnectionSetting {
-            url: String::from(local_settings.backend_database_url),
-            user: String::from(local_settings.backend_database_user),
-            password: String::from(local_settings.backend_database_password),
-            instance: String::from(local_settings.backend_database_instance),
+        let template = UserHomeTemplate {
+            username: username.to_string(),
+            session_expire_timestamp,
+            logged_in: true,
+            logout_reason: "".to_string(),
+            information_show: false,
+            information_text: "".to_string(),
+            user_vorname: user_data.first_name,
+            user_nachname: user_data.last_name,
         };
-        let user_data_get_result_async =
-            get_general_userdata_fromdatabase(&db_connection, &username);
 
-        let user_data_result = user_data_get_result_async.await;
+        session.update();
 
-        if user_data_result.is_err() {
-            let template = UserHomeTemplate {
-                logout_reason: "error calling database".to_string(),
-                username: username.to_string(),
-                session_expire_timestamp,
-                logged_in: false,
-                information_show: false,
-                information_text: "".to_string(),
-                user_vorname: "".to_string(),
-                user_nachname: "".to_string(),
-            };
-            headers.insert(
-                axum::http::header::REFRESH,
-                axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-            );
-            (headers, HtmlTemplate(template))
-        } else {
-            let user_data = user_data_result.unwrap();
-
-            let template = UserHomeTemplate {
-                username: username.to_string(),
-                session_expire_timestamp,
-                logged_in: true,
-                logout_reason: "".to_string(),
-                information_show: false,
-                information_text: "".to_string(),
-                user_vorname: user_data.first_name,
-                user_nachname: user_data.last_name,
-            };
-
-            let _new_cookie = session_data.session_store.store_session(session).await;
-
-            (headers, HtmlTemplate(template))
-        }
+        (headers, HtmlTemplate(template))
     }
 }
 
-pub async fn do_logout_handler(session_data: SessionDataResult) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
-
-    let mut session = session_data.session_option.unwrap();
-
-    let session_expire_timestamp = format!(
-        "{} UTC",
-        (session
-            .expiry()
-            .unwrap_or(&DateTime::<Utc>::MIN_UTC)
-            .naive_local()
-            .format("%Y-%m-%d %H:%M:%S"))
-    );
-
+pub async fn do_logout_handler(session: SessionMongoSession) -> impl IntoResponse {
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
     let _result = session.remove("user_account_id");
 
-    let _destroy_result = session_data.session_store.destroy_session(session).await;
+    session.destroy();
+
+    let session_expire_timestamp = format!(
+        "{} UTC",
+        Utc::now().naive_local().format("%Y-%m-%d %H:%M:%S")
+    );
 
     let template = UserHomeTemplate {
         username: "".to_string(),
@@ -499,12 +444,9 @@ pub struct AccountTemplate {
 }
 
 pub async fn display_accounting_config_main_page(
-    session_data: SessionDataResult,
+    session: SessionMongoSession,
 ) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display accounting main config page");
-
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
 
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 
@@ -518,19 +460,6 @@ pub async fn display_accounting_config_main_page(
     if !is_logged_in {
         let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
             username: "not logged in".to_string(),
-            account_types: empty_account_type_list,
-            accounts: empty_account_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    if session.is_expired() {
-        let return_value: AccountingMainConfigTemplate = AccountingMainConfigTemplate {
-            username: "Session expired".to_string(),
             account_types: empty_account_type_list,
             accounts: empty_account_list,
         };
@@ -618,8 +547,7 @@ pub async fn display_accounting_config_main_page(
         accounts: return_account_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session.update();
 
     trace!(target: "app::FinanceOverView","Loaded finance accounting types for user id {}", user_id);
 
@@ -633,11 +561,8 @@ pub struct AccountingMainTemplate {
     accounts: Vec<AccountTemplate>,
 }
 
-pub async fn display_accounting_main_page(session_data: SessionDataResult) -> impl IntoResponse {
+pub async fn display_accounting_main_page(session: SessionMongoSession) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display accounting main page");
-
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
 
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 
@@ -649,18 +574,6 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
     if !is_logged_in {
         let return_value = AccountingMainTemplate {
             username: "not logged in".to_string(),
-            accounts: empty_account_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    if session.is_expired() {
-        let return_value = AccountingMainTemplate {
-            username: "Session expired".to_string(),
             accounts: empty_account_list,
         };
         headers.insert(
@@ -715,8 +628,7 @@ pub async fn display_accounting_main_page(session_data: SessionDataResult) -> im
         accounts: return_account_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session.update();
 
     trace!(target: "app::FinanceOverView","Loaded accounting view user id {}", user_id);
 
@@ -750,11 +662,8 @@ pub struct AccountingAccountSingleTableTemplate {
     pub account_table: AccountTableTemplate,
 }
 
-pub async fn display_accounting_review_page(session_data: SessionDataResult) -> impl IntoResponse {
+pub async fn display_accounting_review_page(session: SessionMongoSession) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display accounting review page");
-
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
 
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 
@@ -766,18 +675,6 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
     if !is_logged_in {
         let return_value = AccountingAccountReviewTemplate {
             username: "not logged in".to_string(),
-            account_tables: empty_account_table_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    if session.is_expired() {
-        let return_value = AccountingAccountReviewTemplate {
-            username: "Session expired".to_string(),
             account_tables: empty_account_table_list,
         };
         headers.insert(
@@ -828,8 +725,7 @@ pub async fn display_accounting_review_page(session_data: SessionDataResult) -> 
         account_tables: return_account_table_list,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session.update();
 
     trace!(target: "app::FinanceOverView","Loaded accounting review user id {}", user_id);
 
@@ -857,11 +753,8 @@ pub struct AccountingJournalReviewTemplate {
     journal_entries_list: Vec<JournalTableRow>,
 }
 
-pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoResponse {
+pub async fn display_journal_page(session: SessionMongoSession) -> impl IntoResponse {
     debug!(target: "app::FinanceOverView","display journal review page");
-
-    let session_data = SessionData::from_session_data_result(session_data);
-    let mut session = session_data.session_option.unwrap().clone();
 
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 
@@ -873,18 +766,6 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
     if !is_logged_in {
         let return_value = AccountingJournalReviewTemplate {
             username: "not logged in".to_string(),
-            journal_entries_list: empty_journal_list,
-        };
-        headers.insert(
-            axum::http::header::REFRESH,
-            axum::http::HeaderValue::from_str("5; url = /").unwrap(),
-        );
-        return HtmlTemplate(return_value);
-    }
-
-    if session.is_expired() {
-        let return_value = AccountingJournalReviewTemplate {
-            username: "Session expired".to_string(),
             journal_entries_list: empty_journal_list,
         };
         headers.insert(
@@ -934,8 +815,7 @@ pub async fn display_journal_page(session_data: SessionDataResult) -> impl IntoR
         journal_entries_list: return_journal_entries,
     };
 
-    session.expire_in(std::time::Duration::from_secs(60 * 10));
-    let _new_cookie = session_data.session_store.store_session(session).await;
+    session.update();
 
     trace!(target: "app::FinanceOverView","Loaded journal review user id {}", user_id);
 

@@ -19,7 +19,8 @@ async-trait = "0.1.89" # see https://stackoverflow.com/questions/65921581/how-ca
 axum = { version = "0.8.8"}
 axum-extra = { version = "0.12.3", features = ["typed-header", "cookie"] }
 axum-server = {version = "0.8", features = ["tls-rustls"] }
-axum_session = "=0.17.1"
+axum_session = { version = "0.17.0" }
+axum_session_mongo = { version = "0.5.1" }
 
 futures = "0.3"
 

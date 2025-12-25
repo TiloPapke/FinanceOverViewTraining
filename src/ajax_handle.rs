@@ -20,6 +20,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use axum_session_mongo::SessionMongoSession;
 use log::{debug, warn};
 use mongodb::bson::Uuid;
 use secrecy::{ExposeSecret, SecretBox};
@@ -39,7 +40,7 @@ use crate::{
         AccountingAccountSingleTableTemplate, HtmlTemplate,
     },
     password_handle::{self, validate_credentials, UserCredentials},
-    session_data_handle::{SessionData, SessionDataResult},
+    //session_data_handle::{SessionData, SessionDataResult},
     setting_struct::SettingStruct,
 };
 
@@ -118,13 +119,9 @@ impl IntoResponse for SimpleAjaxRequestResult {
 }
 
 pub async fn do_change_passwort(
-    session_data: SessionDataResult,
+    session: SessionMongoSession,
     Form(input): Form<ChangePasswortFormInput>,
 ) -> impl IntoResponse {
-    let session_data = SessionData::from_session_data_result(session_data);
-
-    let mut session = session_data.session_option.unwrap().clone();
-
     let is_logged_in: bool = session.get("logged_in").unwrap_or(false);
 
     let mut headers = HeaderMap::new();

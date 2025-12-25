@@ -27,10 +27,11 @@ use axum::{
     http::{self, HeaderMap, Uri},
     response::{IntoResponse, Redirect},
     routing::{get, post},
-    Extension, Router,
+    Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
-use axum_session::SessionStore;
+use axum_session::{SessionConfig, SessionLayer};
+use axum_session_mongo::SessionMongoPool;
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
@@ -53,6 +54,8 @@ use crate::{
     mdb_convert_tools::MdbConvertTools,
     setting_struct::SettingStruct,
 };
+
+const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 
 #[tokio::main]
 async fn main() {
@@ -175,22 +178,19 @@ async fn https_server() {
     }
     let mgdb_client = mgdb_client_create_result.unwrap();
 
-    let server_session_store = MongodbSessionStore::from_client(
-        mgdb_client,
-        &db_connection.instance,
-        DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO,
-    );
+    //This Defaults as normal Cookies.
+    //To enable signed cookies for integrity, and authenticity please check the enable_signed_cookies_headers Example.
+    let session_config = SessionConfig::default()
+        .with_table_name(DbHandlerMongoDB::COLLECTION_NAME_SESSION_INFO)
+        .with_session_name(AXUM_SESSION_COOKIE_NAME);
 
-    let initilize_result = server_session_store.initialize().await;
-    if initilize_result.is_err() {
-        let error_info = initilize_result.unwrap_err();
-        error!(target: "app::FinanceOverView","Could not initialize session store: {}", error_info);
-        println!(
-            "Could not initialize session store, quitting: {}",
-            error_info
-        );
-        return;
-    }
+    // create SessionStore and initiate the database tables
+    let session_store = axum_session_mongo::SessionMongoSessionStore::new(
+        Some(SessionMongoPool::from(mgdb_client.clone())),
+        session_config,
+    )
+    .await
+    .unwrap();
 
     let app: Router = Router::new()
         .route("/", get(https_handler))
@@ -275,7 +275,7 @@ async fn https_server() {
             get(html_render::display_journal_page),
         )
         .route("/js_code/{*path}", get(ajax_handle::get_js_files))
-        .layer(Extension(server_session_store));
+        .layer(SessionLayer::new(session_store));
 
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
