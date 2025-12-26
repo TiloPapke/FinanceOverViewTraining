@@ -22,16 +22,15 @@ mod tests {
     mod testing_email_smtp;
     mod testing_email_validation;
 }
-
 use axum::{
-    http::{self, HeaderMap, Uri},
+    http::{self, HeaderMap, HeaderValue, Uri},
     response::{IntoResponse, Redirect},
     routing::{get, post},
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use axum_session::{SessionConfig, SessionLayer};
-use axum_session_mongo::SessionMongoPool;
+use axum_session_mongo::{SessionMongoPool, SessionMongoSession};
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
@@ -39,7 +38,7 @@ use log4rs::{
     encode::json::JsonEncoder,
 };
 use mongodb::bson::{doc, Bson, Document};
-use session_data_handle::SessionDataResult;
+//use session_data_handle::SessionDataResult;
 use std::{
     env, fs,
     net::SocketAddr,
@@ -339,15 +338,17 @@ async fn http_handler(uri: Uri) -> Redirect {
     Redirect::temporary(&new_uri)
 }
 
-async fn https_handler(session_data: SessionDataResult) -> impl IntoResponse {
-    let (headers, user_id, create_cookie) = match session_data {
-        SessionDataResult::FoundSessionData(session_data) => {
-            (HeaderMap::new(), session_data.session_user_id, false)
-        }
-        SessionDataResult::CreatedSessionData(new_session_data) => {
+async fn https_handler(session: SessionMongoSession) -> impl IntoResponse {
+    let (headers, user_id, create_cookie) = match session.data_exists() {
+        true => (HeaderMap::new(), session.get_session_id(), false),
+        false => {
             let mut headers = HeaderMap::new();
-            headers.insert(http::header::SET_COOKIE, new_session_data.cookie);
-            (headers, new_session_data.session_user_id, true)
+            session.create_data();
+            headers.insert(
+                http::header::SET_COOKIE,
+                HeaderValue::from_str(&session.get_session_id()).expect("unable to get session id"),
+            );
+            (headers, session.get_session_id(), true)
         }
     };
     debug!(

@@ -195,7 +195,10 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
 
             let entry = FinanceJournalEntry {
                 id: some_journal_entry_id_parse_result.unwrap(),
-                booking_time: stored_booking_time.unwrap().to_chrono(),
+                booking_time: DateTime::<Utc>::from_timestamp_millis(
+                    stored_booking_time.unwrap().timestamp_millis(),
+                )
+                .unwrap(),
                 amount: stored_amount.unwrap() as u64,
                 title: stored_title.unwrap().into(),
                 description: stored_description.unwrap().into(),
@@ -363,7 +366,10 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
                 finance_account_id: some_finance_account_id_parse_result.unwrap(),
                 finance_journal_diary_id: some_finance_journal_diary_id_parse_result.unwrap(),
                 booking_type: stored_booking_type_result.unwrap(),
-                booking_time: stored_booking_time.unwrap().to_chrono(),
+                booking_time: DateTime::<Utc>::from_timestamp_millis(
+                    stored_booking_time.unwrap().timestamp_millis(),
+                )
+                .unwrap(),
                 amount: stored_amount.unwrap() as u64,
                 title: stored_title.unwrap().into(),
                 description: stored_description.unwrap().into(),
@@ -575,7 +581,10 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
                 finance_account_id: some_finance_account_id_parse_result.unwrap(),
                 finance_journal_diary_id: some_finance_journal_diary_id_parse_result.unwrap(),
                 booking_type: stored_booking_type_result.unwrap(),
-                booking_time: stored_booking_time.unwrap().to_chrono(),
+                booking_time: DateTime::<Utc>::from_timestamp_millis(
+                    stored_booking_time.unwrap().timestamp_millis(),
+                )
+                .unwrap(),
                 amount: stored_amount.unwrap() as u64,
                 title: stored_title.unwrap().into(),
                 description: stored_description.unwrap().into(),
