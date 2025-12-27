@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use log::{debug, warn};
 use mongodb::{
-    bson::{doc, Document, Uuid},
+    bson::{self, doc, Document, Uuid},
     error::{TRANSIENT_TRANSACTION_ERROR, UNKNOWN_TRANSACTION_COMMIT_RESULT},
     options::{Acknowledgment, ReadConcern, WriteConcern},
     ClientSession, Collection,
@@ -102,11 +102,11 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
         let mut sub_filters = Vec::new();
         sub_filters.push(user_filter);
         if booking_time_from.is_some() {
-            let sub_doc1 = doc! {"booking_time": doc! {"$gte": booking_time_from.unwrap()}};
+            let sub_doc1 = doc! {"booking_time": doc! {"$gte": bson::DateTime::from_millis(booking_time_from.unwrap().timestamp_millis())}};
             sub_filters.push(sub_doc1);
         }
         if booking_time_till.is_some() {
-            let sub_doc2 = doc! {"booking_time": doc! {"$lte": booking_time_till.unwrap()}};
+            let sub_doc2 = doc! {"booking_time": doc! {"$lte": bson::DateTime::from_millis(booking_time_till.unwrap().timestamp_millis())}};
             sub_filters.push(sub_doc2);
         }
         let filter = if sub_filters.len().eq(&1) {
@@ -271,13 +271,13 @@ impl DBFinanceAccountingFunctions for DbHandlerMongoDB {
             if search_option.booking_time_from.is_some() {
                 sub_filter.insert(
                     "booking_time",
-                    doc! {"$gte": search_option.booking_time_from.unwrap()},
+                    doc! {"$gte": bson::DateTime::from_millis(search_option.booking_time_from.unwrap().timestamp_millis())},
                 );
             }
             if search_option.booking_time_till.is_some() {
                 sub_filter.insert(
                     "booking_time",
-                    doc! {"$lte": search_option.booking_time_from.unwrap()},
+                    doc! {"$lte": bson::DateTime::from_millis(search_option.booking_time_from.unwrap().timestamp_millis())},
                 );
             }
             sub_filter_docs.push(sub_filter);
@@ -760,7 +760,7 @@ impl DbHandlerMongoDB {
                 "debit_finance_account_id":debit_finance_account_id_value.clone(),
                 "credit_finance_account_id":credit_finance_account_id_value.clone(),
                 "running_number":new_running_number as i64,
-                "booking_time":action_to_insert.booking_time,
+                "booking_time":bson::DateTime::from_millis(action_to_insert.booking_time.timestamp_millis()),
                 "amount":action_to_insert.amount as i64,
                 "title":action_to_insert.title.clone(),
                 "description":action_to_insert.description.clone()
@@ -782,7 +782,7 @@ impl DbHandlerMongoDB {
                 "finance_account_id":debit_finance_account_id_value.clone(),
                 "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
                 "booking_type":debit_booking_type.to_int(),
-                "booking_time":action_to_insert.booking_time,
+                "booking_time":bson::DateTime::from_millis(action_to_insert.booking_time.timestamp_millis()),
                 "amount":action_to_insert.amount  as i64,
                 "title":action_to_insert.title.clone(),
                 "description":action_to_insert.description.clone()
@@ -804,7 +804,7 @@ impl DbHandlerMongoDB {
                 "finance_account_id":credit_finance_account_id_value.clone(),
                 "finance_journal_diary_id":journal_diary_entry_id_value.clone(),
                 "booking_type":credit_booking_type.to_int(),
-                "booking_time":action_to_insert.booking_time,
+                "booking_time":bson::DateTime::from_millis(action_to_insert.booking_time.timestamp_millis()),
                 "amount":action_to_insert.amount  as i64,
                 "title":action_to_insert.title.clone(),
                 "description":action_to_insert.description.clone()
