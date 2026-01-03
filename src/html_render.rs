@@ -119,7 +119,7 @@ pub async fn accept_login_form(
                         session.set("logged_in", true);
                         session.set("user_account_id", user_id);
                         session.update();
-                        let mongo_db = DbHandlerMongoDB::new(&db_connection);
+                        let mongo_db = DbHandlerMongoDB::new(&db_connection).await;
                         let _repair_result = mongo_db
                             .repair_counter_record_for_user(&db_connection, &user_id)
                             .await;
@@ -376,6 +376,7 @@ pub async fn validate_user_email_handler(form: Form<ValidateUserEmailInput>) -> 
                 return HtmlTemplate(st);
             }
             EmailVerificationStatus::Verified => {
+                st.validation_main_result = "Validation successfull".to_string();
                 st.validation_detail_result = format!("email for {} validated", form.user_name);
             }
         }
@@ -480,7 +481,7 @@ pub async fn display_accounting_config_main_page(
         password: String::from(local_setting.backend_database_password),
         instance: String::from(&local_setting.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
 
     {
         let accounting_config_handle =
@@ -593,7 +594,7 @@ pub async fn display_accounting_main_page(session: SessionMongoSession) -> impl 
         password: String::from(local_setting.backend_database_password),
         instance: String::from(&local_setting.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
 
     {
         let accounting_config_handle =
@@ -694,7 +695,7 @@ pub async fn display_accounting_review_page(session: SessionMongoSession) -> imp
         password: String::from(local_setting.backend_database_password),
         instance: String::from(&local_setting.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
 
     {
         let accounting_config_handle =
@@ -785,7 +786,7 @@ pub async fn display_journal_page(session: SessionMongoSession) -> impl IntoResp
         password: String::from(local_setting.backend_database_password),
         instance: String::from(&local_setting.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
 
     {
         let accounting_config_handle =

@@ -128,7 +128,7 @@ async fn main() {
         instance: String::from(&local_setting.backend_database_instance),
     };
 
-    if !DbHandlerMongoDB::validate_db_structure(&db_connection) {
+    if !DbHandlerMongoDB::validate_db_structure(&db_connection).await {
         error!(target: "app::FinanceOverView","Could not validate backend structure, quitting");
         println!("Could not validate backend structure, quitting");
         return;
@@ -276,6 +276,9 @@ async fn https_server() {
         .route("/js_code/{*path}", get(ajax_handle::get_js_files))
         .layer(SessionLayer::new(session_store));
 
+    let _ =
+        mail_send::mail_auth::hickory_resolver::proto::rustls::default_provider().install_default();
+
     let config_result = RustlsConfig::from_pem_file(
         local_setting.web_server_cert_cert_path,
         local_setting.web_server_cert_key_path,
@@ -376,7 +379,8 @@ async fn https_handler(session: SessionMongoSession) -> impl IntoResponse {
         &db_connection,
         &DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),
         query_filter,
-    );
+    )
+    .await;
     if query_site_result_cursor.is_ok() {
         let document_list =
             MdbConvertTools::get_vector_from_cursor(query_site_result_cursor.unwrap());
@@ -437,7 +441,8 @@ async fn https_handler(session: SessionMongoSession) -> impl IntoResponse {
                     &DbHandlerMongoDB::COLLECTION_NAME_WEBSITE_TRAFFIC.to_string(),
                     query_info,
                     update_info,
-                );
+                )
+                .await;
                 if update_result.is_err() {
                     addtional_info = format!("{}<br>could not update database", addtional_info);
                 }

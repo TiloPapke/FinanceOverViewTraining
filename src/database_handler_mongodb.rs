@@ -6,7 +6,7 @@ use mongodb::{
     bson::{doc, uuid, Document, Uuid},
     options::{ClientOptions, Credential},
     results::{InsertOneResult, UpdateResult},
-    sync, Client, Collection,
+    Client, Collection,
 };
 
 use secrecy::{ExposeSecret, SecretBox};
@@ -49,9 +49,10 @@ impl DbHandlerMongoDB {
     pub const COLLECTION_NAME_JOURNAL_DIARY: &'static str = "FinanceJournalDiary";
     pub const COLLECTION_NAME_COUNTERS: &'static str = "CounterCollection";
 
-    pub fn new(connection_settings: &DbConnectionSetting) -> DbHandlerMongoDB {
-        let db_client =
-            DbHandlerMongoDB::create_client_connection_sync(connection_settings).unwrap();
+    pub async fn new(connection_settings: &DbConnectionSetting) -> DbHandlerMongoDB {
+        let db_client = DbHandlerMongoDB::create_client_connection_async(connection_settings)
+            .await
+            .unwrap();
         return DbHandlerMongoDB {
             internal_mongodb_client: Some(db_client),
         };
@@ -64,10 +65,10 @@ impl DbHandlerMongoDB {
         return Err("no DB client prepared".into());
     }
 
-    pub fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
+    pub async fn validate_db_structure(conncetion_settings: &DbConnectionSetting) -> bool {
         // Get a handle to the deployment.
         let client_create_result =
-            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             warn!(target:"app::FinanceOverView","{}",client_create_result.unwrap_err());
             return false;
@@ -75,7 +76,7 @@ impl DbHandlerMongoDB {
         let client = client_create_result.unwrap();
 
         // List the names of the databases in that deployment.
-        let query_result = client.list_database_names().run();
+        let query_result = client.list_database_names().await;
         if query_result.is_err() {
             warn!(target: "app::FinanceOverView","error listing databases: {}",query_result.unwrap_err());
             return false;
@@ -108,7 +109,7 @@ impl DbHandlerMongoDB {
             &DbHandlerMongoDB::COLLECTION_NAME_JOURNAL_DIARY,
         ];
 
-        let query_result_collections = db_instance.list_collection_names().run();
+        let query_result_collections = db_instance.list_collection_names().await;
         if query_result_collections.is_err() {
             warn!(target: "app::FinanceOverView","error listing collections: {}",query_result_collections.unwrap_err());
             return false;
@@ -120,7 +121,7 @@ impl DbHandlerMongoDB {
                 trace!(target: "app::FinanceOverView","found collection {}",required_collection);
             } else {
                 info!(target: "app::FinanceOverView","collection {} not found, trying to create it",required_collection);
-                let create_result = db_instance.create_collection(required_collection).run();
+                let create_result = db_instance.create_collection(required_collection).await;
                 if create_result.is_err() {
                     warn!(target: "app::FinanceOverView","could not create collection {} in database {}, error: {}",required_collection, conncetion_settings.instance, create_result.unwrap_err());
                     return false;
@@ -143,13 +144,13 @@ impl DbHandlerMongoDB {
     }
     */
 
-    pub fn query_table_with_filter(
+    pub async fn query_table_with_filter(
         conncetion_settings: &DbConnectionSetting,
         table_to_query: &String,
         filter_info: Document,
-    ) -> Result<sync::Cursor<Document>, String> {
+    ) -> Result<mongodb::Cursor<Document>, String> {
         let client_create_result =
-            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             return Result::Err(client_create_result.unwrap_err().to_string());
         }
@@ -158,7 +159,7 @@ impl DbHandlerMongoDB {
             .database(&conncetion_settings.instance)
             .collection(table_to_query)
             .find(filter_info)
-            .run();
+            .await;
         if some_cursor_result.is_err() {
             return Result::Err(some_cursor_result.unwrap_err().to_string());
         }
@@ -189,14 +190,14 @@ impl DbHandlerMongoDB {
         return Result::Ok(insert_result_execute_result.unwrap());
     }
 
-    pub fn update_document_in_table(
+    pub async fn update_document_in_table(
         conncetion_settings: &DbConnectionSetting,
         table_to_insert: &String,
         query_info: Document,
         update_info: Document,
     ) -> Result<UpdateResult, String> {
         let client_create_result =
-            DbHandlerMongoDB::create_client_connection_sync(conncetion_settings);
+            DbHandlerMongoDB::create_client_connection_async(conncetion_settings).await;
         if client_create_result.is_err() {
             return Result::Err(client_create_result.unwrap_err().to_string());
         }
@@ -206,7 +207,7 @@ impl DbHandlerMongoDB {
             .collection(table_to_insert);
 
         let update_result_execute_result =
-            some_collections.update_one(query_info, update_info).run();
+            some_collections.update_one(query_info, update_info).await;
         if update_result_execute_result.is_err() {
             return Result::Err(update_result_execute_result.unwrap_err().to_string());
         }

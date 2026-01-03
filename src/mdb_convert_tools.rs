@@ -4,7 +4,7 @@ use mongodb::bson::Document;
 pub struct MdbConvertTools {}
 
 impl MdbConvertTools {
-    pub fn get_vector_from_cursor(cursor: mongodb::sync::Cursor<Document>) -> Vec<Document> {
+    pub fn get_vector_from_cursor(cursor: mongodb::Cursor<Document>) -> Vec<Document> {
         let convert_result =
             executor::block_on(MdbConvertTools::get_vector_from_cursor_async(cursor));
         if convert_result.is_ok() {
@@ -15,15 +15,13 @@ impl MdbConvertTools {
     }
 
     pub async fn get_vector_from_cursor_async(
-        mut cursor: mongodb::sync::Cursor<Document>,
-    ) -> Result<Vec<Document>, Box<dyn std::error::Error>> {
+        mut cursor: mongodb::Cursor<Document>,
+    ) -> Result<Vec<Document>, mongodb::error::Error> {
         let mut docs = Vec::new();
-        while let Some(result) = cursor.next() {
-            match result {
-                Ok(document) => {
-                    docs.push(document);
-                }
-                Err(e) => return Err(Box::new(e)),
+        while cursor.has_next() {
+            if cursor.advance().await? {
+                let norm_document = mongodb::bson::Document::try_from(cursor.current()).unwrap();
+                docs.push(norm_document);
             }
         }
         return Ok(docs);

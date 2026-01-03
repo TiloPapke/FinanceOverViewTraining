@@ -535,7 +535,7 @@ pub async fn do_create_new_finance_account_type(
         password: String::from(local_settings.backend_database_password),
         instance: String::from(local_settings.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
     let user_id: Uuid = session.get("user_account_id").unwrap();
     let mut return_status_code = StatusCode::OK;
     {
@@ -640,7 +640,7 @@ pub async fn do_update_finance_account_type(
         password: String::from(local_settings.backend_database_password),
         instance: String::from(local_settings.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
     let user_id: Uuid = session.get("user_account_id").unwrap();
     let mut return_status_code = StatusCode::OK;
     {
@@ -747,7 +747,7 @@ pub async fn do_create_new_finance_account(
         password: String::from(local_settings.backend_database_password),
         instance: String::from(local_settings.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
     let user_id: Uuid = session.get("user_account_id").unwrap();
     let mut return_status_code = StatusCode::OK;
     {
@@ -862,7 +862,7 @@ pub async fn do_update_finance_account(
         password: String::from(local_settings.backend_database_password),
         instance: String::from(local_settings.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
     let user_id: Uuid = session.get("user_account_id").unwrap();
     let mut return_status_code = StatusCode::OK;
     {
@@ -969,7 +969,7 @@ pub async fn do_create_booking_entry(
         password: String::from(local_settings.backend_database_password),
         instance: String::from(local_settings.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
     let user_id: Uuid = session.get("user_account_id").unwrap();
 
     let mut return_status_code = StatusCode::OK;
@@ -1074,7 +1074,7 @@ pub async fn do_get_account_table_request(
         password: String::from(local_settings.backend_database_password),
         instance: String::from(local_settings.backend_database_instance),
     };
-    let db_handler = DbHandlerMongoDB::new(&db_connection);
+    let db_handler = DbHandlerMongoDB::new(&db_connection).await;
     let user_id: Uuid = session.get("user_account_id").unwrap();
     let username: String = session.get("user_name").unwrap();
 

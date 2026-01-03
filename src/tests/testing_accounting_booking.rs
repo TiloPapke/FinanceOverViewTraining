@@ -1242,7 +1242,7 @@ mod test_accounting_handle {
         }
 
         let user_id_1 = validate_result.unwrap();
-        let mongo_db = DbHandlerMongoDB::new(&db_connection);
+        let mongo_db = DbHandlerMongoDB::new(&db_connection).await;
 
         let account_handle_1 =
             FinanceAccountingConfigHandle::new(&db_connection, &user_id_1, &mongo_db);
@@ -1943,7 +1943,10 @@ mod test_accounting_handle {
         db_connection: &DbConnectionSetting,
     ) -> bool {
         super::GLOBAL_PREPARED_MONGODB.call_once(|| {
-            if !DbHandlerMongoDB::validate_db_structure(&db_connection) {
+            let check_result = futures::executor::block_on(
+                DbHandlerMongoDB::validate_db_structure(&db_connection),
+            );
+            if !check_result {
                 panic!("Could not validate backend structure")
             }
             let accounts_per_user_result = account_handle_1.finance_account_list(None);
